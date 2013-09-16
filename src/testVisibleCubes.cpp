@@ -26,11 +26,20 @@ int main(int argc, char ** argv)
 	std::vector<int> nca = vC.getListCubes(NOCACHED);
 	std::vector<int> p = vC.getListCubes(PAINTED);
 
-	std::cout<<"CUBE size "<<c.size()<<std::endl;
-	std::cout<<"NOCUBE size "<<nc.size()<<std::endl;
-	std::cout<<"CACHEDsize "<<ca.size()<<std::endl;
-	std::cout<<"NOCACHED size "<<nca.size()<<std::endl;
-	std::cout<<"PAINTED size "<<p.size()<<std::endl;
+	if (c.size() != 0		||
+		nc.size() != 100	||
+		ca.size() != 0		||
+		nca.size() != 0		||
+		p.size() != 0)
+	{
+		std::cout<<"CUBE size "<<c.size()<<std::endl;
+		std::cout<<"NOCUBE size "<<nc.size()<<std::endl;
+		std::cout<<"CACHEDsize "<<ca.size()<<std::endl;
+		std::cout<<"NOCACHED size "<<nca.size()<<std::endl;
+		std::cout<<"PAINTED size "<<p.size()<<std::endl;
+		std::cerr<<"Test error"<<std::endl;
+		return 0;
+	}
 
 	std::vector<eqMivt::updateCube_t> changes;
 
@@ -60,16 +69,23 @@ int main(int argc, char ** argv)
 	nca = vC.getListCubes(NOCACHED);
 	p = vC.getListCubes(PAINTED);
 
-	std::cout<<"CUBE size "<<c.size()<<std::endl;
-	std::cout<<"NOCUBE size "<<nc.size()<<std::endl;
-	std::cout<<"CACHEDsize "<<ca.size()<<std::endl;
-	std::cout<<"NOCACHED size "<<nca.size()<<std::endl;
-	std::cout<<"PAINTED size "<<p.size()<<std::endl;
 
-	std::cout<<"________________________________________"<<std::endl;
+	if (c.size() != 0		||
+		nc.size() != 25		||
+		ca.size() != 25		||
+		nca.size() != 25	||
+		p.size() != 25)
+	{
+		std::cout<<"CUBE size "<<c.size()<<std::endl;
+		std::cout<<"NOCUBE size "<<nc.size()<<std::endl;
+		std::cout<<"CACHEDsize "<<ca.size()<<std::endl;
+		std::cout<<"NOCACHED size "<<nca.size()<<std::endl;
+		std::cout<<"PAINTED size "<<p.size()<<std::endl;
+		std::cerr<<"Test error"<<std::endl;
+		return 0;
+	}
 
 	vC.updateGPU(CUBE , false, 0);
-	std::cout<<"GPU size "<<vC.getSizeGPU()<<std::endl;
 
 	test_updateCubesGPU(vC.getVisibleCubesGPU(), vC.getSizeGPU());
 
@@ -80,14 +96,22 @@ int main(int argc, char ** argv)
 	nca = vC.getListCubes(NOCACHED);
 	p = vC.getListCubes(PAINTED);
 
-	std::cout<<"CUBE size "<<c.size()<<std::endl;
-	std::cout<<"NOCUBE size "<<nc.size()<<std::endl;
-	std::cout<<"CACHEDsize "<<ca.size()<<std::endl;
-	std::cout<<"NOCACHED size "<<nca.size()<<std::endl;
-	std::cout<<"PAINTED size "<<p.size()<<std::endl;
+	if (c.size() != 0		||
+		nc.size() != 25		||
+		ca.size() != 25		||
+		nca.size() != 25	||
+		p.size() != 25)
+	{
+		std::cout<<"CUBE size "<<c.size()<<std::endl;
+		std::cout<<"NOCUBE size "<<nc.size()<<std::endl;
+		std::cout<<"CACHEDsize "<<ca.size()<<std::endl;
+		std::cout<<"NOCACHED size "<<nca.size()<<std::endl;
+		std::cout<<"PAINTED size "<<p.size()<<std::endl;
+		std::cerr<<"Test error"<<std::endl;
+		return 0;
+	}
 
 	vC.updateGPU(CUBE | NOCUBE, false, 0);
-	std::cout<<"GPU size "<<vC.getSizeGPU()<<std::endl;
 
 	test_updateCubesGPU(vC.getVisibleCubesGPU(), vC.getSizeGPU());
 
@@ -99,15 +123,23 @@ int main(int argc, char ** argv)
 	nca = vC.getListCubes(NOCACHED);
 	p = vC.getListCubes(PAINTED);
 
-	std::cout<<"CUBE size "<<c.size()<<std::endl;
-	std::cout<<"NOCUBE size "<<nc.size()<<std::endl;
-	std::cout<<"CACHEDsize "<<ca.size()<<std::endl;
-	std::cout<<"NOCACHED size "<<nca.size()<<std::endl;
-	std::cout<<"PAINTED size "<<p.size()<<std::endl;
+	if (c.size() != 0		||
+		nc.size() != 0		||
+		ca.size() != 25		||
+		nca.size() != 25	||
+		p.size() != 50)
+	{
+		std::cout<<"CUBE size "<<c.size()<<std::endl;
+		std::cout<<"NOCUBE size "<<nc.size()<<std::endl;
+		std::cout<<"CACHEDsize "<<ca.size()<<std::endl;
+		std::cout<<"NOCACHED size "<<nca.size()<<std::endl;
+		std::cout<<"PAINTED size "<<p.size()<<std::endl;
+		std::cerr<<"Test error"<<std::endl;
+		return 0;
+	}
 
 
 	vC.updateGPU(CUBE | NOCUBE | CACHED, false, 0);
-	std::cout<<"GPU size "<<vC.getSizeGPU()<<std::endl;
 
 	test_updateCubesGPU(vC.getVisibleCubesGPU(), vC.getSizeGPU());
 
@@ -119,14 +151,22 @@ int main(int argc, char ** argv)
 	nca = vC.getListCubes(NOCACHED);
 	p = vC.getListCubes(PAINTED);
 
-	std::cout<<"CUBE size "<<c.size()<<std::endl;
-	std::cout<<"NOCUBE size "<<nc.size()<<std::endl;
-	std::cout<<"CACHEDsize "<<ca.size()<<std::endl;
-	std::cout<<"NOCACHED size "<<nca.size()<<std::endl;
-	std::cout<<"PAINTED size "<<p.size()<<std::endl;
+	if (c.size() != 0		||
+		nc.size() != 0		||
+		ca.size() != 0		||
+		nca.size() != 25	||
+		p.size() != 75)
+	{
+		std::cout<<"CUBE size "<<c.size()<<std::endl;
+		std::cout<<"NOCUBE size "<<nc.size()<<std::endl;
+		std::cout<<"CACHEDsize "<<ca.size()<<std::endl;
+		std::cout<<"NOCACHED size "<<nca.size()<<std::endl;
+		std::cout<<"PAINTED size "<<p.size()<<std::endl;
+		std::cerr<<"Test error"<<std::endl;
+		return 0;
+	}
 
 	vC.updateGPU(CUBE | NOCUBE | CACHED | NOCACHED, false, 0);
-	std::cout<<"GPU size "<<vC.getSizeGPU()<<std::endl;
 
 	test_updateCubesGPU(vC.getVisibleCubesGPU(), vC.getSizeGPU());
 
@@ -138,14 +178,22 @@ int main(int argc, char ** argv)
 	nca = vC.getListCubes(NOCACHED);
 	p = vC.getListCubes(PAINTED);
 
-	std::cout<<"CUBE size "<<c.size()<<std::endl;
-	std::cout<<"NOCUBE size "<<nc.size()<<std::endl;
-	std::cout<<"CACHEDsize "<<ca.size()<<std::endl;
-	std::cout<<"NOCACHED size "<<nca.size()<<std::endl;
-	std::cout<<"PAINTED size "<<p.size()<<std::endl;
+	if (c.size() != 0		||
+		nc.size() != 0		||
+		ca.size() != 0		||
+		nca.size() != 0		||
+		p.size() != 100)
+	{
+		std::cout<<"CUBE size "<<c.size()<<std::endl;
+		std::cout<<"NOCUBE size "<<nc.size()<<std::endl;
+		std::cout<<"CACHEDsize "<<ca.size()<<std::endl;
+		std::cout<<"NOCACHED size "<<nca.size()<<std::endl;
+		std::cout<<"PAINTED size "<<p.size()<<std::endl;
+		std::cerr<<"Test error"<<std::endl;
+		return 0;
+	}
 
 	vC.updateGPU(CUBE | NOCUBE | CACHED | NOCACHED | PAINTED, false, 0);
-	std::cout<<"GPU size "<<vC.getSizeGPU()<<std::endl;
 
 	test_updateCubesGPU(vC.getVisibleCubesGPU(), vC.getSizeGPU());
 
@@ -157,12 +205,22 @@ int main(int argc, char ** argv)
 	nca = vC.getListCubes(NOCACHED);
 	p = vC.getListCubes(PAINTED);
 
-	std::cout<<"CUBE size "<<c.size()<<std::endl;
-	std::cout<<"NOCUBE size "<<nc.size()<<std::endl;
-	std::cout<<"CACHEDsize "<<ca.size()<<std::endl;
-	std::cout<<"NOCACHED size "<<nca.size()<<std::endl;
-	std::cout<<"PAINTED size "<<p.size()<<std::endl;
+	if (c.size() != 0		||
+		nc.size() != 0		||
+		ca.size() != 0		||
+		nca.size() != 0		||
+		p.size() != 100)
+	{
+		std::cout<<"CUBE size "<<c.size()<<std::endl;
+		std::cout<<"NOCUBE size "<<nc.size()<<std::endl;
+		std::cout<<"CACHEDsize "<<ca.size()<<std::endl;
+		std::cout<<"NOCACHED size "<<nca.size()<<std::endl;
+		std::cout<<"PAINTED size "<<p.size()<<std::endl;
+		std::cerr<<"Test error"<<std::endl;
+		return 0;
+	}
 
+	std::cout<<" Test OK"<<std::endl;
 	return 0;
 
 }

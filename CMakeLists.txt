@@ -19,6 +19,39 @@ else()
 	message(ERROR "CUDA NOT FOUND")
 endif()
 
+# Equalizer
+find_package(Equalizer 1.5.0 REQUIRED)
+if (EQUALIZER_FOUND)
+	include_directories(${EQUALIZER_INCLUDE_DIRS})
+else()
+	message(ERROR "EQUALIZER NOT FOUND")
+endif()
+
+#GLEW_MX
+add_definitions(-DEQ_SYSTEM_INCLUDES) # get GL headers
+if(GLEW_MX_FOUND)
+  include_directories(BEFORE SYSTEM ${GLEW_MX_INCLUDE_DIRS})
+endif()
+
+# BOOST 
+set(Boost_USE_STATIC_LIBS        ON)
+set(Boost_USE_MULTITHREADED      ON)
+set(Boost_USE_STATIC_RUNTIME    OFF)
+find_package(Boost 1.36.0 COMPONENTS system filesystem program_options)
+if (Boost_FOUND)
+	include_directories(${Boost_INCLUDE_DIRS})
+else()
+	message(ERROR "Boost NOT FOUND")
+endif()
+
+# HDF5
+find_package(HDF5 REQUIRED)
+if (HDF5_FOUND)
+	include_directories(HDF5_INCLUDE_DIRS)
+else()
+	message(ERROR "HDF5 NOT FOUND")
+endif()
+
 # MIVT
 include_directories(${mivt_SOURCE_DIR}/inc)
 add_subdirectory(${mivt_SOURCE_DIR}/src)
