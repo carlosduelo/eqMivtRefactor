@@ -3,6 +3,7 @@
 # to the root binary directory of the project as ${mivt_BINARY_DIR}.
 
 #definitios
+add_definitions(-DDISK_TIMING)
 
 #MIVT
 set(MIVT_SOURCE 

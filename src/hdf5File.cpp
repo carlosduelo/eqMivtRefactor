@@ -379,7 +379,7 @@ void hdf5File::readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, i
 	timingC.reset();
 	#endif
 
-	hsize_t dim[3] = {abs(e.x()-s.x()),abs(e.y()-s.y()),abs(e.z()-s.z())};
+	hsize_t dim[3] = {1,abs(e.y()-s.y()),abs(e.z()-s.z())};
 
 	#ifdef DISK_TIMING
 	lunchbox::Clock     timing; 
@@ -408,15 +408,15 @@ void hdf5File::readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, i
 	hid_t	memspace; 
 	hsize_t offset_out[3] 	= {s.x() < 0 ? abs(s.x()) : 0, s.y() < 0 ? abs(s.y()) : 0, s.z() < 0 ? abs(s.z()) : 0};
 	hsize_t offset[3] 	= {s.x() < 0 ? 0 : s.x(), s.y() < 0 ? 0 : s.y(), s.z() < 0 ? 0 : s.z()};
-	hsize_t dimR[3]		= {e.x() > (int)this->_dims[0] ? this->_dims[0] - offset[0] : e.x() - offset[0],
+	hsize_t dimR[3]		= {1,
 				   e.y() > (int)this->_dims[1] ? this->_dims[1] - offset[1] : e.y() - offset[1],
 				   e.z() > (int)this->_dims[2] ? this->_dims[2] - offset[2] : e.z() - offset[2]};
 
 	#if 0
-	LBINFO<<"Dimension cube "<<dim[0]<<" "<<dim[1]<<" "<<dim[2]<<std::endl;
-	LBINFO<<"Dimension hyperSlab "<<dimR[0]<<" "<<dimR[1]<<" "<<dimR[2]<<std::endl;
-	LBINFO<<"Offset in "<<offset[0]<<" "<<offset[1]<<" "<<offset[2]<<std::endl;
-	LBINFO<<"Offset out "<<offset_out[0]<<" "<<offset_out[1]<<" "<<offset_out[2]<<std::endl;
+	std::cerr<<"Dimension cube "<<dim[0]<<" "<<dim[1]<<" "<<dim[2]<<std::endl;
+	std::cerr<<"Dimension hyperSlab "<<dimR[0]<<" "<<dimR[1]<<" "<<dimR[2]<<std::endl;
+	std::cerr<<"Offset in "<<offset[0]<<" "<<offset[1]<<" "<<offset[2]<<std::endl;
+	std::cerr<<"Offset out "<<offset_out[0]<<" "<<offset_out[1]<<" "<<offset_out[2]<<std::endl;
 	#endif
     
 	#ifdef DISK_TIMING

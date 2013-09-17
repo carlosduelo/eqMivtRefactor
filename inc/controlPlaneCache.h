@@ -34,17 +34,7 @@ typedef struct
 class ComparePlane
 {
 	public:
-	    bool operator()(cache_plane_t& t1, cache_plane_t& t2)
-		{
-			if (t1.refs > 0 && t2.refs > 0)
-				return t1.timestamp > t2.timestamp;
-			else if (t1.refs == -1)
-				return true;
-			else if (t2.refs == -1)
-				return false;
-			else
-				return t1.refs == 0;
-		}
+	    bool operator()(cache_plane_t& t1, cache_plane_t& t2);
 };
 
 class  ControlPlaneCache : public lunchbox::Thread
@@ -68,6 +58,7 @@ class  ControlPlaneCache : public lunchbox::Thread
 		lunchbox::Condition	_emptyPendingPlanes;
 		lunchbox::Condition	_fullSlots;
 
+		int			_maxHeight;
 		hdf5File	_file;
 
 		bool readPlane(float * data, int plane);

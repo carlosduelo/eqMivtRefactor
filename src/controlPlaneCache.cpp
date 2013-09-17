@@ -13,13 +13,31 @@ Notes:
 namespace eqMivt
 {
 
+bool ComparePlane::operator()(cache_plane_t& t1, cache_plane_t& t2)
+{
+	if (t1.refs > 0 && t2.refs > 0)
+		return t1.timestamp > t2.timestamp;
+	else if (t1.refs == -1)
+		return true;
+	else if (t2.refs == -1)
+		return false;
+	else
+		return t1.refs == 0;
+}
+
 bool ControlPlaneCache::initParamenter(std::vector<std::string> file_parameters, int maxHeight)
 {
 	_file.init(file_parameters);
 	
-	_maxPlane = 1000;
+	_maxPlane = _file.getRealDimension().x();
 
-	_sizePlane = 100;	
+	if (maxHeight == 0)
+		_maxHeight = _file.getRealDimension().y();
+	else
+		_maxHeight = maxHeight;
+
+	_sizePlane = _file.getRealDimension().y()*_file.getRealDimension().z();	
+
 	_maxNumPlanes = 3;
 	_freeSlots = _maxNumPlanes;
 
@@ -46,22 +64,17 @@ bool ControlPlaneCache::initParamenter(std::vector<std::string> file_parameters,
 
 void ControlPlaneCache::stopProcessing()
 {
-	std::cout<<"STOP PROCESSING"<<std::endl;
 	_lockEnd.set();
 		_emptyPendingPlanes.broadcast();
 		_fullSlots.broadcast();
 		_end = true;
 	_lockEnd.unset();
 
-	std::cout<<"WAITING"<<std::endl;
 	join();
-	std::cout<<"FINISH"<<std::endl;
 }
 
 ControlPlaneCache::~ControlPlaneCache()
 {
-	std::cout<<"Exit processing planes"<<std::endl;
-
 	if (_memoryPlane != 0)
 		if(cudaSuccess != cudaFreeHost((void*)_memoryPlane))
 		{
@@ -70,43 +83,16 @@ ControlPlaneCache::~ControlPlaneCache()
 		}
 }
 
-#if 0
-void ControlPlaneCache::addPlane(int plane)
+float * ControlPlaneCache::getAndBlockPlane(int plane)
 {
 	#ifndef NDEBUG
 	if (plane > _maxPlane)
 	{
 		std::cerr<<"Control Plane Cache, error adding plane that not exists"<<std::endl;
-		return;
+		return 0;
 	}
+
 	#endif
-
-	boost::unordered_map<int, cache_plane_t>::iterator it;
-
-
-	std::cout<<"ADDING PLANE "<<plane<<std::endl;
-
-	_fullSlots.lock();
-
-	it = _currentPlanes.find(plane);
-	if (it == _currentPlanes.end())
-	else
-	{
-		it->second.timestamp = std::time(0); 
-	}
-
-	_fullSlots.unlock();
-}
-
-void ControlPlaneCache::addPlanes(std::vector<int> planes)
-{
-	for(std::vector<int>::iterator it = planes.begin(); it!=planes.end(); ++it)
-		addPlane(*it);
-}
-#endif
-
-float * ControlPlaneCache::getAndBlockPlane(int plane)
-{
 	float * dplane = 0;
 	boost::unordered_map<int, cache_plane_t>::iterator it;
 
@@ -115,7 +101,6 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 	it = _currentPlanes.find(plane);
 	if (it != _currentPlanes.end())
 	{
-		//std::cout<<"GET AND BLOCK "<<plane<<std::endl;
 		if (it->second.refs == 0)
 			_freeSlots--;
 		else if (it->second.refs == -1)
@@ -127,7 +112,6 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 	}
 	else
 	{
-		//std::cout<<"PENDING "<<plane<<std::endl;
 		_emptyPendingPlanes.lock();
 			if (std::find(_pendingPlanes.begin(), _pendingPlanes.end(), plane) == _pendingPlanes.end())
 				_pendingPlanes.push_back(plane);
@@ -147,7 +131,6 @@ void	ControlPlaneCache::unlockPlane(int plane)
 
 	_fullSlots.lock();
 
-	//std::cout<<"UNLOCK "<<plane<<std::endl;
 	it = _currentPlanes.find(plane);
 	if (it != _currentPlanes.end())
 	{
@@ -179,6 +162,10 @@ void	ControlPlaneCache::unlockPlane(int plane)
 
 bool ControlPlaneCache::readPlane(float * data, int plane)
 {
+	vmml::vector<3, int> dim = _file.getRealDimension(); 
+
+	_file.readPlane(data, vmml::vector<3, int>(plane,0,0), vmml::vector<3, int>(plane, _maxHeight, dim.z()));
+
 	return true;
 }
 
@@ -201,7 +188,6 @@ void ControlPlaneCache::run()
 
 			int plane = _pendingPlanes.front();
 			_pendingPlanes.erase(_pendingPlanes.begin());
-			//std::cout<<"Processing plane "<<plane<<std::endl;
 		_emptyPendingPlanes.unlock();
 
 		_fullSlots.lock();
@@ -236,7 +222,13 @@ void ControlPlaneCache::run()
 			#ifndef NDEBUG
 			if (c.refs != 0)
 			{
-				std::cerr<<"Control Plane Cache, unistable state, free plane slot with references"<<std::endl;
+				std::cerr<<"Control Plane Cache, unistable state, free plane slot with references "<<c.id<<" refs "<<c.refs<<std::endl;
+				while(_lruPlanes.size() != 0)
+				{
+					cache_plane_t p = _lruPlanes.top();
+					_lruPlanes.pop();
+					std::cerr<<"Plane "<<p.id<<" "<<p.refs<<std::endl;
+				}
 				throw;
 			}
 			#endif
@@ -250,7 +242,6 @@ void ControlPlaneCache::run()
 			_lruPlanes.push(c);
 			_currentPlanes.insert(std::make_pair<int, cache_plane_t>(c.id, c));
 
-			//std::cout<<"Plane processed "<<plane<<" "<<c.data<<std::endl;
 		_fullSlots.unlock();
 	}
 	

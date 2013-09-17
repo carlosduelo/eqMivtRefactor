@@ -30,26 +30,27 @@ int main(int argc, char ** argv)
 
 	for(int i=0; i<4; i++)
 	{
-		std::cout<<" get and lock plane "<<i<<" direcion "<<cpc.getAndBlockPlane(i)<<std::endl;
+		float * data = cpc.getAndBlockPlane(i);
+		std::cout<<" get and lock plane "<<i<<" direcion "<<data<<std::endl;
 	}
 
 	lunchbox::sleep(40000);	
 
-#if 0
 	for(int i=4; i<14; i++)
 	{
-		cpc.addPlane(i);
-		if (i % 7 == 0)
-		cpc.getAndBlockPlane(i);
+		float * data = cpc.getAndBlockPlane(i);
+		std::cout<<" get and lock plane "<<i<<" direcion "<<data<<std::endl;
 	}
 
 	cpc.unlockPlane(1);
 
 	lunchbox::sleep(20000);	
+#if 0
 	for(int i=0; i<4; i++)
 	{
 		cpc.unlockPlane(i);
 	}
+	lunchbox::sleep(40000);	
 #endif
 
 	cpc.stopProcessing();
