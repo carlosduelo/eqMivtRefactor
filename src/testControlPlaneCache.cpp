@@ -26,7 +26,7 @@ int main(int argc, char ** argv)
 	}
 
 
-	lunchbox::sleep(20000);	
+	lunchbox::sleep(5000);	
 
 	for(int i=0; i<4; i++)
 	{
@@ -34,7 +34,7 @@ int main(int argc, char ** argv)
 		std::cout<<" get and lock plane "<<i<<" direcion "<<data<<std::endl;
 	}
 
-	lunchbox::sleep(40000);	
+	lunchbox::sleep(5000);	
 
 	for(int i=4; i<14; i++)
 	{
@@ -44,7 +44,31 @@ int main(int argc, char ** argv)
 
 	cpc.unlockPlane(1);
 
-	lunchbox::sleep(20000);	
+	lunchbox::sleep(5000);	
+
+	for(int i=3; i<14; i++)
+	{
+		float * data = cpc.getAndBlockPlane(i);
+		std::cout<<" get and lock plane "<<i<<" direcion "<<data<<std::endl;
+	}
+
+	cpc.unlockPlane(0);
+	lunchbox::sleep(5000);	
+
+	for(int i=3; i<14; i++)
+	{
+		float * data = cpc.getAndBlockPlane(i);
+		std::cout<<" get and lock plane "<<i<<" direcion "<<data<<std::endl;
+	}
+
+	cpc.unlockPlane(2);
+	lunchbox::sleep(5000);	
+	for(int i=3; i<14; i++)
+	{
+		float * data = cpc.getAndBlockPlane(i);
+		std::cout<<" get and lock plane "<<i<<" direcion "<<data<<std::endl;
+	}
+
 #if 0
 	for(int i=0; i<4; i++)
 	{

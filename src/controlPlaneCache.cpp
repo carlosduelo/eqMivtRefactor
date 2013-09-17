@@ -13,16 +13,16 @@ Notes:
 namespace eqMivt
 {
 
-bool ComparePlane::operator()(cache_plane_t& t1, cache_plane_t& t2)
+bool compareCachePlane(cache_plane_t * a, cache_plane_t * b)
 {
-	if (t1.refs > 0 && t2.refs > 0)
-		return t1.timestamp > t2.timestamp;
-	else if (t1.refs == -1)
-		return true;
-	else if (t2.refs == -1)
+	if (a->refs > 0 && b->refs > 0)
+		return a->timestamp < b->timestamp;
+	else if (a->refs == -1)
 		return false;
+	else if (b->refs == -1)
+		return true;
 	else
-		return t1.refs == 0;
+		return a->refs == 0;
 }
 
 bool ControlPlaneCache::initParamenter(std::vector<std::string> file_parameters, int maxHeight)
@@ -47,14 +47,15 @@ bool ControlPlaneCache::initParamenter(std::vector<std::string> file_parameters,
 		throw;
 	}
 
+	_cachePlanes = new cache_plane_t[_maxNumPlanes];
+
 	for(int i=0; i<_maxNumPlanes; i++)
 	{
-		cache_plane_t c;
-		c.id = -1;
-		c.data = _memoryPlane + i*_sizePlane;
-		c.refs = 0;
-		c.timestamp = std::time(0);
-		_lruPlanes.push(c);
+		_cachePlanes[i].id = -1;
+		_cachePlanes[i].data = _memoryPlane + i*_sizePlane;
+		_cachePlanes[i].refs = 0;
+		_cachePlanes[i].timestamp = std::time(0);
+		_lruPlanes.push_back(&_cachePlanes[i]);
 	}
 
 	_end = false;
@@ -81,6 +82,7 @@ ControlPlaneCache::~ControlPlaneCache()
 			std::cerr<<"Control Plane Cache, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
 			throw;
 		}
+	delete[] _cachePlanes;	
 }
 
 float * ControlPlaneCache::getAndBlockPlane(int plane)
@@ -94,21 +96,23 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 
 	#endif
 	float * dplane = 0;
-	boost::unordered_map<int, cache_plane_t>::iterator it;
+	boost::unordered_map<int, cache_plane_t * >::iterator it;
 
 	_fullSlots.lock();
 
 	it = _currentPlanes.find(plane);
 	if (it != _currentPlanes.end())
 	{
-		if (it->second.refs == 0)
+		if (it->second->refs == 0)
 			_freeSlots--;
-		else if (it->second.refs == -1)
-			it->second.refs = 0;
+		else if (it->second->refs == -1)
+			it->second->refs = 0;
 
-		it->second.refs += 1;
-		it->second.timestamp = std::time(0); 
-		dplane = it->second.data;
+		it->second->refs += 1;
+		it->second->timestamp = std::time(0); 
+		dplane = it->second->data;
+
+		std::sort(_lruPlanes.begin(), _lruPlanes.end(), compareCachePlane);
 	}
 	else
 	{
@@ -127,22 +131,24 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 
 void	ControlPlaneCache::unlockPlane(int plane)
 {
-	boost::unordered_map<int, cache_plane_t>::iterator it;
+	boost::unordered_map<int, cache_plane_t *>::iterator it;
 
 	_fullSlots.lock();
 
 	it = _currentPlanes.find(plane);
 	if (it != _currentPlanes.end())
 	{
-		it->second.refs -= 1;
-		if (it->second.refs == 0)
+		it->second->refs -= 1;
+		if (it->second->refs == 0)
 		{
 			_freeSlots++;
 			_fullSlots.signal();
 		}
+		
+		std::sort(_lruPlanes.begin(), _lruPlanes.end(), compareCachePlane);
 
 		#ifndef NDEBUG
-		if (it->second.refs < 0)
+		if (it->second->refs < 0)
 		{
 			std::cerr<<"Control Plane Cache, error unlocking plane"<<std::endl;
 			throw;
@@ -203,44 +209,40 @@ void ControlPlaneCache::run()
 			}
 			_lockEnd.unset();
 
-			cache_plane_t c = _lruPlanes.top();
-			_lruPlanes.pop();
+			cache_plane_t * c = _lruPlanes.front();
 
-			boost::unordered_map<int, cache_plane_t>::iterator it;
-			it = _currentPlanes.find(c.id);
+			boost::unordered_map<int, cache_plane_t *>::iterator it;
+			it = _currentPlanes.find(c->id);
 			if (it != _currentPlanes.end())
 				_currentPlanes.erase(it);	
 
 			#ifndef NDEBUG
-			it = _currentPlanes.find(plane);
-			if (it != _currentPlanes.end())
+			if (c->refs != 0)
 			{
-				std::cerr<<"Control Plane Cache, error processing a plane which is already processed"<<std::endl;
-			}
-			#endif
-
-			#ifndef NDEBUG
-			if (c.refs != 0)
-			{
-				std::cerr<<"Control Plane Cache, unistable state, free plane slot with references "<<c.id<<" refs "<<c.refs<<std::endl;
+				std::cerr<<"Control Plane Cache, unistable state, free plane slot with references "<<c->id<<" refs "<<c->refs<<std::endl;
 				while(_lruPlanes.size() != 0)
 				{
-					cache_plane_t p = _lruPlanes.top();
-					_lruPlanes.pop();
-					std::cerr<<"Plane "<<p.id<<" "<<p.refs<<std::endl;
+					cache_plane_t * p = _lruPlanes[0];
+					_lruPlanes.erase(_lruPlanes.begin());
+					std::cerr<<"Plane "<<p->id<<" "<<p->refs<<std::endl;
 				}
 				throw;
 			}
 			#endif
 
-			_freeSlots--;
-			
-			c.id = plane;
-			c.refs = -1;
+			it = _currentPlanes.find(plane);
+			if (it == _currentPlanes.end())
+			{
+				_freeSlots--;
+				
+				c->id = plane;
+				c->refs = -1;
 
-			readPlane(c.data, c.id);
-			_lruPlanes.push(c);
-			_currentPlanes.insert(std::make_pair<int, cache_plane_t>(c.id, c));
+				readPlane(c->data, c->id);
+				_currentPlanes.insert(std::make_pair<int, cache_plane_t *>(c->id, c));
+
+				std::sort(_lruPlanes.begin(), _lruPlanes.end(), compareCachePlane);
+			}
 
 		_fullSlots.unlock();
 	}

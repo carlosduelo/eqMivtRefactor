@@ -10,7 +10,7 @@ Notes:
 #define EQ_MIVT_CONTROL_PLANE_CACHE_H
 
 //STL
-#include <queue>
+#include <vector>
 #include <boost/unordered_map.hpp>
 #include<ctime>
 
@@ -23,26 +23,21 @@ Notes:
 namespace eqMivt
 {
 
-typedef struct
+struct cache_plane_t
 {
 	int		id;
 	float * data;
 	int		refs;
 	std::time_t timestamp;
-} cache_plane_t;
-
-class ComparePlane
-{
-	public:
-	    bool operator()(cache_plane_t& t1, cache_plane_t& t2);
 };
 
 class  ControlPlaneCache : public lunchbox::Thread
 {
 	private:
-		std::priority_queue<cache_plane_t, std::vector<cache_plane_t>, ComparePlane>	_lruPlanes;
+		cache_plane_t	*							_cachePlanes;
+		std::vector<cache_plane_t *>				_lruPlanes;
 
-		boost::unordered_map<int, cache_plane_t>	_currentPlanes;
+		boost::unordered_map<int, cache_plane_t *>	_currentPlanes;
 		std::vector<int>							_pendingPlanes;
 		
 		int		_freeSlots;
