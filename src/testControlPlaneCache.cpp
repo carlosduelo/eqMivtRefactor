@@ -16,7 +16,7 @@ int main(int argc, char ** argv)
 	std::vector<std::string> parameters;
 	parameters.push_back(std::string(argv[1]));
 	parameters.push_back(std::string(argv[2]));
-	cpc.initParamenter(parameters, 0);
+	cpc.initParameter(parameters, 0);
 
 	cpc.start();
 

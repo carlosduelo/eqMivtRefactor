@@ -39,3 +39,16 @@ set(LIBS_NEEDED_TEST_CONTROL_PLANE_CACHE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES}
 
 add_executable(testConstrolPlaneCache ${TEST_CONTROL_PLANE_CACHE_SOURCE}  testControlPlaneCache.cpp) 
 target_link_libraries(testConstrolPlaneCache ${LIBS_NEEDED_TEST_CONTROL_PLANE_CACHE} )
+
+# TEST CONTROL CUBE CACHE 
+set(TEST_CONTROL_CUBE_CACHE_SOURCE
+		controlPlaneCache.cpp
+		controlCubeCache.cpp
+		hdf5File.cpp
+		memoryCheck.cpp
+   )
+
+set(LIBS_NEEDED_TEST_CONTROL_CUBE_CACHE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES}) 
+
+add_executable(testConstrolCubeCache ${TEST_CONTROL_CUBE_CACHE_SOURCE}  testControlCubeCache.cpp) 
+target_link_libraries(testConstrolCubeCache ${LIBS_NEEDED_TEST_CONTROL_CUBE_CACHE} )

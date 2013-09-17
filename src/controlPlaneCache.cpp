@@ -29,7 +29,7 @@ bool compareCachePlane(cache_plane_t * a, cache_plane_t * b)
 		return false;//a->refs == 0;
 }
 
-bool ControlPlaneCache::initParamenter(std::vector<std::string> file_parameters, int maxHeight)
+bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters, int maxHeight)
 {
 	_file.init(file_parameters);
 	
@@ -108,7 +108,8 @@ ControlPlaneCache::~ControlPlaneCache()
 			std::cerr<<"Control Plane Cache, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
 			throw;
 		}
-	delete[] _cachePlanes;	
+	if (_cachePlanes != 0)
+		delete[] _cachePlanes;	
 }
 
 float * ControlPlaneCache::getAndBlockPlane(int plane)

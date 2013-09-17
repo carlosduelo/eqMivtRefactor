@@ -64,7 +64,7 @@ class  ControlPlaneCache : public lunchbox::Thread
 
 		virtual void run();
 
-		bool initParamenter(std::vector<std::string> file_parameters, int maxHeight);
+		bool initParameter(std::vector<std::string> file_parameters, int maxHeight);
 
 		void stopProcessing();
 
