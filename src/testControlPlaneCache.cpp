@@ -68,14 +68,13 @@ int main(int argc, char ** argv)
 		float * data = cpc.getAndBlockPlane(i);
 		std::cout<<" get and lock plane "<<i<<" direcion "<<data<<std::endl;
 	}
-
-#if 0
 	for(int i=0; i<4; i++)
 	{
-		cpc.unlockPlane(i);
+		float * data = cpc.getAndBlockPlane(i);
+		std::cout<<" get and lock plane "<<i<<" direcion "<<data<<std::endl;
 	}
-	lunchbox::sleep(40000);	
-#endif
+
+	lunchbox::sleep(5000);	
 
 	cpc.stopProcessing();
 

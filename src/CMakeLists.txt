@@ -32,6 +32,7 @@ target_link_libraries(testVisibleCubes ${LIBS_NEEDED_TEST_VISIBLE_CUBES} )
 set(TEST_CONTROL_PLANE_CACHE_SOURCE
 		controlPlaneCache.cpp
 		hdf5File.cpp
+		memoryCheck.cpp
    )
 
 set(LIBS_NEEDED_TEST_CONTROL_PLANE_CACHE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES}) 

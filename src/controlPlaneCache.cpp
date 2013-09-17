@@ -8,6 +8,8 @@ Notes:
 
 #include <controlPlaneCache.h>
 
+#include <memoryCheck.h>
+
 #include <cuda_runtime.h>
 
 namespace eqMivt
@@ -21,8 +23,10 @@ bool compareCachePlane(cache_plane_t * a, cache_plane_t * b)
 		return false;
 	else if (b->refs == -1)
 		return true;
+	else if (a->refs == 0 && b->refs == 0)
+		return a->timestamp < b->timestamp;
 	else
-		return a->refs == 0;
+		return false;//a->refs == 0;
 }
 
 bool ControlPlaneCache::initParamenter(std::vector<std::string> file_parameters, int maxHeight)
@@ -38,7 +42,27 @@ bool ControlPlaneCache::initParamenter(std::vector<std::string> file_parameters,
 
 	_sizePlane = _file.getRealDimension().y()*_file.getRealDimension().z();	
 
-	_maxNumPlanes = 3;
+	double memory = getMemorySize();
+	if (memory == 0)
+	{
+		std::cerr<<"Not possible, check memory aviable (the call failed due to OS limitations)"<<std::endl;
+		memory = 1024*1024*1024;
+	}
+	else
+	{
+		memory *=0.6;
+	}
+
+	std::cout<<memory/1024.0/1024.4/1024.0<<" GB"<<std::endl;
+
+	_maxNumPlanes = memory / (_sizePlane * sizeof(float));
+	std::cout<<_maxNumPlanes<<std::endl;
+	while((_maxNumPlanes*_sizePlane*sizeof(float) + _maxNumPlanes*sizeof(cache_plane_t)) > memory)
+	{
+		_maxNumPlanes -= 10;
+		std::cout<<_maxNumPlanes<<std::endl;
+	}
+	
 	_freeSlots = _maxNumPlanes;
 
 	if (cudaSuccess != cudaHostAlloc((void**)&_memoryPlane, _sizePlane*_maxNumPlanes*sizeof(float), cudaHostAllocDefault))
@@ -47,7 +71,13 @@ bool ControlPlaneCache::initParamenter(std::vector<std::string> file_parameters,
 		throw;
 	}
 
+	_cachePlanes = 0;
 	_cachePlanes = new cache_plane_t[_maxNumPlanes];
+	if (_cachePlanes == 0)
+	{
+		std::cerr<<"ControlPlaneCache, error creating"<<std::endl;
+		throw;
+	}
 
 	for(int i=0; i<_maxNumPlanes; i++)
 	{
