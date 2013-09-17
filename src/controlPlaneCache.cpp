@@ -53,14 +53,10 @@ bool ControlPlaneCache::initParamenter(std::vector<std::string> file_parameters,
 		memory *=0.6;
 	}
 
-	std::cout<<memory/1024.0/1024.4/1024.0<<" GB"<<std::endl;
-
 	_maxNumPlanes = memory / (_sizePlane * sizeof(float));
-	std::cout<<_maxNumPlanes<<std::endl;
 	while((_maxNumPlanes*_sizePlane*sizeof(float) + _maxNumPlanes*sizeof(cache_plane_t)) > memory)
 	{
 		_maxNumPlanes -= 10;
-		std::cout<<_maxNumPlanes<<std::endl;
 	}
 	
 	_freeSlots = _maxNumPlanes;
