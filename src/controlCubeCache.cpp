@@ -9,7 +9,6 @@ Notes:
 #include <controlCubeCache.h>
 
 #include <mortonCodeUtil_CPU.h>
-#include <cuda_runtime.h>
 
 #define PROCESSING -1
 #define PROCESSED -2
@@ -59,6 +58,12 @@ bool ControlCubeCache::initParameter(ControlPlaneCache * planeCache)
 	
 	_end = false;
 	_resize = false;
+
+	if (cudaSuccess != cudaStreamCreate(&_stream))
+	{
+		std::cerr<<"Control Cube Cache, error creating cuda steam"<<std::endl;
+		throw;
+	}
 }
 
 void ControlCubeCache::stopProcessing()
@@ -87,6 +92,12 @@ ControlCubeCache::~ControlCubeCache()
 			throw;
 		}
 	_lockResize.unlock();
+
+	if (cudaSuccess != cudaStreamDestroy(_stream))
+	{
+		std::cerr<<"Control Cube Cache, error destroying cuda steam"<<std::endl;
+		throw;
+	}
 }
 
 void ControlCubeCache::reSizeStructures()
@@ -281,58 +292,59 @@ bool ControlCubeCache::reSize(int nLevels, int levelCube, vmml::vector<3, int> o
 
 bool ControlCubeCache::readCube(cache_cube_t * c)
 {
-	vmml::vector<3, int> coord = getMinBoxIndex2(c->id, _levelCube, _nLevels) + _offset - vmml::vector<3, int>(CUBE_INC, CUBE_INC, CUBE_INC);
+	vmml::vector<3, int> coordS = getMinBoxIndex2(c->id, _levelCube, _nLevels) + _offset - vmml::vector<3, int>(CUBE_INC, CUBE_INC, CUBE_INC);
+	vmml::vector<3, int> coordE = getMinBoxIndex2(c->id, _levelCube, _nLevels) + _offset - vmml::vector<3, int>(CUBE_INC, CUBE_INC, CUBE_INC);
+
 	vmml::vector<2, int> planeDim = _planeCache->getPlaneDim();
 	int maxPlane = _planeCache->getMaxPlane();
 	std::vector<int>::iterator it = c->pendingPlanes.begin(); 
 
 	while (it != c->pendingPlanes.end())
 	{
-		float * start = c->data + _dimCube * _dimCube * abs(coord.x() - (*it));
+		float * start = c->data + _dimCube * _dimCube * abs(coordS.x() - (*it));
+		float * plane = _planeCache->getAndBlockPlane(*it);
 
-		if ((*it) < 0 || (*it) > maxPlane)
+		if (plane != 0)
 		{
-			if (cudaSuccess != cudaMemset((void*)start, 0, _dimCube*_dimCube*sizeof(float)))
+			int ofsC = 0; 
+			int dC = 0;
+			int ofsP = 0;
+			if (coordS.z() < 0)
 			{
-				std::cerr<<"Control Cube Cache, error copying cube to GPU"<<std::endl;
-				throw;
+				ofsC = abs(coordS.z());
+				dC = abs(coordS.z());
+				ofsP = abs(coordS.z());
 			}
-
-			it = c->pendingPlanes.erase(it);
-		}
-		else
-		{
-			float * plane = _planeCache->getAndBlockPlane(*it);
-			if (plane != 0)
+			else
 			{
-				plane += coord.z(); 
-				for(int i=0; i<=_dimCube; i++)
+				plane += coordS.z();
+			}
+			//int l = coordE.y() > planeDim.x() ? _dimCube - (coordE.y()-planeDim.x()) : _dimCube;
+			//for(int i=coordS.y < 0 ? abs(coordS.y()) : 0; i<l; i++)
+			for(int i = 0; i < _dimCube; i++)
+			{
+				if ((coordS.y() + i) <= planeDim.x() && (coordS.y() + i) >= 0)
 				{
-					if ((coord.y() + i) <= planeDim.y())
+					if (cudaSuccess != cudaMemcpyAsync((void*)(start + i*_dimCube + ofsC), (void*)(plane + (i - ofsP)*planeDim.y()), (_dimCube - dC)*sizeof(float), cudaMemcpyHostToDevice, _stream))
 					{
-						if (cudaSuccess != cudaMemcpy((void*)(start + i*_dimCube), (void*)(plane + i*planeDim.y()), _dimCube*sizeof(float), cudaMemcpyHostToDevice))
-						{
-							std::cerr<<"Control Cube Cache, error copying cube to GPU"<<std::endl;
-							throw;
-						}
-					}
-					else
-					{
-						std::cout<<" CHECK IF IT IS RIGHT"<<std::endl;
-						if (cudaSuccess != cudaMemset((void*)(start + i*_dimCube), 0, _dimCube*sizeof(float)))
-						{
-							std::cerr<<"Control Cube Cache, error copying cube to GPU"<<std::endl;
-							throw;
-						}
+						std::cerr<<"Control Cube Cache, error copying cube to GPU"<<std::endl;
+						throw;
 					}
 				}
-
-				_planeCache->unlockPlane(*it);
-				it = c->pendingPlanes.erase(it);
 			}
-		}	
+
+			_planeCache->unlockPlane(*it);
+			it = c->pendingPlanes.erase(it);
+		}
+
 		if (it != c->pendingPlanes.end())
 			it++;
+	}
+
+	if(cudaSuccess != cudaStreamSynchronize(_stream))
+	{
+		std::cerr<<"Control Cubes Cache, stream synchronization: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
 	}
 
 	return c->pendingPlanes.empty();
@@ -475,8 +487,14 @@ void ControlCubeCache::run()
 					int minPlane = coord.x() - CUBE_INC;
 					int maxPlane = coord.x() + _dimCube;
 					for(int i=minPlane; i<=maxPlane; i++)
-						c->pendingPlanes.push_back(i);
+						if (i>=0 && i<= _planeCache->getMaxPlane())
+							c->pendingPlanes.push_back(i);
 
+					if (cudaSuccess != cudaMemsetAsync((void*)c->data, 0, _dimCube*_dimCube*_dimCube*sizeof(float), _stream))
+					{
+						std::cerr<<"Control Cube Cache, error copying cube to GPU"<<std::endl;
+						throw;
+					}
 
 					if (!readCube(c))
 						_readingCubes.push(c->id);
@@ -494,3 +512,4 @@ void ControlCubeCache::run()
 }
 
 }
+

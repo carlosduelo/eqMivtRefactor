@@ -9,6 +9,8 @@ Notes:
 #ifndef EQ_MIVT_HDF5_FILE_H
 #define EQ_MIVT_HDF5_FILE_H
 
+#include <typedef.h>
+
 #include <hdf5.h>
 
 //STL
@@ -44,6 +46,8 @@ class hdf5File
 		bool getzGrid(double ** zGrid);
 
 		void readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, int> e);
+
+		void readCube(index_node_t index, float * cube, int levelCube, int nLevels, vmml::vector<3, int>    cubeDim, vmml::vector<3, int> offsetCube);
 
 		vmml::vector<3, int> getRealDimension();
 };

@@ -11,7 +11,8 @@ Notes:
 
 #include <controlPlaneCache.h>
 
-#include <typedef.h>
+#include <cuda_runtime.h>
+
 #include <queue>
 
 namespace eqMivt
@@ -52,6 +53,8 @@ class  ControlCubeCache : public lunchbox::Thread
 		std::vector< pending_cube_t >						_pendingCubes;
 
 		std::queue<index_node_t>							_readingCubes;
+
+		cudaStream_t	_stream;
 		
 		int		_freeSlots;
 		int		_maxNumCubes;

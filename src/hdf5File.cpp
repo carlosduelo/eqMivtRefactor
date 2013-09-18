@@ -8,6 +8,8 @@ Notes:
 
 #include <hdf5File.h>
 
+#include <mortonCodeUtil_CPU.h>
+
 #include <iostream>
 #include <strings.h>
 
@@ -419,6 +421,136 @@ void hdf5File::readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, i
 	std::cerr<<"Offset out "<<offset_out[0]<<" "<<offset_out[1]<<" "<<offset_out[2]<<std::endl;
 	#endif
     
+	#ifdef DISK_TIMING
+	timing.reset();
+	#endif
+	// Set zeros's
+	/* 
+	* Define hyperslab in the dataset. 
+	*/
+	if ((status = H5Sselect_hyperslab(_spaceid, H5S_SELECT_SET, offset, NULL, dimR, NULL)) < 0)
+	{
+		std::cerr<<"hdf5: defining hyperslab in the dataset"<<std::endl;
+	}
+	#ifdef DISK_TIMING
+	time = timing.getTimed(); 
+	std::cerr<<"Define hyperslab  time: "<<time/1000.0<<" seconds."<<std::endl;
+	#endif
+
+	#ifdef DISK_TIMING
+	timing.reset();
+	#endif
+	/*
+	* Define the memory dataspace.
+	*/
+	if ((memspace = H5Screate_simple(3, dim, NULL)) < 0)
+	//if ((memspace = H5Screate_simple(3, dimR, NULL)) < 0)
+	{
+		std::cerr<<"hdf5: defining the memory space"<<std::endl;
+	}
+	#ifdef DISK_TIMING
+	time = timing.getTimed(); 
+	std::cerr<<"Define memorydataset time: "<<time/1000.0<<" seconds."<<std::endl;
+	#endif
+
+
+	#ifdef DISK_TIMING
+	timing.reset();
+	#endif
+	/* 
+	* Define memory hyperslab. 
+	*/
+	if ((status = H5Sselect_hyperslab(memspace, H5S_SELECT_SET, offset_out, NULL, dimR, NULL)) < 0)
+	{
+		std::cerr<<"hdf5: defining the memory hyperslab"<<std::endl;
+	}
+	#ifdef DISK_TIMING
+	time = timing.getTimed(); 
+	std::cerr<<"Define memory hyperslab time: "<<time/1000.0<<" seconds."<<std::endl;
+	#endif
+
+	#ifdef DISK_TIMING
+	timing.reset();
+	#endif
+	/*
+	* Read data from hyperslab in the file into the hyperslab in 
+	* memory and display.
+	*/
+	if ((status = H5Dread(_dataset_id, H5T_IEEE_F32LE/*_datatype*/, memspace, _spaceid, H5P_DEFAULT, cube)) < 0)
+	{
+		std::cerr<<"hdf5: reading data from hyperslab un the file"<<std::endl;
+	}
+	#ifdef DISK_TIMING
+	time = timing.getTimed(); 
+	std::cerr<<"Reading time: "<<time/1000.0<<" seconds."<<std::endl;
+	#endif
+
+
+	#ifdef DISK_TIMING
+	timing.reset();
+	#endif
+	if ((status = H5Sclose(memspace)) < 0)
+	{
+		std::cerr<<"hdf5: closing dataspace"<<std::endl;
+	}
+	#ifdef DISK_TIMING
+	time = timing.getTimed(); 
+	std::cerr<<"Close dataspace time: "<<time/1000.0<<" seconds."<<std::endl;
+	double timeC = timingC.getTimed(); 
+	std::cerr<<"Read in MB: "<<(dimR[0]*dimR[1]*dimR[2]*sizeof(float)/1024.f/1024.f)<<" in "<<(timeC/1000.0f)<<" seconds."<<std::endl;
+	std::cerr<<"Bandwidth: "<<(dimR[0]*dimR[1]*dimR[2]*sizeof(float)/1024.f/1024.f)/(timeC/1000.0f)<<" MB/seconds."<<std::endl;
+	#endif
+}
+
+void hdf5File::readCube(index_node_t index, float * cube, int levelCube, int nLevels, vmml::vector<3, int>    cubeDim, vmml::vector<3, int> offsetCube)
+{
+	#ifdef DISK_TIMING
+	lunchbox::Clock     timingC; 
+	timingC.reset();
+	#endif
+
+	vmml::vector<3, int> coord 	= getMinBoxIndex2(index, levelCube, nLevels);
+	// ADD offset
+	coord += offsetCube;
+	vmml::vector<3, int> s 		= coord - vmml::vector<3, int>(CUBE_INC, CUBE_INC, CUBE_INC);
+	vmml::vector<3, int> e 		= s + cubeDim;
+
+	hsize_t dim[3] = {abs(e.x()-s.x()),abs(e.y()-s.y()),abs(e.z()-s.z())};
+
+	#ifdef DISK_TIMING
+	lunchbox::Clock     timing; 
+	timing.reset();
+	#endif
+	// Set zeros's
+	bzero(cube, dim[0]*dim[1]*dim[2]*sizeof(float));
+	#ifdef DISK_TIMING
+	double time = timing.getTimed(); 
+	std::cerr<<"Inicializate cube time: "<<time/1000.0<<" seconds."<<std::endl;
+	#endif
+
+	// The data required is completly outside of the dataset
+	if (s.x() >= (int)this->_dims[0] || s.y() >= (int)this->_dims[1] || s.z() >= (int)this->_dims[2] || e.x() < 0 || e.y() < 0 || e.z() < 0)
+	{
+		std::cerr<<"Warning: reading cube outsite the volume "<<std::endl;
+		std::cerr<<"Dimension volume "<<this->_dims[0]<<" "<<this->_dims[1]<<" "<<this->_dims[2]<<std::endl;
+		std::cerr<<"Cube dimension "<<cubeDim<<" in level "<<levelCube<<std::endl;
+		std::cerr<<"Dimension volume "<<this->_dims[0]<<" "<<this->_dims[1]<<" "<<this->_dims[2]<<std::endl;
+		std::cerr<<"Index "<<index<<" Coordinate "<<coord<<std::endl;
+		std::cerr<<"start "<<s.x()<<" "<<s.y()<<" "<<s.z()<<std::endl;
+		std::cerr<<"end "<<e.x()<<" "<<e.y()<<" "<<e.z()<<std::endl;
+		std::cerr<<"Dimension cube "<<dim[0]<<" "<<dim[1]<<" "<<dim[2]<<std::endl;
+
+		return;
+	}
+
+	herr_t	status;
+	hid_t	memspace; 
+	hsize_t offset_out[3] 	= {s.x() < 0 ? abs(s.x()) : 0, s.y() < 0 ? abs(s.y()) : 0, s.z() < 0 ? abs(s.z()) : 0};
+	hsize_t offset[3] 	= {s.x() < 0 ? 0 : s.x(), s.y() < 0 ? 0 : s.y(), s.z() < 0 ? 0 : s.z()};
+	hsize_t dimR[3]		= {e.x() > (int)this->_dims[0] ? this->_dims[0] - offset[0] : e.x() - offset[0],
+				   e.y() > (int)this->_dims[1] ? this->_dims[1] - offset[1] : e.y() - offset[1],
+				   e.z() > (int)this->_dims[2] ? this->_dims[2] - offset[2] : e.z() - offset[2]};
+
 	#ifdef DISK_TIMING
 	timing.reset();
 	#endif
