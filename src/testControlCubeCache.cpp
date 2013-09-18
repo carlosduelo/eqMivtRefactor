@@ -8,6 +8,8 @@ Notes:
 
 #include <controlCubeCache.h>
 
+#include <mortonCodeUtil_CPU.h>
+
 #include <lunchbox/sleep.h>
 
 int main(int argc, char ** argv)
@@ -29,14 +31,17 @@ int main(int argc, char ** argv)
 
 	ccc.reSize(10,10,vmml::vector<3,int>(0,0,0));
 
+	lunchbox::sleep(5000);
+
+	eqMivt::index_node_t id = eqMivt::coordinateToIndex(vmml::vector<3, int>(0,0,0), 10, 10);
+
+	std::cout<<id<< " dir "<<ccc.getAndBlockCube(id)<<std::endl;
+
 	lunchbox::sleep(5000);	
 
-	std::cout<<1<< " dir "<<ccc.getAndBlockCube(1)<<std::endl;
+	std::cout<<id<< " dir "<<ccc.getAndBlockCube(id)<<std::endl;
 
-	lunchbox::sleep(5000);	
-
-	std::cout<<1<< " dir "<<ccc.getAndBlockCube(1)<<std::endl;
-
+	ccc.unlockCube(id);
 
 	ccc.stopProcessing();
 	cpc.stopProcessing();

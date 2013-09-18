@@ -5,6 +5,19 @@
 #definitios
 add_definitions(-DDISK_TIMING)
 
+# SETTING CUDA PARAMETERS
+#list(APPEND CUDA_NVCC_FLAGS -arch=sm_21)
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+#	list(APPEND CUDA_NVCC_FLAGS -G)
+	list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-O0)
+	list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-Wall)
+else()
+	list(APPEND CUDA_NVCC_FLAGS -O3)
+	list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-Wall)
+	list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-O3)
+endif()
+
 #MIVT
 set(MIVT_SOURCE 
 		visibleCubes.cpp
@@ -37,8 +50,8 @@ set(TEST_CONTROL_PLANE_CACHE_SOURCE
 
 set(LIBS_NEEDED_TEST_CONTROL_PLANE_CACHE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES}) 
 
-add_executable(testConstrolPlaneCache ${TEST_CONTROL_PLANE_CACHE_SOURCE}  testControlPlaneCache.cpp) 
-target_link_libraries(testConstrolPlaneCache ${LIBS_NEEDED_TEST_CONTROL_PLANE_CACHE} )
+add_executable(testControlPlaneCache ${TEST_CONTROL_PLANE_CACHE_SOURCE}  testControlPlaneCache.cpp) 
+target_link_libraries(testControlPlaneCache ${LIBS_NEEDED_TEST_CONTROL_PLANE_CACHE} )
 
 # TEST CONTROL CUBE CACHE 
 set(TEST_CONTROL_CUBE_CACHE_SOURCE
@@ -50,5 +63,5 @@ set(TEST_CONTROL_CUBE_CACHE_SOURCE
 
 set(LIBS_NEEDED_TEST_CONTROL_CUBE_CACHE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES}) 
 
-add_executable(testConstrolCubeCache ${TEST_CONTROL_CUBE_CACHE_SOURCE}  testControlCubeCache.cpp) 
-target_link_libraries(testConstrolCubeCache ${LIBS_NEEDED_TEST_CONTROL_CUBE_CACHE} )
+add_executable(testControlCubeCache ${TEST_CONTROL_CUBE_CACHE_SOURCE}  testControlCubeCache.cpp) 
+target_link_libraries(testControlCubeCache ${LIBS_NEEDED_TEST_CONTROL_CUBE_CACHE} )

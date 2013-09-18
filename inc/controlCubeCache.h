@@ -12,6 +12,7 @@ Notes:
 #include <controlPlaneCache.h>
 
 #include <typedef.h>
+#include <queue>
 
 namespace eqMivt
 {
@@ -22,6 +23,23 @@ struct cache_cube_t
 	float * data;
 	int		refs;
 	std::time_t timestamp;
+	std::vector<int> pendingPlanes;
+};
+
+struct pending_cube_t
+{
+	index_node_t			id;
+	vmml::vector<3, int>	coord;
+};
+
+struct find_pending_cube
+{
+	index_node_t id;
+	find_pending_cube(index_node_t id) : id(id) {}
+	bool operator () ( const pending_cube_t& m ) const
+	{
+		return m.id == id;
+	}
 };
 
 class  ControlCubeCache : public lunchbox::Thread
@@ -31,7 +49,9 @@ class  ControlCubeCache : public lunchbox::Thread
 		std::vector<cache_cube_t *>		_lruCubes;
 
 		boost::unordered_map<index_node_t, cache_cube_t *>	_currentCubes;
-		std::vector<index_node_t>							_pendingCubes;
+		std::vector< pending_cube_t >						_pendingCubes;
+
+		std::queue<index_node_t>							_readingCubes;
 		
 		int		_freeSlots;
 		int		_maxNumCubes;
@@ -59,6 +79,9 @@ class  ControlCubeCache : public lunchbox::Thread
 		lunchbox::Condition	_fullSlots;
 
 		void reSizeStructures();
+
+		bool readCube(cache_cube_t * c);
+
 	public:
 		virtual ~ControlCubeCache();
 

@@ -69,7 +69,13 @@ class  ControlPlaneCache : public lunchbox::Thread
 		void stopProcessing();
 
 		float * getAndBlockPlane(int plane);
+
 		void	unlockPlane(int plane);
+
+		/* (x,y) = (_maxHeight, z_dim) */
+		vmml::vector<2,int>		getPlaneDim();
+
+		int	getMaxPlane() { return _maxPlane; }
 
 };
 

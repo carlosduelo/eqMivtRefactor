@@ -12,6 +12,8 @@ Notes:
 
 #include <cuda_runtime.h>
 
+#define READING -1
+
 namespace eqMivt
 {
 
@@ -19,9 +21,9 @@ bool compareCachePlane(cache_plane_t * a, cache_plane_t * b)
 {
 	if (a->refs > 0 && b->refs > 0)
 		return a->timestamp < b->timestamp;
-	else if (a->refs == -1)
+	else if (a->refs == READING)
 		return false;
-	else if (b->refs == -1)
+	else if (b->refs == READING)
 		return true;
 	else if (a->refs == 0 && b->refs == 0)
 		return a->timestamp < b->timestamp;
@@ -89,6 +91,11 @@ bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters, 
 	return true;
 }
 
+vmml::vector<2,int>		ControlPlaneCache::getPlaneDim()
+{
+	return vmml::vector<2,int>(_maxHeight, _file.getRealDimension().z()); 
+}
+
 void ControlPlaneCache::stopProcessing()
 {
 	_lockEnd.set();
@@ -132,7 +139,7 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 	{
 		if (it->second->refs == 0)
 			_freeSlots--;
-		else if (it->second->refs == -1)
+		else if (it->second->refs == READING)
 			it->second->refs = 0;
 
 		it->second->refs += 1;
@@ -263,7 +270,7 @@ void ControlPlaneCache::run()
 				_freeSlots--;
 				
 				c->id = plane;
-				c->refs = -1;
+				c->refs = READING;
 
 				readPlane(c->data, c->id);
 				_currentPlanes.insert(std::make_pair<int, cache_plane_t *>(c->id, c));
