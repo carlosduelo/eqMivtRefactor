@@ -28,15 +28,6 @@ typedef struct
 	int				pixel;
 } visibleCube_t;
 
-typedef struct
-{
-	index_node_t	cubeID;
-	int				pixel;
-	unsigned char	state;
-
-} updateCube_t;
-
-
 typedef visibleCube_t * visibleCubeGPU;
 
 class VisibleCubes
@@ -59,7 +50,7 @@ class VisibleCubes
 
 		std::vector<int> getListCubes(unsigned char type);
 
-		void updateVisibleCubes(std::vector<updateCube_t> list);
+		void updateVisibleCubes(std::vector<visibleCube_t> list);
 
 		visibleCube_t getCube(int i);
 
@@ -71,13 +62,12 @@ class VisibleCubes
 			std::vector<int>	_cube;
 			std::vector<int>	_painted;
 			std::vector<int>	_cached;
-			std::vector<int>	_nocached;
 			std::vector<int>	_nocube;
 
 			int					_sizeGPU;
 			visibleCubeGPU		_visibleCubesGPU;
 		
-			void updateCube(int iter, int idCube, int state);
+			void updateCube(int iter, int idCube, int state, float * data);
 };
 
 }

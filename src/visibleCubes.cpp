@@ -24,7 +24,6 @@ VisibleCubes::VisibleCubes()
 	_cube.clear();
 	_nocube.clear();
 	_cached.clear();
-	_nocached.clear();
 	_painted.clear();
 
 }
@@ -84,7 +83,6 @@ void VisibleCubes::init()
 	_cube.clear();
 	_nocube.clear();
 	_cached.clear();
-	_nocached.clear();
 	_painted.clear();
 
 	for(int i=0; i<_size; i++)
@@ -136,9 +134,6 @@ void VisibleCubes::updateCPU()
 				case CACHED:
 					_cached.erase(std::remove(_cached.begin(), _cached.end(), _visibleCubesAUX[i].pixel), _cached.end());
 					break;
-				case NOCACHED:
-					_nocached.erase(std::remove(_nocached.begin(), _nocached.end(), _visibleCubesAUX[i].pixel), _nocached.end());
-					break;
 				case PAINTED:
 					_painted.erase(std::remove(_painted.begin(), _painted.end(), _visibleCubesAUX[i].pixel), _painted.end());
 					break;
@@ -160,9 +155,6 @@ void VisibleCubes::updateCPU()
 				case CACHED:
 					_cached.push_back(_visibleCubesAUX[i].pixel);
 					break;
-				case NOCACHED:
-					_nocached.push_back(_visibleCubesAUX[i].pixel);
-					break;
 				case PAINTED:
 					_painted.push_back(_visibleCubesAUX[i].pixel);
 					break;
@@ -181,7 +173,6 @@ void VisibleCubes::updateCPU()
 	int cubes = _cube.size();
 	int nocubes = _nocube.size();
 	int cached = _cached.size();
-	int nocached = _nocached.size();
 	int painted = _painted.size();
 	for(int i=0; i<_size; i++)
 	{
@@ -196,9 +187,6 @@ void VisibleCubes::updateCPU()
 			case CACHED:
 				cached--;
 				break;
-			case NOCACHED:
-				nocached--;
-				break;
 			case PAINTED:
 				painted--;
 				break;
@@ -209,9 +197,9 @@ void VisibleCubes::updateCPU()
 			#endif
 		}
 	}
-	if (cubes != 0 || nocubes!=0 || cached != 0 || nocached != 0 || painted != 0)
+	if (cubes != 0 || nocubes!=0 || cached != 0 || painted != 0)
 	{
-		std::cerr<<"Visible cubes, error updating CPU "<<cubes<<" "<<nocubes<<" "<<cached<<" "<<nocached<<" "<<painted<<std::endl;
+		std::cerr<<"Visible cubes, error updating CPU "<<cubes<<" "<<nocubes<<" "<<cached<<" "<<painted<<std::endl;
 		throw;
 	}
 	#endif
@@ -237,12 +225,6 @@ void VisibleCubes::updateGPU(unsigned char type, bool sync, cudaStream_t stream)
 		for(int i=0; i<_cached.size(); i++)
 		{
 			_visibleCubesAUX[_sizeGPU] = _visibleCubes[_cached[i]];
-			_sizeGPU++;
-		}
-	if ((type & NOCACHED) != NONE)
-		for(int i=0; i<_nocached.size(); i++)
-		{
-			_visibleCubesAUX[_sizeGPU] = _visibleCubes[_nocached[i]];
 			_sizeGPU++;
 		}
 	if ((type & PAINTED) != NONE)
@@ -280,9 +262,10 @@ int VisibleCubes::getSizeGPU()
 	return _sizeGPU;
 }
 
-void VisibleCubes::updateCube(int iter, int idCube, int state)
+void VisibleCubes::updateCube(int iter, int idCube, int state, float * data)
 {
 	_visibleCubes[iter].cubeID	= idCube;
+	_visibleCubes[iter].data = data;
 	switch(_visibleCubes[iter].state)                                                                                 
 	{                                                                                                                 
 		case NOCUBE:
@@ -294,9 +277,6 @@ void VisibleCubes::updateCube(int iter, int idCube, int state)
 		case CACHED:
 			_cached.erase(std::remove(_nocube.begin(), _nocube.end(), iter), _nocube.end());                           
 			break;
-		case NOCACHED:                                                                                                
-			_nocached.erase(std::remove(_nocube.begin(), _nocube.end(), iter), _nocube.end());                         
-			break;                                                                                                    
 		case PAINTED:
 			_painted.erase(std::remove(_nocube.begin(), _nocube.end(), iter), _nocube.end());                          
 			break;                                                                                                    
@@ -317,9 +297,6 @@ void VisibleCubes::updateCube(int iter, int idCube, int state)
 			break;                                                                                                    
 		case CACHED:                                                                                                  
 			_cached.push_back(iter);                                                                                  
-			break;
-		case NOCACHED:
-			_nocached.push_back(iter);
 			break;
 		case PAINTED:
 			_painted.push_back(iter);
@@ -355,20 +332,18 @@ std::vector<int> VisibleCubes::getListCubes(unsigned char type)
 		result.insert(result.end(), _nocube.begin(), _nocube.end());
 	if ((type & CACHED) != NONE)
 		result.insert(result.end(), _cached.begin(), _cached.end());
-	if ((type & NOCACHED) != NONE)
-		result.insert(result.end(), _nocached.begin(), _nocached.end());
 	if ((type & PAINTED) != NONE)
 		result.insert(result.end(), _painted.begin(), _painted.end());
 	
 	return result;
 }
 
-void	VisibleCubes::updateVisibleCubes(std::vector<updateCube_t> list)
+void	VisibleCubes::updateVisibleCubes(std::vector<visibleCube_t> list)
 {
 
-	for(std::vector< updateCube_t >::iterator it=list.begin(); it!=list.end(); ++it)
+	for(std::vector< visibleCube_t >::iterator it=list.begin(); it!=list.end(); ++it)
 	{
-		updateCube(it->pixel, it->cubeID, it->state);
+		updateCube(it->pixel, it->cubeID, it->state, it->data);
 	}
 
 }

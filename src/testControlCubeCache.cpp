@@ -16,15 +16,15 @@ Notes:
 
 #include <boost/progress.hpp>
 
-int main(int argc, char ** argv)
-{
-	eqMivt::ControlPlaneCache cpc;
-	eqMivt::hdf5File hdf5File;
-	eqMivt::ControlCubeCache ccc;
 
-	int nLevels = 10;
-	int levelCube = 8;
-	vmml::vector<3,int> offset(0,0,0);
+eqMivt::ControlPlaneCache cpc;
+eqMivt::hdf5File hdf5File;
+eqMivt::ControlCubeCache ccc;
+
+int test(int nLevels, int levelCube, vmml::vector<3,int> offset)
+{
+	ccc.reSize(nLevels, levelCube, offset);
+
 	int dimC = exp2(nLevels-levelCube) + 2 * CUBE_INC;
 	int dimV = exp2(nLevels);
 
@@ -32,22 +32,6 @@ int main(int argc, char ** argv)
 	float * cubeC = new float[dimC*dimC*dimC];
 	float * cubeG = 0;
 
-	std::vector<std::string> parameters;
-	parameters.push_back(std::string(argv[1]));
-	parameters.push_back(std::string(argv[2]));
-
-	cpc.initParameter(parameters, 0);
-	hdf5File.init(parameters);
-	ccc.initParameter(&cpc);
-
-	cpc.start();
-	ccc.start();
-
-	ccc.reSize(nLevels, levelCube, offset);
-
-//	lunchbox::sleep(5000);
-
-	cubeG = 0;
 	eqMivt::index_node_t idS = eqMivt::coordinateToIndex(vmml::vector<3,int>(0,0,0), levelCube, nLevels);
 	eqMivt::index_node_t idF = eqMivt::coordinateToIndex(vmml::vector<3,int>(dimV-1, dimV-1, dimV-1), levelCube, nLevels);
 
@@ -64,11 +48,13 @@ int main(int argc, char ** argv)
 		do
 		{
 			cubeG = ccc.getAndBlockCube(id);
-			lunchbox::sleep(500);	
+			lunchbox::sleep(50);	
 		}
 		while(cubeG == 0);
 
+		#ifndef NDEBUG
 		std::cout<<id<< " dir "<<cubeG<<std::endl;
+		#endif
 
 		if (cudaSuccess != cudaMemcpy((void*)cube, (void*)cubeG, dimC*dimC*dimC*sizeof(float), cudaMemcpyDeviceToHost))
 		{
@@ -104,16 +90,67 @@ int main(int argc, char ** argv)
 		#endif
 	}
 
-	delete[] cube;
-	delete[] cubeC;
-
-	ccc.stopProcessing();
-	cpc.stopProcessing();
 
 	if (!error)
 		std::cout<<"Test OK"<<std::endl;
 	else
 		std::cout<<"Test Fail!"<<std::endl;
+
+	delete[] cube;
+	delete[] cubeC;
+
+	return error;
+}
+
+
+
+int main(int argc, char ** argv)
+{
+	int nLevels = 10;
+	int levelCube = 8;
+	vmml::vector<3,int> offset(0,0,0);
+
+
+	std::vector<std::string> parameters;
+	parameters.push_back(std::string(argv[1]));
+	parameters.push_back(std::string(argv[2]));
+
+	cpc.initParameter(parameters, 0);
+	hdf5File.init(parameters);
+	ccc.initParameter(&cpc);
+
+	cpc.start();
+	ccc.start();
+	lunchbox::sleep(500);
+
+	bool error =	!test(2, 2, vmml::vector<3,int>(0,0,0)) && 
+					!test(10, 1, vmml::vector<3,int>(0,0,0)) &&
+					!test(10, 2, vmml::vector<3,int>(0,0,0)) &&
+					!test(10, 3, vmml::vector<3,int>(0,0,0)) &&
+					!test(10, 4, vmml::vector<3,int>(0,0,0)) &&
+					!test(10, 5, vmml::vector<3,int>(0,0,0)) &&
+					!test(10, 6, vmml::vector<3,int>(0,0,0)) &&
+					!test(10, 10, vmml::vector<3,int>(0,0,0)) &&
+					!test(2, 2, vmml::vector<3,int>(255,0,123)) &&
+					!test(10, 1, vmml::vector<3,int>(123,0,0)) &&
+					!test(10, 2, vmml::vector<3,int>(321,0,2)) &&
+					!test(10, 3, vmml::vector<3,int>(12,0,300)) &&
+					!test(10, 4, vmml::vector<3,int>(42,0,99)) &&
+					!test(10, 5, vmml::vector<3,int>(12,0,100)) &&
+					!test(10, 6, vmml::vector<3,int>(50,0,30)) &&
+					!test(10, 10, vmml::vector<3,int>(60,0,0)) &&
+					!test(10, 10, vmml::vector<3,int>(90,0,12));
+
+
+	ccc.stopProcessing();
+	cpc.stopProcessing();
+
+	lunchbox::sleep(5000);
+
+	if (error)
+		std::cout<<"Test Fail"<<std::endl;
+	else
+		std::cout<<"Test OK"<<std::endl;
 
 	return 0;
 }

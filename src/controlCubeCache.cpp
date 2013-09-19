@@ -61,7 +61,7 @@ bool ControlCubeCache::initParameter(ControlPlaneCache * planeCache)
 
 	if (cudaSuccess != cudaStreamCreate(&_stream))
 	{
-		std::cerr<<"Control Cube Cache, error creating cuda steam: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		std::cerr<<"Control Cube Cache, error creating cuda stream: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
 }
