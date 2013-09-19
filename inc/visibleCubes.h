@@ -23,7 +23,7 @@ typedef struct
 {
 	index_node_t	id;
 	float *			data;
-	unsigned char   state;
+	statusCube		state;
 	index_node_t	cubeID;
 	int				pixel;
 } visibleCube_t;
@@ -42,13 +42,13 @@ class VisibleCubes
 
 		void updateCPU();
 
-		void updateGPU(unsigned char type, bool sync, cudaStream_t stream);
+		void updateGPU(statusCube type, bool sync, cudaStream_t stream);
 
 		visibleCubeGPU getVisibleCubesGPU();
 
 		int getSizeGPU();
 
-		std::vector<int> getListCubes(unsigned char type);
+		std::vector<int> getListCubes(statusCube type);
 
 		void updateVisibleCubes(std::vector<visibleCube_t> list);
 
@@ -67,7 +67,7 @@ class VisibleCubes
 			int					_sizeGPU;
 			visibleCubeGPU		_visibleCubesGPU;
 		
-			void updateCube(int iter, int idCube, int state, float * data);
+			void updateCube(int iter, int idCube, statusCube state, float * data);
 };
 
 }

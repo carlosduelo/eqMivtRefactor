@@ -205,7 +205,7 @@ void VisibleCubes::updateCPU()
 	#endif
 }
 
-void VisibleCubes::updateGPU(unsigned char type, bool sync, cudaStream_t stream)
+void VisibleCubes::updateGPU(statusCube type, bool sync, cudaStream_t stream)
 {
 	_sizeGPU = 0;
 
@@ -262,7 +262,7 @@ int VisibleCubes::getSizeGPU()
 	return _sizeGPU;
 }
 
-void VisibleCubes::updateCube(int iter, int idCube, int state, float * data)
+void VisibleCubes::updateCube(int iter, int idCube, statusCube state, float * data)
 {
 	_visibleCubes[iter].cubeID	= idCube;
 	_visibleCubes[iter].data = data;
@@ -322,7 +322,7 @@ visibleCube_t VisibleCubes::getCube(int i)
 	}	
 }
 
-std::vector<int> VisibleCubes::getListCubes(unsigned char type)
+std::vector<int> VisibleCubes::getListCubes(statusCube type)
 {
 	std::vector<int> result;
 

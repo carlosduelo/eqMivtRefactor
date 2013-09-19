@@ -7,5 +7,6 @@ Notes:
 */
 
 #include <visibleCubes.h>
+#include <typedef.h>
 
-void test_updateCubesGPU(eqMivt::visibleCubeGPU cubes, int size);
+void test_updateCubesGPU(eqMivt::visibleCubeGPU cubes, int size, eqMivt::statusCube status);
