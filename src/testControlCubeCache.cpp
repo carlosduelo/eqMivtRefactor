@@ -49,7 +49,9 @@ int main(int argc, char ** argv)
 	eqMivt::index_node_t idS = eqMivt::coordinateToIndex(vmml::vector<3,int>(0,0,0), levelCube, nLevels);
 	eqMivt::index_node_t idF = eqMivt::coordinateToIndex(vmml::vector<3,int>(dimV-1, dimV-1, dimV-1), levelCube, nLevels);
 
-	for(eqMivt::index_node_t id=idS; id<=idF; id++)
+	bool error = false;
+
+	for(eqMivt::index_node_t id=idS; id<=idF && !error; id++)
 	{
 		vmml::vector<3,int> coord = eqMivt::getMinBoxIndex2(id, levelCube, nLevels) - vmml::vector<3,int>(CUBE_INC, CUBE_INC, CUBE_INC);
 		do
@@ -75,22 +77,19 @@ int main(int argc, char ** argv)
 				{
 					if (cube[i*dimC*dimC+j*dimC+k] != cubeC[i*dimC*dimC+j*dimC+k])
 					{
-						std::cerr<<"Cube id "<<id<<" nLevels "<<nLevels<<" levelCube "<<levelCube<<" offset "<<offset<<std::endl;
 						std::cerr<<"Not coincidence("<<coord.x() + i<<","<<coord.y() + j<<","<<coord.z() + k<<") "<<cube[i*dimC*dimC+j*dimC+k]<<" "<<cubeC[i*dimC*dimC+j*dimC+k]<<std::endl;
-						#if 0
-						delete[] cube;
-						delete[] cubeC;
-
-						ccc.stopProcessing();
-						cpc.stopProcessing();
-						return 0;
-						#endif
+						error = true;
 					}
 				}
 
-
-
 		ccc.unlockCube(id);
+		
+		if (error)
+		{
+			vmml::vector<3, int> cs = eqMivt::getMinBoxIndex2(id,levelCube, nLevels) - vmml::vector<3, int>(CUBE_INC, CUBE_INC, CUBE_INC);
+			vmml::vector<3, int> ce = cs + vmml::vector<3, int>(dimC,dimC, dimC);
+			std::cerr<<"Cube id "<<id<<" coordinates "<<cs<<" "<<ce<<" nLevels "<<nLevels<<" levelCube "<<levelCube<<" offset "<<offset<<std::endl;
+		}
 	}
 
 	delete[] cube;
@@ -99,7 +98,10 @@ int main(int argc, char ** argv)
 	ccc.stopProcessing();
 	cpc.stopProcessing();
 
-	std::cout<<"Test ok"<<std::endl;
+	if (!error)
+		std::cout<<"Test OK"<<std::endl;
+	else
+		std::cout<<"Test Fail!"<<std::endl;
 
 	return 0;
 }

@@ -293,7 +293,7 @@ bool ControlCubeCache::reSize(int nLevels, int levelCube, vmml::vector<3, int> o
 bool ControlCubeCache::readCube(cache_cube_t * c)
 {
 	vmml::vector<3, int> coordS = getMinBoxIndex2(c->id, _levelCube, _nLevels) + _offset - vmml::vector<3, int>(CUBE_INC, CUBE_INC, CUBE_INC);
-	vmml::vector<3, int> coordE = getMinBoxIndex2(c->id, _levelCube, _nLevels) + _offset - vmml::vector<3, int>(CUBE_INC, CUBE_INC, CUBE_INC);
+	vmml::vector<3, int> coordE = coordS + vmml::vector<3, int>(_dimCube, _dimCube, _dimCube);
 
 	vmml::vector<2, int> planeDim = _planeCache->getPlaneDim();
 	int maxPlane = _planeCache->getMaxPlane();
@@ -306,30 +306,21 @@ bool ControlCubeCache::readCube(cache_cube_t * c)
 
 		if (plane != 0)
 		{
-			int ofsC = 0; 
-			int dC = 0;
-			int ofsP = 0;
-			if (coordS.z() < 0)
+			plane += coordS.z() < 0 ? 0 : coordS.z();
+			start += coordS.z() < 0 ? abs(coordS.z()) : 0;
+			int dimC = _dimCube;
+			dimC -= coordS.z() < 0 ? abs(coordS.z()) : 0;
+			dimC -= coordE.z() > planeDim.y() ? coordE.z() - planeDim.y() : 0;
+
+			int sL = coordS.y() < 0 ? abs(coordS.y()) : 0;
+			int lL = coordE.y() > planeDim.x() ? _dimCube - (coordE.y() - planeDim.x()) : _dimCube;
+			for(int i = sL; i < lL; i++)
 			{
-				ofsC = abs(coordS.z());
-				dC = abs(coordS.z());
-				ofsP = abs(coordS.z());
-			}
-			else
-			{
-				plane += coordS.z();
-			}
-			//int l = coordE.y() > planeDim.x() ? _dimCube - (coordE.y()-planeDim.x()) : _dimCube;
-			//for(int i=coordS.y < 0 ? abs(coordS.y()) : 0; i<l; i++)
-			for(int i = 0; i < _dimCube; i++)
-			{
-				if ((coordS.y() + i) <= planeDim.x() && (coordS.y() + i) >= 0)
+				int planeI = i+coordS.y();
+				if (cudaSuccess != cudaMemcpyAsync((void*)(start + i*_dimCube), (void*)(plane + planeI*planeDim.y()), dimC*sizeof(float), cudaMemcpyHostToDevice, _stream))
 				{
-					if (cudaSuccess != cudaMemcpyAsync((void*)(start + i*_dimCube + ofsC), (void*)(plane + (i - ofsP)*planeDim.y()), (_dimCube - dC)*sizeof(float), cudaMemcpyHostToDevice, _stream))
-					{
-						std::cerr<<"Control Cube Cache, error copying cube to GPU"<<std::endl;
-						throw;
-					}
+					std::cerr<<"Control Cube Cache, error copying cube to GPU"<<std::endl;
+					throw;
 				}
 			}
 
