@@ -21,7 +21,7 @@ eqMivt::ControlPlaneCache cpc;
 eqMivt::hdf5File hdf5File;
 eqMivt::ControlCubeCache ccc;
 
-int test(int nLevels, int levelCube, vmml::vector<3,int> offset)
+bool test(int nLevels, int levelCube, vmml::vector<3,int> offset)
 {
 	ccc.reSize(nLevels, levelCube, offset);
 

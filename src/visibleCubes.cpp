@@ -313,11 +313,11 @@ void VisibleCubes::updateCube(int iter, int idCube, statusCube state, float * da
 
 visibleCube_t VisibleCubes::getCube(int i)
 {
-	if (i < _size && i > 0)
+	if (i < _size && i >= 0)
 		return _visibleCubes[i];
 	else
 	{
-		std::cerr<<"Error geting a visible cube, out of range"<<std::endl;
+		std::cerr<<"Error geting a visible cube, out of range "<<i<<std::endl;
 		throw;
 	}	
 }

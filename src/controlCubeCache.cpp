@@ -324,6 +324,12 @@ bool ControlCubeCache::readCube(cache_cube_t * c)
 				}
 			}
 
+			if(cudaSuccess != cudaStreamSynchronize(_stream))
+			{
+				std::cerr<<"Control Cubes Cache, stream synchronization: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+				throw;
+			}
+
 			_planeCache->unlockPlane(*it);
 			it = c->pendingPlanes.erase(it);
 		}
@@ -332,11 +338,6 @@ bool ControlCubeCache::readCube(cache_cube_t * c)
 			it++;
 	}
 
-	if(cudaSuccess != cudaStreamSynchronize(_stream))
-	{
-		std::cerr<<"Control Cubes Cache, stream synchronization: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
-		throw;
-	}
 
 	return c->pendingPlanes.empty();
 }
