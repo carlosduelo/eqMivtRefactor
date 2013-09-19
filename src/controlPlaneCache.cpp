@@ -65,7 +65,7 @@ bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters, 
 
 	if (cudaSuccess != cudaHostAlloc((void**)&_memoryPlane, _sizePlane*_maxNumPlanes*sizeof(float), cudaHostAllocDefault))
 	{                                                                                               
-		std::cerr<<"Visible cubes, error allocating memory"<<std::endl;
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
 

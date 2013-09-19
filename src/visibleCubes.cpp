@@ -56,19 +56,19 @@ void VisibleCubes::reSize(int numPixels)
 
 	if (cudaSuccess != cudaMalloc((void**)&_visibleCubesGPU, _size*sizeof(visibleCube_t)))
 	{                                                                                               
-		std::cerr<<"Visible cubes, error allocating memory"<<std::endl;
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
 	
 	if (cudaSuccess != cudaHostAlloc((void**)&_visibleCubes, _size*sizeof(visibleCube_t), cudaHostAllocDefault))
 	{                                                                                               
-		std::cerr<<"Visible cubes, error allocating memory"<<std::endl;
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
 
 	if (cudaSuccess != cudaHostAlloc((void**)&_visibleCubesAUX, _size*sizeof(visibleCube_t), cudaHostAllocDefault))
 	{                                                                                               
-		std::cerr<<"Visible cubes, error allocating memory"<<std::endl;
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
 }
@@ -104,7 +104,7 @@ void VisibleCubes::updateCPU()
 {
 	if (cudaSuccess != cudaMemcpy((void*)_visibleCubesAUX, _visibleCubesGPU, _sizeGPU*sizeof(visibleCube_t), cudaMemcpyDeviceToHost))
 	{
-		std::cerr<<"Visible cubes, error updating cpu copy"<<std::endl;
+		std::cerr<<"Visible cubes, error updating cpu copy: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
 
@@ -256,7 +256,7 @@ void VisibleCubes::updateGPU(unsigned char type, bool sync, cudaStream_t stream)
 	{
 		if (cudaSuccess != cudaMemcpy((void*)_visibleCubesGPU, _visibleCubesAUX, _sizeGPU*sizeof(visibleCube_t), cudaMemcpyHostToDevice))
 		{
-			std::cerr<<"Visible cubes, error updating cpu copy"<<std::endl;
+			std::cerr<<"Visible cubes, error updating cpu copy: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 			throw;
 		}
 	}
@@ -264,7 +264,7 @@ void VisibleCubes::updateGPU(unsigned char type, bool sync, cudaStream_t stream)
 	{
 			if (cudaSuccess != cudaMemcpyAsync((void*)_visibleCubesGPU, _visibleCubesAUX, _sizeGPU*sizeof(visibleCube_t), cudaMemcpyHostToDevice, stream))
 			{
-				std::cerr<<"Visible cubes, error updating cpu copy"<<std::endl;
+				std::cerr<<"Visible cubes, error updating cpu copy: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 				throw;
 			}
 	}

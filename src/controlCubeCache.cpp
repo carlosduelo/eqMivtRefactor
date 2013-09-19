@@ -61,7 +61,7 @@ bool ControlCubeCache::initParameter(ControlPlaneCache * planeCache)
 
 	if (cudaSuccess != cudaStreamCreate(&_stream))
 	{
-		std::cerr<<"Control Cube Cache, error creating cuda steam"<<std::endl;
+		std::cerr<<"Control Cube Cache, error creating cuda steam: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
 }
@@ -95,7 +95,7 @@ ControlCubeCache::~ControlCubeCache()
 
 	if (cudaSuccess != cudaStreamDestroy(_stream))
 	{
-		std::cerr<<"Control Cube Cache, error destroying cuda steam"<<std::endl;
+		std::cerr<<"Control Cube Cache, error destroying cuda steam: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
 }
@@ -121,7 +121,7 @@ void ControlCubeCache::reSizeStructures()
 	if (_memoryCubes != 0)
 		if (cudaSuccess != cudaFree((void*)_memoryCubes))
 		{                                                                                               
-			std::cerr<<"Control Cube Cache, error resizing cache"<<std::endl;
+			std::cerr<<"Control Cube Cache, error resizing cache: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 			throw;
 		}
 	size_t total = 0;
@@ -129,7 +129,7 @@ void ControlCubeCache::reSizeStructures()
 
 	if (cudaSuccess != cudaMemGetInfo(&free, &total))
 	{
-		std::cerr<<"Control Cube Cache, error resizing cache"<<std::endl;
+		std::cerr<<"Control Cube Cache, error resizing cache: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
 
@@ -144,7 +144,7 @@ void ControlCubeCache::reSizeStructures()
 
 	if (cudaSuccess != cudaMalloc((void**)&_memoryCubes, _maxNumCubes*_sizeCubes*sizeof(float)))
 	{
-		std::cerr<<"Control Cube Cache, error resizing cache"<<std::endl;
+		std::cerr<<"Control Cube Cache, error resizing cache: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
 
@@ -319,7 +319,7 @@ bool ControlCubeCache::readCube(cache_cube_t * c)
 				int planeI = i+coordS.y();
 				if (cudaSuccess != cudaMemcpyAsync((void*)(start + i*_dimCube), (void*)(plane + planeI*planeDim.y()), dimC*sizeof(float), cudaMemcpyHostToDevice, _stream))
 				{
-					std::cerr<<"Control Cube Cache, error copying cube to GPU"<<std::endl;
+					std::cerr<<"Control Cube Cache, error copying cube to GPU: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 					throw;
 				}
 			}
@@ -483,7 +483,7 @@ void ControlCubeCache::run()
 
 					if (cudaSuccess != cudaMemsetAsync((void*)c->data, 0, _dimCube*_dimCube*_dimCube*sizeof(float), _stream))
 					{
-						std::cerr<<"Control Cube Cache, error copying cube to GPU"<<std::endl;
+						std::cerr<<"Control Cube Cache, error copying cube to GPU: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 						throw;
 					}
 

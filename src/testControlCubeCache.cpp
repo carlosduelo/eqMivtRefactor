@@ -14,6 +14,8 @@ Notes:
 
 #include <lunchbox/sleep.h>
 
+#include <boost/progress.hpp>
+
 int main(int argc, char ** argv)
 {
 	eqMivt::ControlPlaneCache cpc;
@@ -50,6 +52,11 @@ int main(int argc, char ** argv)
 	eqMivt::index_node_t idF = eqMivt::coordinateToIndex(vmml::vector<3,int>(dimV-1, dimV-1, dimV-1), levelCube, nLevels);
 
 	bool error = false;
+	#ifdef NDEBUG
+	#ifndef DISK_TIMING 
+		boost::progress_display show_progress(idF - idS + 1);
+	#endif
+	#endif
 
 	for(eqMivt::index_node_t id=idS; id<=idF && !error; id++)
 	{
@@ -65,7 +72,7 @@ int main(int argc, char ** argv)
 
 		if (cudaSuccess != cudaMemcpy((void*)cube, (void*)cubeG, dimC*dimC*dimC*sizeof(float), cudaMemcpyDeviceToHost))
 		{
-			std::cerr<<"Error copying cube to CPU"<<std::endl;
+			std::cerr<<"Error copying cube to CPU: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 			throw;
 		}
 
@@ -90,6 +97,11 @@ int main(int argc, char ** argv)
 			vmml::vector<3, int> ce = cs + vmml::vector<3, int>(dimC,dimC, dimC);
 			std::cerr<<"Cube id "<<id<<" coordinates "<<cs<<" "<<ce<<" nLevels "<<nLevels<<" levelCube "<<levelCube<<" offset "<<offset<<std::endl;
 		}
+		#ifdef NDEBUG
+		#ifndef DISK_TIMING 
+			++show_progress;
+		#endif
+		#endif
 	}
 
 	delete[] cube;
