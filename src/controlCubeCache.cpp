@@ -298,8 +298,20 @@ bool ControlCubeCache::readCube(cache_cube_t * c)
 	vmml::vector<3, int> coordE = coordS + vmml::vector<3, int>(_dimCube, _dimCube, _dimCube);
 
 	vmml::vector<2, int> planeDim = _planeCache->getPlaneDim();
-	int maxPlane = _planeCache->getMaxPlane();
+	vmml::vector<3, int> minC = _planeCache->getMinCoord();
+	vmml::vector<3, int> maxC = _planeCache->getMaxCoord();
+
+	#ifndef NDEBUG
+	if (coordS.y() < minC.x() - CUBE_INC || coordE.y() >= maxC.y() + CUBE_INC || 
+		coordS.z() < minC.z() - CUBE_INC|| coordE.z() >= maxC.z() + CUBE_INC)
+		{
+			std::cerr<<"Control Cube Cache, error reading cube "<<c->id<<std::endl;
+			return false;
+		}
+	#endif
+
 	std::vector<int>::iterator it = c->pendingPlanes.begin(); 
+
 
 	while (it != c->pendingPlanes.end())
 	{
@@ -308,14 +320,19 @@ bool ControlCubeCache::readCube(cache_cube_t * c)
 
 		if (plane != 0)
 		{
-			plane += coordS.z() < 0 ? 0 : coordS.z();
 			start += coordS.z() < 0 ? abs(coordS.z()) : 0;
+			plane += coordS.z() <= minC.z() ? 0 : coordS.z() - minC.z();
 			int dimC = _dimCube;
-			dimC -= coordS.z() < 0 ? abs(coordS.z()) : 0;
-			dimC -= coordE.z() > planeDim.y() ? coordE.z() - planeDim.y() : 0;
+			#if 0
+			if (coordS.z() < 0)
+				dimC -= abs(coordS.z()) + minC.z();
+			else
+			#endif
+				dimC -= coordS.z() < minC.z() ? abs(minC.z() - coordS.z()) : 0;
+			dimC -= coordE.z() > maxC.z() ? coordE.z() - maxC.z() : 0;
 
-			int sL = coordS.y() < 0 ? abs(coordS.y()) : 0;
-			int lL = coordE.y() > planeDim.x() ? _dimCube - (coordE.y() - planeDim.x()) : _dimCube;
+			int sL = coordS.y() < minC.y() ? abs(minC.y() - coordS.y()) : 0;
+			int lL = coordE.y() > maxC.y() ? _dimCube - (coordE.y() - maxC.y()) : _dimCube;
 			for(int i = sL; i < lL; i++)
 			{
 				int planeI = i+coordS.y();
@@ -479,9 +496,9 @@ void ControlCubeCache::run()
 					c->refs = PROCESSING;
 					vmml::vector<3, int> coord = getMinBoxIndex2(cube, _levelCube, _nLevels) + _offset;
 					int minPlane = coord.x() - CUBE_INC;
-					int maxPlane = minPlane + _dimCube -1;
-					for(int i=minPlane; i<=maxPlane; i++)
-						if (i>=0 && i<= _planeCache->getMaxPlane())
+					int maxPlane = minPlane + _dimCube;
+					for(int i=minPlane; i<maxPlane; i++)
+						if (i>=_planeCache->getMinPlane() && i< _planeCache->getMaxPlane())
 							c->pendingPlanes.push_back(i);
 
 					if (cudaSuccess != cudaMemsetAsync((void*)c->data, 0, _dimCube*_dimCube*_dimCube*sizeof(float), _stream))

@@ -31,18 +31,40 @@ bool compareCachePlane(cache_plane_t * a, cache_plane_t * b)
 		return false;//a->refs == 0;
 }
 
-bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters, int maxHeight)
+bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters, vmml::vector<3, int> min, vmml::vector<3, int> max)
 {
 	_file.init(file_parameters);
-	
-	_maxPlane = _file.getRealDimension().x();
 
-	if (maxHeight == 0)
-		_maxHeight = _file.getRealDimension().y();
+	vmml::vector<3, int> dimVolume = _file.getRealDimension();
+
+	if (min == vmml::vector<3, int>(0,0,0) && max == vmml::vector<3, int>(0,0,0))
+	{
+		_min = vmml::vector<3, int>(0,0,0);
+		_max = dimVolume;
+	}
 	else
-		_maxHeight = maxHeight;
+	{
+		if (min.x() >= max.x() || min.y() >= max.y() || min.z() >= max.z())
+		{
+			std::cerr<<"Control Plane Cache, minimum and maximum coordinates should be min > max"<<std::endl;
+			return false;
+		}
+		if (min.x() < 0 || min.y()  < 0 || min.z() < 0)
+		{
+			std::cerr<<"Control Plane Cache, minimum coordinates should be >= 0"<<std::endl;
+			return false;
+		}
+		if (max.x() > dimVolume.x() || max.y() > dimVolume.y() || max.z() > dimVolume.z())
+		{
+			std::cerr<<"Control Plane Cache, maximum coordinates should be <= volume dimension"<<std::endl;
+			return false;
+		}
+	
+		_min = min;
+		_max = max;
+	}
 
-	_sizePlane = _file.getRealDimension().y()*_file.getRealDimension().z();	
+	_sizePlane = (max.x()-min.x())*(max.y()-min.y())*(max.z()-min.z());	
 
 	double memory = getMemorySize();
 	if (memory == 0)
@@ -93,7 +115,7 @@ bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters, 
 
 vmml::vector<2,int>		ControlPlaneCache::getPlaneDim()
 {
-	return vmml::vector<2,int>(_maxHeight, _file.getRealDimension().z()); 
+	return vmml::vector<2,int>(_max.y() - _min.y(), _max.z() - _min.z()); 
 }
 
 void ControlPlaneCache::stopProcessing()
@@ -122,7 +144,7 @@ ControlPlaneCache::~ControlPlaneCache()
 float * ControlPlaneCache::getAndBlockPlane(int plane)
 {
 	#ifndef NDEBUG
-	if (plane > _maxPlane)
+	if (plane >= _max.x() || plane < _min.x())
 	{
 		std::cerr<<"Control Plane Cache, error adding plane that not exists"<<std::endl;
 		return 0;
@@ -202,9 +224,7 @@ void	ControlPlaneCache::unlockPlane(int plane)
 
 bool ControlPlaneCache::readPlane(float * data, int plane)
 {
-	vmml::vector<3, int> dim = _file.getRealDimension(); 
-
-	_file.readPlane(data, vmml::vector<3, int>(plane,0,0), vmml::vector<3, int>(plane, _maxHeight, dim.z()));
+	_file.readPlane(data, vmml::vector<3, int>(plane, _min.y(), _min.z()), vmml::vector<3, int>(plane, _max.y(), _max.z()));
 
 	return true;
 }

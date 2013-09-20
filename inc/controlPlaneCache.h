@@ -42,7 +42,6 @@ class  ControlPlaneCache : public lunchbox::Thread
 		
 		int		_freeSlots;
 		int		_maxNumPlanes;
-		int		_maxPlane;
 		float *	_memoryPlane;
 		int		_sizePlane;
 
@@ -53,7 +52,9 @@ class  ControlPlaneCache : public lunchbox::Thread
 		lunchbox::Condition	_emptyPendingPlanes;
 		lunchbox::Condition	_fullSlots;
 
-		int			_maxHeight;
+		vmml::vector<3, int> _min;
+		vmml::vector<3, int> _max;
+
 		hdf5File	_file;
 
 		bool readPlane(float * data, int plane);
@@ -64,7 +65,9 @@ class  ControlPlaneCache : public lunchbox::Thread
 
 		virtual void run();
 
-		bool initParameter(std::vector<std::string> file_parameters, int maxHeight);
+		/* Read planes from [min,max) */
+
+		bool initParameter(std::vector<std::string> file_parameters, vmml::vector<3, int> min, vmml::vector<3, int> max);
 
 		void stopProcessing();
 
@@ -72,10 +75,13 @@ class  ControlPlaneCache : public lunchbox::Thread
 
 		void	unlockPlane(int plane);
 
-		/* (x,y) = (_maxHeight, z_dim) */
-		vmml::vector<2,int>		getPlaneDim();
+		/* (x,y) = (y_dim, z_dim) */
+		vmml::vector<2,int>	getPlaneDim();
+		vmml::vector<3,int> getMinCoord() { return _min; }
+		vmml::vector<3,int> getMaxCoord() { return _max; }
 
-		int	getMaxPlane() { return _maxPlane; }
+		int	getMaxPlane() { return _max.x(); }
+		int	getMinPlane() { return _min.x(); }
 
 };
 
