@@ -192,18 +192,20 @@ float * ControlCubeCache::getAndBlockCube(index_node_t cube)
 	it = _currentCubes.find(cube);
 	if (it != _currentCubes.end())
 	{
-		if (it->second->refs == 0)
-			_freeSlots--;
-		else if (it->second->refs == PROCESSING)
-			return 0;
-		else if (it->second->refs == PROCESSED)
-			it->second->refs = 0;
 
-		it->second->refs += 1;
-		it->second->timestamp = std::time(0); 
-		dcube = it->second->data;
+		if (it->second->refs != PROCESSING)
+		{
+			if (it->second->refs == 0)
+				_freeSlots--;
+			else if (it->second->refs == PROCESSED)
+				it->second->refs = 0;
 
-		std::sort(_lruCubes.begin(), _lruCubes.end(), compareCacheCube);
+			it->second->refs += 1;
+			it->second->timestamp = std::time(0); 
+			dcube = it->second->data;
+
+			std::sort(_lruCubes.begin(), _lruCubes.end(), compareCacheCube);
+		}
 	}
 	else
 	{
@@ -359,7 +361,7 @@ void ControlCubeCache::run()
 						reSizeStructures();	
 						_lockResize.broadcast();
 						_lockResize.unlock();
-						_emptyPendingCubes.unlock();
+						_fullSlots.unlock();
 						continue;
 					}
 				_lockResize.unlock();
@@ -368,7 +370,7 @@ void ControlCubeCache::run()
 				if (_end)
 				{
 					_lockEnd.unset();
-					_emptyPendingCubes.unlock();
+					_fullSlots.unlock();
 					exit();
 				}
 				_lockEnd.unset();
@@ -477,7 +479,7 @@ void ControlCubeCache::run()
 					c->refs = PROCESSING;
 					vmml::vector<3, int> coord = getMinBoxIndex2(cube, _levelCube, _nLevels) + _offset;
 					int minPlane = coord.x() - CUBE_INC;
-					int maxPlane = coord.x() + _dimCube;
+					int maxPlane = minPlane + _dimCube -1;
 					for(int i=minPlane; i<=maxPlane; i++)
 						if (i>=0 && i<= _planeCache->getMaxPlane())
 							c->pendingPlanes.push_back(i);
