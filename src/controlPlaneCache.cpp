@@ -13,6 +13,7 @@ Notes:
 #include <cuda_runtime.h>
 
 #define READING -1
+#define WAITING 10
 
 namespace eqMivt
 {
@@ -37,6 +38,7 @@ bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters)
 
 	_end = false;
 	_resize = false;
+	_lastPlane = 0;
 
 	return result;;
 }
@@ -65,6 +67,7 @@ void ControlPlaneCache::reSizeStructures()
 	_max = _maxFuture;
 	_minFuture = vmml::vector<3,int>(0,0,0);
 	_maxFuture = vmml::vector<3,int>(0,0,0);
+	_lastPlane = _min.x();
 
 	_sizePlane = (_max.y()-_min.y())*(_max.z()-_min.z());	
 
@@ -288,9 +291,15 @@ void ControlPlaneCache::run()
 {
 	while(1)
 	{
+		bool prefetching = false;
+		int plane = -1;
 		_emptyPendingPlanes.lock();
 			if (_pendingPlanes.size() == 0)
-				_emptyPendingPlanes.wait();
+				if (!_emptyPendingPlanes.timedWait(WAITING))
+				{
+					prefetching = true;
+					plane = _lastPlane + 1 < _max.x() ? _lastPlane + 1 : _min.x();
+				}
 
 			_lockResize.lock();
 				if (_resize)
@@ -311,13 +320,24 @@ void ControlPlaneCache::run()
 			}
 			_lockEnd.unset();
 
-			int plane = _pendingPlanes.front();
-			_pendingPlanes.erase(_pendingPlanes.begin());
+			if (!prefetching)
+			{
+				plane = _pendingPlanes.front();
+				_pendingPlanes.erase(_pendingPlanes.begin());
+			}
 		_emptyPendingPlanes.unlock();
 
 		_fullSlots.lock();
 			if (_freeSlots == 0)
-				_fullSlots.wait();
+			{
+				if (!prefetching)
+					_fullSlots.wait();
+				else
+					if (!_fullSlots.timedWait(WAITING))
+					{
+						continue;
+					}
+			}
 
 			_lockResize.lock();
 				if (_resize)
@@ -365,6 +385,7 @@ void ControlPlaneCache::run()
 				readPlane(_memoryPlane + (c->element * _sizePlane), c->id);
 				_currentPlanes.insert(std::make_pair<int, NodeLinkedList *>(c->id, c));
 				_lruPlanes.moveToLastPosition(c);
+				_lastPlane = c->id;
 			}
 
 		_fullSlots.unlock();
