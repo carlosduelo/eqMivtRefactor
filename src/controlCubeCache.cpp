@@ -290,6 +290,7 @@ bool ControlCubeCache::reSize(int nLevels, int levelCube, vmml::vector<3, int> o
 
 	_lockResize.unlock();
 
+	return true;
 }
 
 bool ControlCubeCache::readCube(cache_cube_t * c)

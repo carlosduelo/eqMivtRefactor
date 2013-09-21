@@ -40,6 +40,7 @@ class  ControlPlaneCache : public lunchbox::Thread
 		boost::unordered_map<int, cache_plane_t *>	_currentPlanes;
 		std::vector<int>							_pendingPlanes;
 		
+		double	_memoryAviable;
 		int		_freeSlots;
 		int		_maxNumPlanes;
 		float *	_memoryPlane;
@@ -47,6 +48,8 @@ class  ControlPlaneCache : public lunchbox::Thread
 
 		lunchbox::Lock		_lockEnd;
 		bool				_end;
+		lunchbox::Condition	_lockResize;
+		bool				_resize;
 
 		lunchbox::Lock		_currentPlanesLock;
 		lunchbox::Condition	_emptyPendingPlanes;
@@ -54,11 +57,14 @@ class  ControlPlaneCache : public lunchbox::Thread
 
 		vmml::vector<3, int> _min;
 		vmml::vector<3, int> _max;
+		vmml::vector<3, int> _minFuture;
+		vmml::vector<3, int> _maxFuture;
 
 		hdf5File	_file;
 
 		bool readPlane(float * data, int plane);
 
+		void reSizeStructures();
 	public:
 
 		virtual ~ControlPlaneCache();
@@ -66,8 +72,9 @@ class  ControlPlaneCache : public lunchbox::Thread
 		virtual void run();
 
 		/* Read planes from [min,max) */
+		bool initParameter(std::vector<std::string> file_parameters);
 
-		bool initParameter(std::vector<std::string> file_parameters, vmml::vector<3, int> min, vmml::vector<3, int> max);
+		bool reSize(vmml::vector<3,int> min, vmml::vector<3,int> max);
 
 		void stopProcessing();
 

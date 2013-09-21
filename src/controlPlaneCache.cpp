@@ -28,76 +28,104 @@ bool compareCachePlane(cache_plane_t * a, cache_plane_t * b)
 	else if (a->refs == 0 && b->refs == 0)
 		return a->timestamp < b->timestamp;
 	else
-		return false;//a->refs == 0;
+		return false;
 }
 
-bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters, vmml::vector<3, int> min, vmml::vector<3, int> max)
+bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters)
 {
-	_file.init(file_parameters);
+	bool result = _file.init(file_parameters);
 
+	_min = vmml::vector<3,int>(0,0,0);
+	_max = vmml::vector<3,int>(0,0,0);
+	_minFuture = vmml::vector<3,int>(0,0,0);
+	_maxFuture = vmml::vector<3,int>(0,0,0);
+
+	_memoryAviable = 0;
+	_memoryPlane = 0;
+	_cachePlanes = 0;
+	_lruPlanes.clear();
+	_currentPlanes.clear();
+	_pendingPlanes.clear();
+
+	_freeSlots = 0;
+	_maxNumPlanes = 0;
+	_sizePlane = 0;
+
+	_end = false;
+	_resize = false;
+
+	return result;;
+}
+
+void ControlPlaneCache::reSizeStructures()
+{
 	vmml::vector<3, int> dimVolume = _file.getRealDimension();
 
-	if (min == vmml::vector<3, int>(0,0,0) && max == vmml::vector<3, int>(0,0,0))
+	if (_minFuture.x() >= _maxFuture.x() || _minFuture.y() >= _maxFuture.y() || _minFuture.z() >= _maxFuture.z())
 	{
-		_min = vmml::vector<3, int>(0,0,0);
-		_max = dimVolume;
+		std::cerr<<"Control Plane Cache, minimum and maximum coordinates should be min > max"<<std::endl;
+		throw;
 	}
-	else
+	if (_minFuture.x() < 0 || _minFuture.y()  < 0 || _minFuture.z() < 0)
 	{
-		if (min.x() >= max.x() || min.y() >= max.y() || min.z() >= max.z())
-		{
-			std::cerr<<"Control Plane Cache, minimum and maximum coordinates should be min > max"<<std::endl;
-			return false;
-		}
-		if (min.x() < 0 || min.y()  < 0 || min.z() < 0)
-		{
-			std::cerr<<"Control Plane Cache, minimum coordinates should be >= 0"<<std::endl;
-			return false;
-		}
-		if (max.x() > dimVolume.x() || max.y() > dimVolume.y() || max.z() > dimVolume.z())
-		{
-			std::cerr<<"Control Plane Cache, maximum coordinates should be <= volume dimension"<<std::endl;
-			return false;
-		}
-	
-		_min = min;
-		_max = max;
+		std::cerr<<"Control Plane Cache, minimum coordinates should be >= 0"<<std::endl;
+		throw;
 	}
-
-	_sizePlane = (max.x()-min.x())*(max.y()-min.y())*(max.z()-min.z());	
-
-	double memory = getMemorySize();
-	if (memory == 0)
+	if (_maxFuture.x() > dimVolume.x() || _maxFuture.y() > dimVolume.y() || _maxFuture.z() > dimVolume.z())
 	{
-		std::cerr<<"Not possible, check memory aviable (the call failed due to OS limitations)"<<std::endl;
-		memory = 1024*1024*1024;
-	}
-	else
-	{
-		memory *=0.6;
-	}
-
-	_maxNumPlanes = memory / (_sizePlane * sizeof(float));
-	while((_maxNumPlanes*_sizePlane*sizeof(float) + _maxNumPlanes*sizeof(cache_plane_t)) > memory)
-	{
-		_maxNumPlanes -= 10;
-	}
-	
-	_freeSlots = _maxNumPlanes;
-
-	if (cudaSuccess != cudaHostAlloc((void**)&_memoryPlane, _sizePlane*_maxNumPlanes*sizeof(float), cudaHostAllocDefault))
-	{                                                                                               
-		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		std::cerr<<"Control Plane Cache, maximum coordinates should be <= volume dimension"<<std::endl;
 		throw;
 	}
 
+	_min = _minFuture;
+	_max = _maxFuture;
+	_minFuture = vmml::vector<3,int>(0,0,0);
+	_maxFuture = vmml::vector<3,int>(0,0,0);
+
+	_sizePlane = (_max.y()-_min.y())*(_max.z()-_min.z());	
+
+	if (_cachePlanes != 0)
+		delete[] _cachePlanes;
 	_cachePlanes = 0;
+
+	if (_memoryPlane == 0)
+	{
+		_memoryAviable = getMemorySize();
+		if (_memoryAviable == 0)
+		{
+			std::cerr<<"Not possible, check memory aviable (the call failed due to OS limitations)"<<std::endl;
+			_memoryAviable = 1024*1024*1024;
+		}
+		else
+		{
+			_memoryAviable *=0.7;
+		}
+		if (cudaSuccess != cudaHostAlloc((void**)&_memoryPlane, _memoryAviable, cudaHostAllocDefault))
+		{                                                                                               
+			std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+			throw;
+		}
+
+	}
+
+	_maxNumPlanes = _memoryAviable / (_sizePlane * sizeof(float));
+	while((_maxNumPlanes*_sizePlane*sizeof(float) + _maxNumPlanes*sizeof(cache_plane_t)) > _memoryAviable)
+	{
+		_maxNumPlanes -= 10;
+	}
+
+	_freeSlots = _maxNumPlanes;
+
 	_cachePlanes = new cache_plane_t[_maxNumPlanes];
 	if (_cachePlanes == 0)
 	{
 		std::cerr<<"ControlPlaneCache, error creating"<<std::endl;
 		throw;
 	}
+
+	_lruPlanes.clear();
+	_currentPlanes.clear();
+	_pendingPlanes.clear();
 
 	for(int i=0; i<_maxNumPlanes; i++)
 	{
@@ -109,13 +137,37 @@ bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters, 
 	}
 
 	_end = false;
+	_resize = false;
+}
+
+bool ControlPlaneCache::reSize(vmml::vector<3,int> min, vmml::vector<3,int> max)
+{
+	_lockResize.lock();
+
+		_emptyPendingPlanes.signal();
+		_fullSlots.signal();
+		_resize = true;
+
+		_minFuture = min;
+		_maxFuture = max;
+
+	_lockResize.wait();
+
+	_lockResize.unlock();
 
 	return true;
 }
 
 vmml::vector<2,int>		ControlPlaneCache::getPlaneDim()
 {
-	return vmml::vector<2,int>(_max.y() - _min.y(), _max.z() - _min.z()); 
+	_lockResize.lock();
+	if (_resize)
+		_lockResize.wait();
+
+	vmml::vector<2,int> r (_max.y() - _min.y(), _max.z() - _min.z()); 
+	_lockResize.unlock();
+
+	return r;
 }
 
 void ControlPlaneCache::stopProcessing()
@@ -131,6 +183,10 @@ void ControlPlaneCache::stopProcessing()
 
 ControlPlaneCache::~ControlPlaneCache()
 {
+	_lockResize.lock();
+	if (_resize)
+		_lockResize.wait();
+
 	if (_memoryPlane != 0)
 		if(cudaSuccess != cudaFreeHost((void*)_memoryPlane))
 		{
@@ -138,11 +194,22 @@ ControlPlaneCache::~ControlPlaneCache()
 			throw;
 		}
 	if (_cachePlanes != 0)
-		delete[] _cachePlanes;	
+		delete[] _cachePlanes;
+
+	_lockResize.unlock();
 }
 
 float * ControlPlaneCache::getAndBlockPlane(int plane)
 {
+	_lockResize.lock();
+		if (_resize)
+		{
+			_lockResize.wait();
+			_lockResize.unlock();
+			return 0;
+		}
+	_lockResize.unlock();
+
 	#ifndef NDEBUG
 	if (plane >= _max.x() || plane < _min.x())
 	{
@@ -187,6 +254,14 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 
 void	ControlPlaneCache::unlockPlane(int plane)
 {
+	_lockResize.lock();
+		if (_resize)
+		{
+			_lockResize.wait();
+			_lockResize.unlock();
+		}
+	_lockResize.unlock();
+
 	boost::unordered_map<int, cache_plane_t *>::iterator it;
 
 	_fullSlots.lock();
@@ -236,6 +311,17 @@ void ControlPlaneCache::run()
 		_emptyPendingPlanes.lock();
 			if (_pendingPlanes.size() == 0)
 				_emptyPendingPlanes.wait();
+
+			_lockResize.lock();
+				if (_resize)
+				{
+					reSizeStructures();	
+					_lockResize.broadcast();
+					_lockResize.unlock();
+					_emptyPendingPlanes.unlock();
+					continue;
+				}
+			_lockResize.unlock();
 				
 			_lockEnd.set();
 			if (_end)
@@ -253,6 +339,17 @@ void ControlPlaneCache::run()
 		_fullSlots.lock();
 			if (_freeSlots == 0)
 				_fullSlots.wait();
+
+			_lockResize.lock();
+				if (_resize)
+				{
+					reSizeStructures();	
+					_lockResize.broadcast();
+					_lockResize.unlock();
+					_fullSlots.unlock();
+					continue;
+				}
+			_lockResize.unlock();
 
 			_lockEnd.set();
 			if (_end)
@@ -304,4 +401,3 @@ void ControlPlaneCache::run()
 }
 
 }
-

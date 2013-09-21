@@ -115,7 +115,7 @@ int main(int argc, char ** argv)
 	parameters.push_back(std::string(argv[1]));
 	parameters.push_back(std::string(argv[2]));
 
-	cpc.initParameter(parameters, vmml::vector<3,int>(0,0,0), vmml::vector<3,int>(0,0,0));
+	cpc.initParameter(parameters);
 	hdf5File.init(parameters);
 	ccc.initParameter(&cpc);
 

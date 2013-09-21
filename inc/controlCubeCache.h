@@ -77,7 +77,6 @@ class  ControlCubeCache : public lunchbox::Thread
 
 		ControlPlaneCache * _planeCache;
 
-		lunchbox::Lock		_currentCubessLock;
 		lunchbox::Condition	_emptyPendingCubes;
 		lunchbox::Condition	_fullSlots;
 
