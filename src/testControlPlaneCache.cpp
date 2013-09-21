@@ -91,9 +91,6 @@ void testPerf(vmml::vector<3,int> start, vmml::vector<3,int> finish)
 		}
 		while(planeC == 0);
 
-		if (i % 64 == 0)
-			std::cout<<i<<" "<<planeC<<std::endl;
-
 		cpc.unlockPlane(i);	
 
 		#ifdef NDEBUG
@@ -162,7 +159,7 @@ int main(int argc, char ** argv)
 		clock.reset();
 		testPerf(s, e);
 		time = clock.getTimed()/1000.0;
-		double bw = (((e.x()-s.x())*(e.y()-s.y())*(e.z()-s.z()))*sizeof(float))/1204.0/1024.0/time;
+		double bw = ((((e.x()-s.x())*(e.y()-s.y())*(e.z()-s.z()))*sizeof(float))/1204.0/1024.0)/time;
 
 		std::cout<<"Test "<<s<<" "<<e<<": "<<time<<" seconds ~ "<<bw<<" MB/s"<<std::endl;
 	}
@@ -171,7 +168,7 @@ int main(int argc, char ** argv)
 	clock.reset();
 	testPerf(vmml::vector<3,int>(0,0,0), dim);
 	time = clock.getTimed()/1000.0;
-	double bw = (dim.x()*dim.y()*dim.z())/1204.0/1024.0/time;
+	double bw = ((dim.x()*dim.y()*dim.z()*sizeof(float))/1204.0/1024.0)/time;
 
 	std::cout<<"Read complete volume "<<dim<<" : "<<time<<" seconds ~ "<<bw<<" MB/s"<<std::endl; 
 

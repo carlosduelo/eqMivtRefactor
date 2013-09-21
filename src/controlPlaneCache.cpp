@@ -17,20 +17,6 @@ Notes:
 namespace eqMivt
 {
 
-bool compareCachePlane(cache_plane_t * a, cache_plane_t * b)
-{
-	if (a->refs > 0 && b->refs > 0)
-		return a->timestamp < b->timestamp;
-	else if (a->refs == READING)
-		return false;
-	else if (b->refs == READING)
-		return true;
-	else if (a->refs == 0 && b->refs == 0)
-		return a->timestamp < b->timestamp;
-	else
-		return false;
-}
-
 bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters)
 {
 	bool result = _file.init(file_parameters);
@@ -42,8 +28,6 @@ bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters)
 
 	_memoryAviable = 0;
 	_memoryPlane = 0;
-	_cachePlanes = 0;
-	_lruPlanes.clear();
 	_currentPlanes.clear();
 	_pendingPlanes.clear();
 
@@ -84,10 +68,6 @@ void ControlPlaneCache::reSizeStructures()
 
 	_sizePlane = (_max.y()-_min.y())*(_max.z()-_min.z());	
 
-	if (_cachePlanes != 0)
-		delete[] _cachePlanes;
-	_cachePlanes = 0;
-
 	if (_memoryPlane == 0)
 	{
 		_memoryAviable = getMemorySize();
@@ -109,32 +89,16 @@ void ControlPlaneCache::reSizeStructures()
 	}
 
 	_maxNumPlanes = _memoryAviable / (_sizePlane * sizeof(float));
-	while((_maxNumPlanes*_sizePlane*sizeof(float) + _maxNumPlanes*sizeof(cache_plane_t)) > _memoryAviable)
+	while((_maxNumPlanes*_sizePlane*sizeof(float) + _maxNumPlanes*sizeof(NodeLinkedList)) > _memoryAviable)
 	{
 		_maxNumPlanes -= 10;
 	}
 
 	_freeSlots = _maxNumPlanes;
 
-	_cachePlanes = new cache_plane_t[_maxNumPlanes];
-	if (_cachePlanes == 0)
-	{
-		std::cerr<<"ControlPlaneCache, error creating"<<std::endl;
-		throw;
-	}
-
-	_lruPlanes.clear();
+	_lruPlanes.reSize(_maxNumPlanes);
 	_currentPlanes.clear();
 	_pendingPlanes.clear();
-
-	for(int i=0; i<_maxNumPlanes; i++)
-	{
-		_cachePlanes[i].id = -1;
-		_cachePlanes[i].data = _memoryPlane + i*_sizePlane;
-		_cachePlanes[i].refs = 0;
-		_cachePlanes[i].timestamp = std::time(0);
-		_lruPlanes.push_back(&_cachePlanes[i]);
-	}
 
 	_end = false;
 	_resize = false;
@@ -193,9 +157,6 @@ ControlPlaneCache::~ControlPlaneCache()
 			std::cerr<<"Control Plane Cache, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
 			throw;
 		}
-	if (_cachePlanes != 0)
-		delete[] _cachePlanes;
-
 	_lockResize.unlock();
 }
 
@@ -219,7 +180,7 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 
 	#endif
 	float * dplane = 0;
-	boost::unordered_map<int, cache_plane_t * >::iterator it;
+	boost::unordered_map<int, NodeLinkedList * >::iterator it;
 
 	_fullSlots.lock();
 
@@ -232,10 +193,9 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 			it->second->refs = 0;
 
 		it->second->refs += 1;
-		it->second->timestamp = std::time(0); 
-		dplane = it->second->data;
+		dplane = _memoryPlane + (it->second->element * _sizePlane);
 
-		std::sort(_lruPlanes.begin(), _lruPlanes.end(), compareCachePlane);
+		_lruPlanes.moveToLastPosition(it->second);
 	}
 	else
 	{
@@ -262,7 +222,7 @@ void	ControlPlaneCache::unlockPlane(int plane)
 		}
 	_lockResize.unlock();
 
-	boost::unordered_map<int, cache_plane_t *>::iterator it;
+	boost::unordered_map<int, NodeLinkedList *>::iterator it;
 
 	_fullSlots.lock();
 
@@ -270,13 +230,6 @@ void	ControlPlaneCache::unlockPlane(int plane)
 	if (it != _currentPlanes.end())
 	{
 		it->second->refs -= 1;
-		if (it->second->refs == 0)
-		{
-			_freeSlots++;
-			_fullSlots.signal();
-		}
-		
-		std::sort(_lruPlanes.begin(), _lruPlanes.end(), compareCachePlane);
 
 		#ifndef NDEBUG
 		if (it->second->refs < 0)
@@ -285,6 +238,13 @@ void	ControlPlaneCache::unlockPlane(int plane)
 			throw;
 		}
 		#endif
+
+		if (it->second->refs == 0)
+		{
+			_freeSlots++;
+			_fullSlots.signal();
+		}
+
 	}
 	#ifndef NDEBUG
 	else
@@ -360,9 +320,10 @@ void ControlPlaneCache::run()
 			}
 			_lockEnd.unset();
 
-			cache_plane_t * c = _lruPlanes.front();
+			NodeLinkedList * c = 0;
+			c = _lruPlanes.getFirstFreePosition();
 
-			boost::unordered_map<int, cache_plane_t *>::iterator it;
+			boost::unordered_map<int, NodeLinkedList *>::iterator it;
 			it = _currentPlanes.find(c->id);
 			if (it != _currentPlanes.end())
 				_currentPlanes.erase(it);	
@@ -371,12 +332,6 @@ void ControlPlaneCache::run()
 			if (c->refs != 0)
 			{
 				std::cerr<<"Control Plane Cache, unistable state, free plane slot with references "<<c->id<<" refs "<<c->refs<<std::endl;
-				while(_lruPlanes.size() != 0)
-				{
-					cache_plane_t * p = _lruPlanes[0];
-					_lruPlanes.erase(_lruPlanes.begin());
-					std::cerr<<"Plane "<<p->id<<" "<<p->refs<<std::endl;
-				}
 				throw;
 			}
 			#endif
@@ -389,10 +344,9 @@ void ControlPlaneCache::run()
 				c->id = plane;
 				c->refs = READING;
 
-				readPlane(c->data, c->id);
-				_currentPlanes.insert(std::make_pair<int, cache_plane_t *>(c->id, c));
-
-				std::sort(_lruPlanes.begin(), _lruPlanes.end(), compareCachePlane);
+				readPlane(_memoryPlane + (c->element * _sizePlane), c->id);
+				_currentPlanes.insert(std::make_pair<int, NodeLinkedList *>(c->id, c));
+				_lruPlanes.moveToLastPosition(c);
 			}
 
 		_fullSlots.unlock();

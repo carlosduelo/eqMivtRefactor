@@ -20,24 +20,17 @@ Notes:
 
 #include <hdf5File.h>
 
+#include <linkedList.h>
+
 namespace eqMivt
 {
-
-struct cache_plane_t
-{
-	int		id;
-	float * data;
-	int		refs;
-	std::time_t timestamp;
-};
 
 class  ControlPlaneCache : public lunchbox::Thread
 {
 	private:
-		cache_plane_t	*							_cachePlanes;
-		std::vector<cache_plane_t *>				_lruPlanes;
+		LinkedList									_lruPlanes;
 
-		boost::unordered_map<int, cache_plane_t *>	_currentPlanes;
+		boost::unordered_map<int, NodeLinkedList *>	_currentPlanes;
 		std::vector<int>							_pendingPlanes;
 		
 		double	_memoryAviable;
