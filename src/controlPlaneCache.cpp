@@ -145,23 +145,36 @@ void ControlPlaneCache::stopProcessing()
 	join();
 }
 
-ControlPlaneCache::~ControlPlaneCache()
+void ControlPlaneCache::exit()
 {
-	_lockResize.lock();
-	if (_resize)
-		_lockResize.wait();
-
 	if (_memoryPlane != 0)
 		if(cudaSuccess != cudaFreeHost((void*)_memoryPlane))
 		{
 			std::cerr<<"Control Plane Cache, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
 			throw;
 		}
-	_lockResize.unlock();
+	_file.close();
+
+	_lockEnd.unset();
+
+
+	lunchbox::Thread::exit();
+}
+
+ControlPlaneCache::~ControlPlaneCache()
+{
 }
 
 float * ControlPlaneCache::getAndBlockPlane(int plane)
 {
+	_lockEnd.set();
+		if (_end)
+		{
+			_lockEnd.unset();
+			return 0;
+		}
+	_lockEnd.unset();
+
 	_lockResize.lock();
 		if (_resize)
 		{
@@ -170,7 +183,6 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 			return 0;
 		}
 	_lockResize.unlock();
-
 	#ifndef NDEBUG
 	if (plane >= _max.x() || plane < _min.x())
 	{
@@ -214,11 +226,19 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 
 void	ControlPlaneCache::unlockPlane(int plane)
 {
+	_lockEnd.set();
+		if (_end)
+		{
+			_lockEnd.unset();
+			return;
+		}
+	_lockEnd.unset();
 	_lockResize.lock();
 		if (_resize)
 		{
 			_lockResize.wait();
 			_lockResize.unlock();
+			return;
 		}
 	_lockResize.unlock();
 
@@ -286,7 +306,6 @@ void ControlPlaneCache::run()
 			_lockEnd.set();
 			if (_end)
 			{
-				_lockEnd.unset();
 				_emptyPendingPlanes.unlock();
 				exit();
 			}
@@ -314,7 +333,6 @@ void ControlPlaneCache::run()
 			_lockEnd.set();
 			if (_end)
 			{
-				_lockEnd.unset();
 				_fullSlots.unlock();
 				exit();
 			}

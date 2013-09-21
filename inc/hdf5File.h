@@ -38,6 +38,8 @@ class hdf5File
 	public:
 
 		bool init(std::vector<std::string> file_params);
+		
+		void close();
 
 		~hdf5File();
 

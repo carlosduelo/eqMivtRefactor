@@ -174,5 +174,7 @@ int main(int argc, char ** argv)
 
 	cpc.stopProcessing();
 
+	hdf5File.close();
+
 	return 0;
 }

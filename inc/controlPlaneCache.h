@@ -63,6 +63,7 @@ class  ControlPlaneCache : public lunchbox::Thread
 		virtual ~ControlPlaneCache();
 
 		virtual void run();
+		virtual void exit();
 
 		/* Read planes from [min,max) */
 		bool initParameter(std::vector<std::string> file_parameters);

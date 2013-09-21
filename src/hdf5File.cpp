@@ -70,6 +70,9 @@ bool hdf5File::init(std::vector<std::string> file_params)
 
 hdf5File::~hdf5File()
 {
+}
+void hdf5File::close()
+{
 	herr_t      status;
 
 	if ((status = H5Dclose(_dataset_id)) < 0)
