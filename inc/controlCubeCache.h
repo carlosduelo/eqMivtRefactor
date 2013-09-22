@@ -11,21 +11,14 @@ Notes:
 
 #include <controlPlaneCache.h>
 
+#include <linkedList.h>
+
 #include <cuda_runtime.h>
 
 #include <queue>
 
 namespace eqMivt
 {
-
-struct cache_cube_t
-{
-	index_node_t id;
-	float * data;
-	int		refs;
-	std::time_t timestamp;
-	std::vector<int> pendingPlanes;
-};
 
 struct pending_cube_t
 {
@@ -46,13 +39,12 @@ struct find_pending_cube
 class  ControlCubeCache : public lunchbox::Thread
 {
 	private:
-		cache_cube_t	*				_cacheCubes;
-		std::vector<cache_cube_t *>		_lruCubes;
+		LinkedList			_lruCubes;
 
-		boost::unordered_map<index_node_t, cache_cube_t *>	_currentCubes;
-		std::vector< pending_cube_t >						_pendingCubes;
+		boost::unordered_map<index_node_t, NodeLinkedList *>	_currentCubes;
+		std::vector< pending_cube_t >							_pendingCubes;
 
-		std::queue<index_node_t>							_readingCubes;
+		std::queue<index_node_t>								_readingCubes;
 
 		cudaStream_t	_stream;
 		
@@ -82,7 +74,7 @@ class  ControlCubeCache : public lunchbox::Thread
 
 		void reSizeStructures();
 
-		bool readCube(cache_cube_t * c);
+		bool readCube(NodeLinkedList * c);
 
 	public:
 		virtual ~ControlCubeCache();
@@ -90,6 +82,7 @@ class  ControlCubeCache : public lunchbox::Thread
 		bool initParameter(ControlPlaneCache * planeCache);
 
 		virtual void run();
+		virtual void exit();
 
 		bool reSize(int nLevels, int levelCube, vmml::vector<3,int> offset );
 

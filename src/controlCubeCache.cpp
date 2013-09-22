@@ -15,20 +15,6 @@ Notes:
 
 namespace eqMivt
 {
-bool compareCacheCube(cache_cube_t * a, cache_cube_t * b)
-{
-	if (a->refs > 0 && b->refs > 0)
-		return a->timestamp < b->timestamp;
-	else if (a->refs <= PROCESSING)
-		return false;
-	else if (b->refs <= PROCESSING)
-		return true;
-	else if (a->refs == 0 && b->refs == 0)
-		return a->timestamp < b->timestamp;
-	else
-		return false;//a->refs == 0;
-}
-
 bool ComparePendingCubes(pending_cube_t a, pending_cube_t b)
 {
 	if (a.coord.x() == b.coord.x())
@@ -41,7 +27,6 @@ bool ControlCubeCache::initParameter(ControlPlaneCache * planeCache)
 {
 	_planeCache = planeCache;
 
-	_cacheCubes = 0;
 	_freeSlots = 0;
 	_maxNumCubes = 0;
 	_maxCubes = 0;
@@ -77,22 +62,22 @@ void ControlCubeCache::stopProcessing()
 	join();
 }
 
-ControlCubeCache::~ControlCubeCache()
+void ControlCubeCache::exit()
 {
-	_lockResize.lock();
-		if (_resize)
-			_lockResize.wait();
-
-	if (_cacheCubes != 0)
-		delete[] _cacheCubes;
 	if (_memoryCubes != 0)
 		if(cudaSuccess != cudaFree((void*)_memoryCubes))
 		{
 			std::cerr<<"Control Cubes Cache, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 			throw;
 		}
-	_lockResize.unlock();
 
+	_lockEnd.unset();
+
+	lunchbox::Thread::exit();
+}
+
+ControlCubeCache::~ControlCubeCache()
+{
 	if (cudaSuccess != cudaStreamDestroy(_stream))
 	{
 		std::cerr<<"Control Cube Cache, error destroying cuda steam: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
@@ -111,12 +96,6 @@ void ControlCubeCache::reSizeStructures()
 	_dimCube = exp2(_nLevels - _levelCube) + 2 * CUBE_INC;
 
 	_sizeCubes = pow(_dimCube, 3); 
-
-	_lruCubes.clear();
-	_currentCubes.clear();
-	_pendingCubes.clear();
-	std::queue<index_node_t> emptyQ;
-	std::swap(_readingCubes, emptyQ);
 
 	if (_memoryCubes != 0)
 		if (cudaSuccess != cudaFree((void*)_memoryCubes))
@@ -150,31 +129,25 @@ void ControlCubeCache::reSizeStructures()
 
 	_freeSlots = _maxNumCubes;
 
-	if (_cacheCubes != 0)
-	{
-		delete[] _cacheCubes;
-	}
-	_cacheCubes = 0;
-	_cacheCubes = new cache_cube_t[_maxNumCubes];
-	if (_cacheCubes == 0)
-	{
-		std::cerr<<"Control Cube Cache, error resizing cache"<<std::endl;
-		throw;
-	}
-	for(int i=0; i<_maxNumCubes; i++)
-	{
-		_cacheCubes[i].id = -1;
-		_cacheCubes[i].data = _memoryCubes + i*_sizeCubes;
-		_cacheCubes[i].refs = 0;
-		_cacheCubes[i].timestamp = std::time(0);
-		_lruCubes.push_back(&_cacheCubes[i]);
-	}
+	_lruCubes.reSize(_maxNumCubes);
+	_currentCubes.clear();
+	_pendingCubes.clear();
+	std::queue<index_node_t> emptyQ;
+	std::swap(_readingCubes, emptyQ);
 
 	_resize = false;
 }
 
 float * ControlCubeCache::getAndBlockCube(index_node_t cube)
 {
+	_lockEnd.set();
+		if (_end)
+		{
+			_lockEnd.unset();
+			return 0;
+		}
+	_lockEnd.unset();
+
 	_lockResize.lock();
 		if (_resize)
 		{
@@ -185,7 +158,7 @@ float * ControlCubeCache::getAndBlockCube(index_node_t cube)
 	_lockResize.unlock();
 
 	float * dcube = 0;
-	boost::unordered_map<index_node_t, cache_cube_t * >::iterator it;
+	boost::unordered_map<index_node_t, NodeLinkedList * >::iterator it;
 
 	_fullSlots.lock();
 
@@ -201,10 +174,7 @@ float * ControlCubeCache::getAndBlockCube(index_node_t cube)
 				it->second->refs = 0;
 
 			it->second->refs += 1;
-			it->second->timestamp = std::time(0); 
-			dcube = it->second->data;
-
-			std::sort(_lruCubes.begin(), _lruCubes.end(), compareCacheCube);
+			dcube = _memoryCubes + it->second->element*_sizeCubes;
 		}
 	}
 	else
@@ -230,6 +200,13 @@ float * ControlCubeCache::getAndBlockCube(index_node_t cube)
 
 void ControlCubeCache::unlockCube(index_node_t cube)
 {
+	_lockEnd.set();
+		if (_end)
+		{
+			_lockEnd.unset();
+			return;
+		}
+	_lockEnd.unset();
 	_lockResize.lock();
 		if (_resize)
 		{
@@ -239,7 +216,7 @@ void ControlCubeCache::unlockCube(index_node_t cube)
 		}
 	_lockResize.unlock();
 
-	boost::unordered_map<index_node_t, cache_cube_t *>::iterator it;
+	boost::unordered_map<index_node_t, NodeLinkedList *>::iterator it;
 
 	_fullSlots.lock();
 
@@ -252,8 +229,6 @@ void ControlCubeCache::unlockCube(index_node_t cube)
 			_freeSlots++;
 			_fullSlots.signal();
 		}
-		
-		std::sort(_lruCubes.begin(), _lruCubes.end(), compareCacheCube);
 
 		#ifndef NDEBUG
 		if (it->second->refs < 0)
@@ -293,7 +268,7 @@ bool ControlCubeCache::reSize(int nLevels, int levelCube, vmml::vector<3, int> o
 	return true;
 }
 
-bool ControlCubeCache::readCube(cache_cube_t * c)
+bool ControlCubeCache::readCube(NodeLinkedList * c)
 {
 	vmml::vector<3, int> coordS = getMinBoxIndex2(c->id, _levelCube, _nLevels) + _offset - vmml::vector<3, int>(CUBE_INC, CUBE_INC, CUBE_INC);
 	vmml::vector<3, int> coordE = coordS + vmml::vector<3, int>(_dimCube, _dimCube, _dimCube);
@@ -302,21 +277,12 @@ bool ControlCubeCache::readCube(cache_cube_t * c)
 	vmml::vector<3, int> minC = _planeCache->getMinCoord();
 	vmml::vector<3, int> maxC = _planeCache->getMaxCoord();
 
-	#ifndef NDEBUG
-	if (coordS.y() < minC.x() - CUBE_INC || coordE.y() >= maxC.y() + CUBE_INC || 
-		coordS.z() < minC.z() - CUBE_INC|| coordE.z() >= maxC.z() + CUBE_INC)
-		{
-			std::cerr<<"Control Cube Cache, error reading cube "<<c->id<<std::endl;
-			return false;
-		}
-	#endif
-
 	std::vector<int>::iterator it = c->pendingPlanes.begin(); 
 
 
 	while (it != c->pendingPlanes.end())
 	{
-		float * start = c->data + _dimCube * _dimCube * abs(coordS.x() - (*it));
+		float * start = (_memoryCubes + c->element*_sizeCubes) + _dimCube * _dimCube * abs(coordS.x() - (*it));
 		float * plane = _planeCache->getAndBlockPlane(*it);
 
 		if (plane != 0)
@@ -387,13 +353,12 @@ void ControlCubeCache::run()
 				_lockEnd.set();
 				if (_end)
 				{
-					_lockEnd.unset();
 					_fullSlots.unlock();
 					exit();
 				}
 				_lockEnd.unset();
 
-				boost::unordered_map<index_node_t, cache_cube_t *>::iterator it;
+				boost::unordered_map<index_node_t, NodeLinkedList *>::iterator it;
 				it = _currentCubes.find(cube);
 				if (it != _currentCubes.end())
 				{
@@ -402,7 +367,7 @@ void ControlCubeCache::run()
 					else
 						it->second->refs = PROCESSED;
 
-					std::sort(_lruCubes.begin(), _lruCubes.end(), compareCacheCube);
+					_lruCubes.moveToLastPosition(it->second);
 				}
 				else
 				{
@@ -431,7 +396,6 @@ void ControlCubeCache::run()
 				_lockEnd.set();
 				if (_end)
 				{
-					_lockEnd.unset();
 					_emptyPendingCubes.unlock();
 					exit();
 				}
@@ -459,15 +423,14 @@ void ControlCubeCache::run()
 				_lockEnd.set();
 				if (_end)
 				{
-					_lockEnd.unset();
 					_fullSlots.unlock();
 					exit();
 				}
 				_lockEnd.unset();
 
-				cache_cube_t * c = _lruCubes.front();
+				NodeLinkedList * c = _lruCubes.getFirstFreePosition();
 
-				boost::unordered_map<index_node_t, cache_cube_t *>::iterator it;
+				boost::unordered_map<index_node_t, NodeLinkedList *>::iterator it;
 				it = _currentCubes.find(c->id);
 				if (it != _currentCubes.end())
 					_currentCubes.erase(it);	
@@ -476,14 +439,6 @@ void ControlCubeCache::run()
 				if (c->refs != 0 || c->pendingPlanes.size() != 0)
 				{
 					std::cerr<<"Control Plane Cache, unistable state, free cube slot with references "<<c->id<<" refs "<<c->refs<<std::endl;
-					#if 0
-					while(_lruCubes.size() != 0)
-					{
-						cache_cube_t * p = _lruCubes[0];
-						_lruCubes.erase(_lruCubes.begin());
-						std::cerr<<"Plane "<<p->id<<" "<<p->refs<<std::endl;
-					}
-					#endif
 					throw;
 				}
 				#endif
@@ -502,7 +457,7 @@ void ControlCubeCache::run()
 						if (i>=_planeCache->getMinPlane() && i< _planeCache->getMaxPlane())
 							c->pendingPlanes.push_back(i);
 
-					if (cudaSuccess != cudaMemsetAsync((void*)c->data, 0, _dimCube*_dimCube*_dimCube*sizeof(float), _stream))
+					if (cudaSuccess != cudaMemsetAsync((void*)(_memoryCubes + c->element*_sizeCubes), 0, _dimCube*_dimCube*_dimCube*sizeof(float), _stream))
 					{
 						std::cerr<<"Control Cube Cache, error copying cube to GPU: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 						throw;
@@ -513,9 +468,9 @@ void ControlCubeCache::run()
 					else
 						c->refs = PROCESSED;
 
-					_currentCubes.insert(std::make_pair<index_node_t, cache_cube_t *>(c->id, c));
+					_currentCubes.insert(std::make_pair<index_node_t, NodeLinkedList *>(c->id, c));
+					_lruCubes.moveToLastPosition(c);
 
-					std::sort(_lruCubes.begin(), _lruCubes.end(), compareCacheCube);
 				}
 
 			_fullSlots.unlock();

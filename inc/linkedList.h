@@ -11,6 +11,7 @@ Notes:
 
 #include <typedef.h>
 
+#include <vector>
 
 namespace eqMivt
 {
@@ -21,7 +22,8 @@ class NodeLinkedList
 		NodeLinkedList * 	before;
 		unsigned int	 	element;
 		index_node_t 	 	id;
-		int			refs;
+		int					refs;
+		std::vector<int>	pendingPlanes;
 };
 
 class LinkedList

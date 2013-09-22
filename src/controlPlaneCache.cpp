@@ -186,14 +186,15 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 			return 0;
 		}
 	_lockResize.unlock();
+
 	#ifndef NDEBUG
 	if (plane >= _max.x() || plane < _min.x())
 	{
 		std::cerr<<"Control Plane Cache, error adding plane that not exists"<<std::endl;
 		return 0;
 	}
-
 	#endif
+
 	float * dplane = 0;
 	boost::unordered_map<int, NodeLinkedList * >::iterator it;
 

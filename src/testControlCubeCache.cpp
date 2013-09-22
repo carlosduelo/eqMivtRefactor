@@ -121,7 +121,8 @@ int main(int argc, char ** argv)
 
 	cpc.start();
 	ccc.start();
-	lunchbox::sleep(500);
+
+	cpc.reSize(vmml::vector<3,int>(0,0,0), hdf5File.getRealDimension());
 
 	bool error =	!test(2, 2, vmml::vector<3,int>(0,0,0)) && 
 					!test(10, 1, vmml::vector<3,int>(0,0,0)) &&
@@ -144,8 +145,7 @@ int main(int argc, char ** argv)
 
 	ccc.stopProcessing();
 	cpc.stopProcessing();
-
-	lunchbox::sleep(5000);
+	hdf5File.close();
 
 	if (error)
 		std::cout<<"Test Fail"<<std::endl;
