@@ -114,7 +114,6 @@ int main(int argc, char ** argv)
 
 	cpc.start();
 
-
 	std::cout<<"Checking errors........."<<std::endl;
 
 	bool error = false;

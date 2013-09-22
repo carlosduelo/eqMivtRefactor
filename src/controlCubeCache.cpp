@@ -70,6 +70,11 @@ void ControlCubeCache::exit()
 			std::cerr<<"Control Cubes Cache, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 			throw;
 		}
+	if (cudaSuccess != cudaStreamDestroy(_stream))
+	{
+		std::cerr<<"Control Cube Cache, error destroying cuda steam: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
 
 	_lockEnd.unset();
 
@@ -78,11 +83,6 @@ void ControlCubeCache::exit()
 
 ControlCubeCache::~ControlCubeCache()
 {
-	if (cudaSuccess != cudaStreamDestroy(_stream))
-	{
-		std::cerr<<"Control Cube Cache, error destroying cuda steam: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
-		throw;
-	}
 }
 
 void ControlCubeCache::reSizeStructures()
@@ -279,7 +279,6 @@ bool ControlCubeCache::readCube(NodeLinkedList * c)
 
 	std::vector<int>::iterator it = c->pendingPlanes.begin(); 
 
-
 	while (it != c->pendingPlanes.end())
 	{
 		float * start = (_memoryCubes + c->element*_sizeCubes) + _dimCube * _dimCube * abs(coordS.x() - (*it));
@@ -295,14 +294,15 @@ bool ControlCubeCache::readCube(NodeLinkedList * c)
 				dimC -= abs(coordS.z()) + minC.z();
 			else
 			#endif
-				dimC -= coordS.z() < minC.z() ? abs(minC.z() - coordS.z()) : 0;
+			dimC -= coordS.z() < minC.z() ? abs(minC.z() - coordS.z()) : 0;
 			dimC -= coordE.z() > maxC.z() ? coordE.z() - maxC.z() : 0;
 
 			int sL = coordS.y() < minC.y() ? abs(minC.y() - coordS.y()) : 0;
 			int lL = coordE.y() > maxC.y() ? _dimCube - (coordE.y() - maxC.y()) : _dimCube;
+
 			for(int i = sL; i < lL; i++)
 			{
-				int planeI = i+coordS.y();
+				int planeI = i+(coordS.y() - minC.y());
 				if (cudaSuccess != cudaMemcpyAsync((void*)(start + i*_dimCube), (void*)(plane + planeI*planeDim.y()), dimC*sizeof(float), cudaMemcpyHostToDevice, _stream))
 				{
 					std::cerr<<"Control Cube Cache, error copying cube to GPU: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
