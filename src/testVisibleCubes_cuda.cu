@@ -11,9 +11,10 @@ Notes:
 
 #include <cuda.h>
 
-__global__ void cuda_updateCubesGPU(eqMivt::visibleCubeGPU cubes, int size, eqMivt::statusCube status)
+__global__ void cuda_updateCubesGPU(eqMivt::visibleCubeGPU cubes, eqMivt::indexVisibleCubeGPU index, int size, eqMivt::statusCube status)
 {
 	int idx = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
+	idx = index[idx];
 	
 	if (idx < size)
 	{
@@ -23,17 +24,18 @@ __global__ void cuda_updateCubesGPU(eqMivt::visibleCubeGPU cubes, int size, eqMi
 	return;
 }
 
-void test_updateCubesGPU(eqMivt::visibleCubeGPU cubes, int size, eqMivt::statusCube status)
+void test_updateCubesGPU(eqMivt::visibleCubeGPU cubes, eqMivt::indexVisibleCubeGPU index, int size, eqMivt::statusCube status)
 {
 	dim3 threads = eqMivt::getThreads(size);
 	dim3 blocks = eqMivt::getBlocks(size);
 
-	cuda_updateCubesGPU<<<blocks,threads, 0, 0>>>(cubes, size, status);
+	cuda_updateCubesGPU<<<blocks,threads, 0, 0>>>(cubes, index, size, status);
 }
 
-__global__ void cuda_randomNOCUBE_To_NOCUBEorCUBE(eqMivt::visibleCubeGPU cubes, int size, eqMivt::index_node_t idS, eqMivt::index_node_t idE)
+__global__ void cuda_randomNOCUBE_To_NOCUBEorCUBE(eqMivt::visibleCubeGPU cubes, eqMivt::indexVisibleCubeGPU index, int size, eqMivt::index_node_t idS, eqMivt::index_node_t idE)
 {
 	int idx = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
+	idx = index[idx];
 	
 	if (idx < size)
 	{
@@ -43,11 +45,11 @@ __global__ void cuda_randomNOCUBE_To_NOCUBEorCUBE(eqMivt::visibleCubeGPU cubes, 
 
 	return;
 }
-
-void test_randomNOCUBE_To_NOCUBEorCUBE(eqMivt::visibleCubeGPU cubes, int size, eqMivt::index_node_t idS, eqMivt::index_node_t idE)
+ 
+void test_randomNOCUBE_To_NOCUBEorCUBE(eqMivt::visibleCubeGPU cubes, eqMivt::indexVisibleCubeGPU index, int size, eqMivt::index_node_t idS, eqMivt::index_node_t idE)
 {
 	dim3 threads = eqMivt::getThreads(size);
 	dim3 blocks = eqMivt::getBlocks(size);
 
-	cuda_randomNOCUBE_To_NOCUBEorCUBE<<<blocks,threads, 0, 0>>>(cubes, size, idS, idE);
+	cuda_randomNOCUBE_To_NOCUBEorCUBE<<<blocks,threads, 0, 0>>>(cubes, index, size, idS, idE);
 }

@@ -39,30 +39,31 @@ void Cache::pushCubes(VisibleCubes * vc)
 
 	for(std::vector<int>::iterator it = cubes.begin(); it != cubes.end(); ++it)
 	{
-		visibleCube_t cube = vc->getCube(*it);
+		visibleCube_t * cube = vc->getCube(*it);
 
-		index_node_t idCube = cube.id >> (3*(_rayCastingLevel - _cubeCache->getCubeLevel()));
+		index_node_t idCube = cube->id >> (3*(_rayCastingLevel - _cubeCache->getCubeLevel()));
 
 		float * d = _cubeCache->getAndBlockCube(idCube);
 
 		if (d != 0)
 		{
-			cube.cubeID = idCube;
-			cube.state = CACHED;
-			cube.data = d;
-			_updateCube.push_back(cube);
+			cube->cubeID = idCube;
+			cube->state = CACHED;
+			cube->data = d;
+			_updateCube.push_back(idCube);
 		}
 	}
 
-	vc->updateVisibleCubes(_updateCube);
+//	vc->updateVisibleCubes(_updateCube);
+	vc->updateIndexCPU();
 
 }
 
 void Cache::popCubes()
 {
-	for(std::vector<visibleCube_t>::iterator it=_updateCube.begin(); it!=_updateCube.end(); ++it)
+	for(std::vector<index_node_t>::iterator it=_updateCube.begin(); it!=_updateCube.end(); ++it)
 	{
-		_cubeCache->unlockCube(it->cubeID);
+		_cubeCache->unlockCube(*it);
 	}
 
 	_updateCube.clear();

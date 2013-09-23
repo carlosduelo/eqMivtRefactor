@@ -22,7 +22,7 @@ class Cache
 
 		int	_rayCastingLevel;
 
-		std::vector<visibleCube_t> _updateCube;
+		std::vector<index_node_t> _updateCube;
 
 	public:
 		bool init(ControlCubeCache * cubeCache);

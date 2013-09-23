@@ -30,6 +30,7 @@ typedef struct
 } visibleCube_t;
 
 typedef visibleCube_t * visibleCubeGPU;
+typedef int *			indexVisibleCubeGPU;
 
 class VisibleCubes
 {
@@ -45,9 +46,13 @@ class VisibleCubes
 
 		void destroy();
 
+		void updateIndexCPU();
+
 		void updateCPU();
 
-		void updateGPU(statusCube type, bool sync, cudaStream_t stream);
+		void updateGPU(statusCube type, cudaStream_t stream);
+
+		indexVisibleCubeGPU getIndexVisibleCubesGPU();
 
 		visibleCubeGPU getVisibleCubesGPU();
 
@@ -55,26 +60,26 @@ class VisibleCubes
 
 		std::vector<int> getListCubes(statusCube type);
 
-		void updateVisibleCubes(std::vector<visibleCube_t> list);
-
-		visibleCube_t getCube(int i);
+		visibleCube_t * getCube(int i);
 
 		int getNumElements(statusCube type);
 
 		private:
 			int					_size;
 			visibleCube_t *		_visibleCubes;
-			visibleCube_t *		_visibleCubesAUX;
 
-			std::set<int>	_cube;
-			std::set<int>	_painted;
-			std::set<int>	_cached;
-			std::set<int>	_nocube;
+			int * _cubeC;
+			int	* _paintedC;
+			int	* _cachedC;
+			int	* _nocubeC;
+			int * _cubeG;
+			int	* _paintedG;
+			int	* _cachedG;
+			int	* _nocubeG;
 
 			int					_sizeGPU;
+			indexVisibleCubeGPU	_indexGPU;
 			visibleCubeGPU		_visibleCubesGPU;
-		
-			void updateCube(int iter, int idCube, statusCube state, float * data);
 };
 
 }

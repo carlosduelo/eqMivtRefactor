@@ -5,7 +5,7 @@
 #definitios
 
 # SETTING CUDA PARAMETERS
-#list(APPEND CUDA_NVCC_FLAGS -arch=sm_21)
+list(APPEND CUDA_NVCC_FLAGS -arch=sm_21)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 	list(APPEND CUDA_NVCC_FLAGS -G)
@@ -33,6 +33,7 @@ set(TEST_VISIBLE_CUBES_SOURCE
 
 set(TEST_VISIBLE_CUBES_CUDA_SOURCE 
 		testVisibleCubes_cuda.cu
+		visibleCubes_cuda.cu
 	)
 
 set(LIBS_NEEDED_TEST_VISIBLE_CUBES ${CUDA_LIBRARIES}) 
@@ -67,6 +68,7 @@ set(TEST_CACHE_SOURCE
 
 set(TEST_CACHE_CUDA_SOURCE
 	testVisibleCubes_cuda.cu
+	visibleCubes_cuda.cu
 )
 
 set(LIBS_NEEDED_TEST_CACHE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES}) 

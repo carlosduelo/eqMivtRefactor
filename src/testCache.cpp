@@ -69,20 +69,17 @@ void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCasting
 	while(vc.getListCubes(PAINTED).size() != numPixels)
 	{
 		// RANDOM FROM NOCUBE TO CUBE OR NOCUBE AND SET RANADM ID
-		std::vector<eqMivt::visibleCube_t> changes;
 		std::vector<int> l;
 	
 		clock.reset();
-		vc.updateGPU(NOCUBE, false, 0);
+		vc.updateGPU(NOCUBE, 0);
 		tUpdateGPU += clock.getTimed()/1000.0;
 
-		test_randomNOCUBE_To_NOCUBEorCUBE(vc.getVisibleCubesGPU(), vc.getSizeGPU(), idS, idE);
+		test_randomNOCUBE_To_NOCUBEorCUBE(vc.getVisibleCubesGPU(), vc.getIndexVisibleCubesGPU(), vc.getSizeGPU(), idS, idE);
 
 		clock.reset();
 		vc.updateCPU();
 		tUdateCPU += clock.getTimed()/1000.0;
-
-		changes.clear();
 
 		// CACHED PUSH
 		clock.reset();
@@ -96,9 +93,8 @@ void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCasting
 
 		for(std::vector<int>::iterator it = l.begin(); it!=l.end(); it++)
 		{
-			eqMivt::visibleCube_t c = vc.getCube(*it);
-			c.state = rand() % 2 == 1 ? NOCUBE : PAINTED; 
-			changes.push_back(c);
+			eqMivt::visibleCube_t * c = vc.getCube(*it);
+			c->state = rand() % 2 == 1 ? NOCUBE : PAINTED; 
 		}
 
 		clock.reset();
@@ -107,16 +103,13 @@ void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCasting
 
 		for(std::vector<int>::iterator it = l.begin(); it!=l.end(); it++)
 		{
-			eqMivt::visibleCube_t c = vc.getCube(*it);
-			c.state = PAINTED; 
-			changes.push_back(c);
+			eqMivt::visibleCube_t * c = vc.getCube(*it);
+			c->state = PAINTED; 
 		}
 
 		clock.reset();
-		vc.updateVisibleCubes(changes);
+		vc.updateIndexCPU();
 		tUpdateVisibleCubes += clock.getTimed()/1000.0;
-
-		changes.clear();
 
 		//CACHED POP
 		clock.reset();
