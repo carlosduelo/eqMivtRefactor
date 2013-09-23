@@ -65,9 +65,14 @@ set(TEST_CACHE_SOURCE
 		memoryCheck.cpp
    )
 
+set(TEST_CACHE_CUDA_SOURCE
+	testVisibleCubes_cuda.cu
+)
+
 set(LIBS_NEEDED_TEST_CACHE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES}) 
 
-add_executable(testCache ${TEST_CACHE_SOURCE}  testCache.cpp) 
+cuda_compile(TEST_CACHE_CUDA_OBJECTS ${TEST_CACHE_CUDA_SOURCE})
+add_executable(testCache ${TEST_CACHE_SOURCE} ${TEST_CACHE_CUDA_OBJECTS} testCache.cpp) 
 target_link_libraries(testCache ${LIBS_NEEDED_TEST_CACHE} )
 
 # TEST CONTROL CUBE CACHE 
@@ -81,5 +86,5 @@ set(TEST_CONTROL_CUBE_CACHE_SOURCE
 
 set(LIBS_NEEDED_TEST_CONTROL_CUBE_CACHE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES}) 
 
-add_executable(testControlCubeCache ${TEST_CONTROL_CUBE_CACHE_SOURCE}  testControlCubeCache.cpp) 
+add_executable(testControlCubeCache ${TEST_CONTROL_CUBE_CACHE_SOURCE} testControlCubeCache.cpp) 
 target_link_libraries(testControlCubeCache ${LIBS_NEEDED_TEST_CONTROL_CUBE_CACHE} )

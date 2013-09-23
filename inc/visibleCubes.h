@@ -54,6 +54,8 @@ class VisibleCubes
 
 		visibleCube_t getCube(int i);
 
+		int getNumElements(statusCube type);
+
 		private:
 			int					_size;
 			visibleCube_t *		_visibleCubes;

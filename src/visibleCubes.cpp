@@ -269,16 +269,16 @@ void VisibleCubes::updateCube(int iter, int idCube, statusCube state, float * da
 	switch(_visibleCubes[iter].state)                                                                                 
 	{                                                                                                                 
 		case NOCUBE:
-			_nocube.erase(std::remove(_nocube.begin(), _nocube.end(), iter), _nocube.end());                           
+			_nocube.erase(std::remove(_nocube.begin(), _nocube.end(), iter), _nocube.end()); 
 			break;
 		case CUBE:                                                                                                    
-			_cube.erase(std::remove(_nocube.begin(), _nocube.end(), iter), _nocube.end());                             
+			_cube.erase(std::remove(_cube.begin(), _cube.end(), iter), _cube.end());                             
 			break;                                                                                                    
 		case CACHED:
-			_cached.erase(std::remove(_nocube.begin(), _nocube.end(), iter), _nocube.end());                           
+			_cached.erase(std::remove(_cached.begin(), _cached.end(), iter), _cached.end()); 
 			break;
 		case PAINTED:
-			_painted.erase(std::remove(_nocube.begin(), _nocube.end(), iter), _nocube.end());                          
+			_painted.erase(std::remove(_painted.begin(), _painted.end(), iter), _painted.end());
 			break;                                                                                                    
 		#ifndef NDEBUG                                                                                                
 		default:                
@@ -336,6 +336,22 @@ std::vector<int> VisibleCubes::getListCubes(statusCube type)
 		result.insert(result.end(), _painted.begin(), _painted.end());
 	
 	return result;
+}
+		
+int VisibleCubes::getNumElements(statusCube type)
+{
+	int num = 0;
+
+	if ((type & CUBE) != NONE)
+		num += _cube.size();
+	if ((type & NOCUBE) != NONE)
+		num += _nocube.size();
+	if ((type & CACHED) != NONE)
+		num += _cached.size();
+	if ((type & PAINTED) != NONE)
+		num +=_painted.size();
+
+	return num;
 }
 
 void	VisibleCubes::updateVisibleCubes(std::vector<visibleCube_t> list)

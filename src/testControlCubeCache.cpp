@@ -183,19 +183,23 @@ int main(int argc, char ** argv)
 	{
 		vmml::vector<3,int> s;
 		vmml::vector<3,int> e;
-		s.set(rand() % dim.x(), 0, rand() % dim.z());
+		int nLevels = 0;
 		do
 		{
-			e.set(rand() % (dim.x() - s.x()) + s.x(), rand() % (dim.y() - s.y()) + s.y(), rand() % (dim.z() - s.z()) + s.z());
+			s.set(rand() % dim.x(), 0, rand() % dim.z());
+			do
+			{
+				e.set(rand() % (dim.x() - s.x()) + s.x(), rand() % (dim.y() - s.y()) + s.y(), rand() % (dim.z() - s.z()) + s.z());
+			}
+			while(s.x() >= e.x() || s.y() >= e.y() || s.z() >= e.z());
+			 
+			/* Calcular dimension del árbol*/
+			int dim = fmin(e.x()-s.x(), fmin(e.y() - s.y(), e.z() - s.z()));;
+			float aux = logf(dim)/logf(2.0);
+			float aux2 = aux - floorf(aux);
+			nLevels = aux2>0.0 ? aux+1 : aux;
 		}
-		while(s.x() >= e.x() || s.y() >= e.y() || s.z() >= e.z());
-		 
-		int dim = fmin(e.x()-s.x(), fmin(e.y() - s.y(), e.z() - s.z()));;
-		int nLevels = 0;
-		/* Calcular dimension del árbol*/
-		float aux = logf(dim)/logf(2.0);
-		float aux2 = aux - floorf(aux);
-		nLevels = aux2>0.0 ? aux+1 : aux;
+		while(nLevels <= 0);
 
 		int levelCube = rand() % (nLevels - 1) + 1;
 
