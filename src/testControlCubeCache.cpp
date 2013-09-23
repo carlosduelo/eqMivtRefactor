@@ -202,7 +202,7 @@ int main(int argc, char ** argv)
 			nLevels = aux2>0.0 ? aux+1 : aux;
 			dimV = exp2(nLevels);
 		}
-		while(nLevels <= 1 && (s.x()+dimV >= dim.x() || s.y()+dimV >= dim.y() || s.z()+dimV >= dim.z()));
+		while(nLevels <= 1 || s.x()+dimV >= dim.x() || s.y()+dimV >= dim.y() || s.z()+dimV >= dim.z());
 
 		int levelCube = rand() % (nLevels - 1) + 1;
 
@@ -243,7 +243,7 @@ int main(int argc, char ** argv)
 			float aux2 = aux - floorf(aux);
 			nLevels = aux2>0.0 ? aux+1 : aux;
 		}
-		while(nLevels <= 1 && (s.x()+dimV >= dim.x() || s.y()+dimV >= dim.y() || s.z()+dimV >= dim.z()));
+		while(nLevels <= 1 || s.x()+dimV >= dim.x() || s.y()+dimV >= dim.y() || s.z()+dimV >= dim.z());
 
 		int levelCube = rand() % (nLevels - 1) + 1;
 

@@ -37,9 +37,13 @@ class VisibleCubes
 
 		VisibleCubes();
 
+		~VisibleCubes();
+
 		void  init();
 
 		void reSize(int numPixels);
+
+		void destroy();
 
 		void updateCPU();
 

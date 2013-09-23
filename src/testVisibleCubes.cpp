@@ -169,6 +169,8 @@ int main(int argc, char ** argv)
 					test(CUBE | NOCUBE | CACHED, PAINTED) &&
 					test( PAINTED | NOCUBE, NOCUBE);
 
+	vC.destroy();
+
 	if (result)
 		std::cout<<" Test OK"<<std::endl;
 	else

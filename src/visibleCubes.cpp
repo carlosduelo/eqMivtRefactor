@@ -28,6 +28,35 @@ VisibleCubes::VisibleCubes()
 
 }
 
+
+VisibleCubes::~VisibleCubes()
+{
+}
+
+void VisibleCubes::destroy()
+{
+	if (_visibleCubes != 0)
+		if (cudaSuccess != cudaFreeHost((void*)_visibleCubes))
+		{
+			std::cerr<<"Visible cubes, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
+			throw;
+		}
+
+	if (_visibleCubesAUX != 0)
+		if (cudaSuccess != cudaFreeHost((void*)_visibleCubesAUX))
+		{
+			std::cerr<<"Visible cubes, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
+			throw;
+		}
+
+	if (_visibleCubesGPU != 0)
+		if (cudaSuccess != cudaFree((void*)_visibleCubesGPU))
+		{
+			std::cerr<<"Visible cubes, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
+			throw;
+		}
+}
+
 void VisibleCubes::reSize(int numPixels)
 {
 	_size = numPixels;
@@ -35,36 +64,27 @@ void VisibleCubes::reSize(int numPixels)
 	if (_visibleCubes != 0)
 		if (cudaSuccess != cudaFreeHost((void*)_visibleCubes))
 		{
-			std::cerr<<"Visible cubes, error free memory"<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
+			std::cerr<<"Visible cubes, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
 			throw;
 		}
 
 	if (_visibleCubesAUX != 0)
 		if (cudaSuccess != cudaFreeHost((void*)_visibleCubesAUX))
 		{
-			std::cerr<<"Visible cubes, error free memory"<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
+			std::cerr<<"Visible cubes, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
 			throw;
 		}
 
 	if (_visibleCubesGPU != 0)
 		if (cudaSuccess != cudaFree((void*)_visibleCubesGPU))
 		{
-			std::cerr<<"Visible cubes, error free memory"<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
+			std::cerr<<"Visible cubes, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
 			throw;
 		}
 
 	if (cudaSuccess != cudaMalloc((void**)&_visibleCubesGPU, _size*sizeof(visibleCube_t)))
 	{                                                                                               
-		size_t total = 0;
-		size_t free = 0;
-
-		if (cudaSuccess != cudaMemGetInfo(&free, &total))
-		{
-			std::cerr<<"Visible Cubes, error resizing cache: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
-			throw;
-		}
 		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
-		std::cerr<<"Total memory "<<total/1024.0/1024.0<<" MB "<<"free memory "<<free/1024.0/1024.0<<" MB"<<std::endl;
 		throw;
 	}
 	

@@ -22,6 +22,7 @@ eqMivt::ControlPlaneCache	cpc;
 eqMivt::ControlCubeCache	ccc;
 eqMivt::hdf5File hdf5File;
 vmml::vector<3,int> mD;
+eqMivt::VisibleCubes		vc;
 
 void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCastingLevel, int numPixels)
 {
@@ -39,7 +40,6 @@ void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCasting
 	std::cout<<"ReSize Plane Cache "<<sP<<" "<<eP<<std::endl;
 	std::cout<<"Subset volume "<<offset - vmml::vector<3,int>(CUBE_INC,CUBE_INC,CUBE_INC)<<" "<<offset+vmml::vector<3,int>(dimV+CUBE_INC, dimV+CUBE_INC,dimV+CUBE_INC)<<std::endl;
 
-	eqMivt::VisibleCubes		vc;
 	vc.reSize(numPixels);
 	vc.init();
 
@@ -180,7 +180,7 @@ int main(int argc, char ** argv)
 			nLevels = aux2>0.0 ? aux+1 : aux;
 			dimV = exp2(nLevels);
 		}
-		while(nLevels <= 1 && (s.x()+dimV >= mD.x() || s.y()+dimV >= mD.y() || s.z()+dimV >= mD.z()));
+		while(nLevels <= 1 ||  s.x()+dimV >= mD.x() || s.y()+dimV >= mD.y() || s.z()+dimV >= mD.z());
 
 		int levelCube = rand() % (nLevels - 1) + 1;
 		int rayLevel = rand() % (nLevels - levelCube) + levelCube;
@@ -198,6 +198,7 @@ int main(int argc, char ** argv)
 
 	ccc.stopProcessing();
 	cpc.stopProcessing();
+	vc.destroy();
 
 	return 0;
 
