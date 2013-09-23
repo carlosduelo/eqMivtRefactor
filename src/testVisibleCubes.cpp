@@ -7,7 +7,7 @@ Notes:
 */
 
 #include <visibleCubes.h>
-#include <testVisibleCubes_CUDA.h>
+#include <testVisibleCubes_cuda.h>
 
 #include <iostream>
 #include <vector>

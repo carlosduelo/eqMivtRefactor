@@ -47,7 +47,7 @@ void VisibleCubes::reSize(int numPixels)
 		}
 
 	if (_visibleCubesGPU != 0)
-		if (cudaSuccess != cudaFreeHost((void*)_visibleCubesGPU))
+		if (cudaSuccess != cudaFree((void*)_visibleCubesGPU))
 		{
 			std::cerr<<"Visible cubes, error free memory"<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
 			throw;
@@ -55,7 +55,16 @@ void VisibleCubes::reSize(int numPixels)
 
 	if (cudaSuccess != cudaMalloc((void**)&_visibleCubesGPU, _size*sizeof(visibleCube_t)))
 	{                                                                                               
+		size_t total = 0;
+		size_t free = 0;
+
+		if (cudaSuccess != cudaMemGetInfo(&free, &total))
+		{
+			std::cerr<<"Visible Cubes, error resizing cache: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+			throw;
+		}
 		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		std::cerr<<"Total memory "<<total/1024.0/1024.0<<" MB "<<"free memory "<<free/1024.0/1024.0<<" MB"<<std::endl;
 		throw;
 	}
 	
@@ -92,7 +101,7 @@ void VisibleCubes::init()
 		_visibleCubes[i].state = NOCUBE;
 		_visibleCubes[i].cubeID = 0;
 		_visibleCubes[i].pixel= i;
-		_nocube.push_back(i);
+		_nocube.insert(i);
 	}
 
 	updateGPU(NOCUBE, false, 0);
@@ -126,16 +135,16 @@ void VisibleCubes::updateCPU()
 			switch(_visibleCubes[_visibleCubesAUX[i].pixel].state)
 			{
 				case NOCUBE:
-					_nocube.erase(std::remove(_nocube.begin(), _nocube.end(), _visibleCubesAUX[i].pixel), _nocube.end());
+					_nocube.erase(_visibleCubesAUX[i].pixel);
 					break;
 				case CUBE:
-					_cube.erase(std::remove(_cube.begin(), _cube.end(), _visibleCubesAUX[i].pixel), _cube.end());
+					_cube.erase(_visibleCubesAUX[i].pixel);
 					break;
 				case CACHED:
-					_cached.erase(std::remove(_cached.begin(), _cached.end(), _visibleCubesAUX[i].pixel), _cached.end());
+					_cached.erase(_visibleCubesAUX[i].pixel);
 					break;
 				case PAINTED:
-					_painted.erase(std::remove(_painted.begin(), _painted.end(), _visibleCubesAUX[i].pixel), _painted.end());
+					_painted.erase(_visibleCubesAUX[i].pixel);
 					break;
 				#ifndef NDEBUG
 				default:
@@ -147,16 +156,16 @@ void VisibleCubes::updateCPU()
 			switch (_visibleCubesAUX[i].state)
 			{
 				case NOCUBE:
-					_nocube.push_back(_visibleCubesAUX[i].pixel);
+					_nocube.insert(_visibleCubesAUX[i].pixel);
 					break;
 				case CUBE:
-					_cube.push_back(_visibleCubesAUX[i].pixel);
+					_cube.insert(_visibleCubesAUX[i].pixel);
 					break;
 				case CACHED:
-					_cached.push_back(_visibleCubesAUX[i].pixel);
+					_cached.insert(_visibleCubesAUX[i].pixel);
 					break;
 				case PAINTED:
-					_painted.push_back(_visibleCubesAUX[i].pixel);
+					_painted.insert(_visibleCubesAUX[i].pixel);
 					break;
 				#ifndef NDEBUG
 				default:
@@ -210,27 +219,27 @@ void VisibleCubes::updateGPU(statusCube type, bool sync, cudaStream_t stream)
 	_sizeGPU = 0;
 
 	if ((type & CUBE) != NONE)
-		for(int i=0; i<_cube.size(); i++)
+		for(std::set<int>::iterator it=_cube.begin(); it!=_cube.end(); ++it)
 		{
-			_visibleCubesAUX[_sizeGPU] = _visibleCubes[_cube[i]];
+			_visibleCubesAUX[_sizeGPU] = _visibleCubes[*it];
 			_sizeGPU++;
 		}
 	if ((type & NOCUBE) != NONE)
-		for(int i=0; i<_nocube.size(); i++)
+		for(std::set<int>::iterator it=_nocube.begin(); it!=_nocube.end(); ++it)
 		{
-			_visibleCubesAUX[_sizeGPU] = _visibleCubes[_nocube[i]];
+			_visibleCubesAUX[_sizeGPU] = _visibleCubes[*it];
 			_sizeGPU++;
 		}
 	if ((type & CACHED) != NONE)
-		for(int i=0; i<_cached.size(); i++)
+		for(std::set<int>::iterator it=_cached.begin(); it!=_cached.end(); ++it)
 		{
-			_visibleCubesAUX[_sizeGPU] = _visibleCubes[_cached[i]];
+			_visibleCubesAUX[_sizeGPU] = _visibleCubes[*it];
 			_sizeGPU++;
 		}
 	if ((type & PAINTED) != NONE)
-		for(int i=0; i<_painted.size(); i++)
+		for(std::set<int>::iterator it=_painted.begin(); it!=_painted.end(); ++it)
 		{
-			_visibleCubesAUX[_sizeGPU] = _visibleCubes[_painted[i]];
+			_visibleCubesAUX[_sizeGPU] = _visibleCubes[*it];
 			_sizeGPU++;
 		}
 
@@ -269,16 +278,16 @@ void VisibleCubes::updateCube(int iter, int idCube, statusCube state, float * da
 	switch(_visibleCubes[iter].state)                                                                                 
 	{                                                                                                                 
 		case NOCUBE:
-			_nocube.erase(std::remove(_nocube.begin(), _nocube.end(), iter), _nocube.end()); 
+			_nocube.erase(iter); 
 			break;
 		case CUBE:                                                                                                    
-			_cube.erase(std::remove(_cube.begin(), _cube.end(), iter), _cube.end());                             
+			_cube.erase(iter);                             
 			break;                                                                                                    
 		case CACHED:
-			_cached.erase(std::remove(_cached.begin(), _cached.end(), iter), _cached.end()); 
+			_cached.erase(iter); 
 			break;
 		case PAINTED:
-			_painted.erase(std::remove(_painted.begin(), _painted.end(), iter), _painted.end());
+			_painted.erase(iter);
 			break;                                                                                                    
 		#ifndef NDEBUG                                                                                                
 		default:                
@@ -290,16 +299,16 @@ void VisibleCubes::updateCube(int iter, int idCube, statusCube state, float * da
 	switch (state)
 	{       
 		case NOCUBE:
-			_nocube.push_back(iter);                                                                                  
+			_nocube.insert(iter);                                                                                  
 			break;              
 		case CUBE:
-			_cube.push_back(iter);                                                                                    
+			_cube.insert(iter);                                                                                    
 			break;                                                                                                    
 		case CACHED:                                                                                                  
-			_cached.push_back(iter);                                                                                  
+			_cached.insert(iter);                                                                                  
 			break;
 		case PAINTED:
-			_painted.push_back(iter);
+			_painted.insert(iter);
 			break;
 		#ifndef NDEBUG
 		default:

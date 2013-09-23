@@ -336,6 +336,7 @@ void ControlPlaneCache::run()
 				else
 					if (!_fullSlots.timedWait(WAITING))
 					{
+						_fullSlots.unlock();
 						continue;
 					}
 			}

@@ -13,6 +13,7 @@ Notes:
 
 //STL
 #include <vector>
+#include <set>
 
 #include <cuda_runtime.h>
 
@@ -61,10 +62,10 @@ class VisibleCubes
 			visibleCube_t *		_visibleCubes;
 			visibleCube_t *		_visibleCubesAUX;
 
-			std::vector<int>	_cube;
-			std::vector<int>	_painted;
-			std::vector<int>	_cached;
-			std::vector<int>	_nocube;
+			std::set<int>	_cube;
+			std::set<int>	_painted;
+			std::set<int>	_cached;
+			std::set<int>	_nocube;
 
 			int					_sizeGPU;
 			visibleCubeGPU		_visibleCubesGPU;

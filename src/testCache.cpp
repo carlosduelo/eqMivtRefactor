@@ -9,9 +9,10 @@ Notes:
 #include <cache.h>
 
 #include <mortonCodeUtil_CPU.h>
-#include <testVisibleCubes_CUDA.h>
+#include <testVisibleCubes_cuda.h>
 
 #include <lunchbox/sleep.h>
+#include <lunchbox/clock.h>
 #include <boost/progress.hpp>
 
 #define MIN_RESOLUTION 800*600
@@ -38,10 +39,6 @@ void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCasting
 	std::cout<<"ReSize Plane Cache "<<sP<<" "<<eP<<std::endl;
 	std::cout<<"Subset volume "<<offset - vmml::vector<3,int>(CUBE_INC,CUBE_INC,CUBE_INC)<<" "<<offset+vmml::vector<3,int>(dimV+CUBE_INC, dimV+CUBE_INC,dimV+CUBE_INC)<<std::endl;
 
-	cpc.reSize(sP, eP);
-
-	ccc.reSize(nLevels, levelCube, offset);
-
 	eqMivt::VisibleCubes		vc;
 	vc.reSize(numPixels);
 	vc.init();
@@ -50,60 +47,94 @@ void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCasting
 	cache.init(&ccc);
 	cache.setRayCastingLevel(rayCastingLevel);
 
+	cpc.reSize(sP, eP);
+	ccc.reSize(nLevels, levelCube, offset);
+
 	eqMivt::index_node_t idS = eqMivt::coordinateToIndex(vmml::vector<3,int>(0,0,0), rayCastingLevel,nLevels);
 	eqMivt::index_node_t idE = eqMivt::coordinateToIndex(vmml::vector<3,int>(dimV-1, dimV-1, dimV-1), rayCastingLevel,nLevels);
 		
 	boost::progress_display show_progress(numPixels);
 	int rest = 0;
 
+	lunchbox::Clock clock;
+
+	double tUpdateGPU = 0.0;
+	double tUdateCPU = 0.0;
+	double tPush = 0.0;
+	double tUpdateVisibleCubes = 0.0;
+	double tPop = 0.0;
+	double tgetlistCubes = 0.0;
+	int iterations = 0;
+
 	while(vc.getListCubes(PAINTED).size() != numPixels)
 	{
 		// RANDOM FROM NOCUBE TO CUBE OR NOCUBE AND SET RANADM ID
 		std::vector<eqMivt::visibleCube_t> changes;
-		std::vector<int> l = vc.getListCubes(NOCUBE);
-		#if 0
-		for(std::vector<int>::iterator it = l.begin(); it!=l.end(); it++)
-		{
-			eqMivt::visibleCube_t c = vc.getCube(*it);
-			c.state = rand() % 2 == 1 ? CUBE : NOCUBE; 
-			c.id = (rand()%(idE-idS))+idS;
-			changes.push_back(c);
-		}
-		vc.updateVisibleCubes(changes);
-		#endif
+		std::vector<int> l;
+	
+		clock.reset();
 		vc.updateGPU(NOCUBE, false, 0);
+		tUpdateGPU += clock.getTimed()/1000.0;
+
 		test_randomNOCUBE_To_NOCUBEorCUBE(vc.getVisibleCubesGPU(), vc.getSizeGPU(), idS, idE);
+
+		clock.reset();
 		vc.updateCPU();
+		tUdateCPU += clock.getTimed()/1000.0;
 
 		changes.clear();
 
 		// CACHED PUSH
+		clock.reset();
 		cache.pushCubes(&vc);
+		tPush += clock.getTimed()/1000.0;
 
 		// (RANDOM FROM CACHED TO NOCUBE OR PAINTED) AND (FROM NOCUBE TO PAINTED) 
+		clock.reset();
 		l = vc.getListCubes(CACHED);
+		tgetlistCubes += clock.getTimed()/1000.0;
+
 		for(std::vector<int>::iterator it = l.begin(); it!=l.end(); it++)
 		{
 			eqMivt::visibleCube_t c = vc.getCube(*it);
 			c.state = rand() % 2 == 1 ? NOCUBE : PAINTED; 
 			changes.push_back(c);
 		}
+
+		clock.reset();
 		l = vc.getListCubes(NOCUBE);
+		tgetlistCubes += clock.getTimed()/1000.0;
+
 		for(std::vector<int>::iterator it = l.begin(); it!=l.end(); it++)
 		{
 			eqMivt::visibleCube_t c = vc.getCube(*it);
 			c.state = PAINTED; 
 			changes.push_back(c);
 		}
+
+		clock.reset();
 		vc.updateVisibleCubes(changes);
+		tUpdateVisibleCubes += clock.getTimed()/1000.0;
+
 		changes.clear();
 
 		//CACHED POP
+		clock.reset();
 		cache.popCubes();
+		tPop += clock.getTimed()/1000.0;
 
 		show_progress += vc.getNumElements(PAINTED) - rest;
 		rest += vc.getNumElements(PAINTED) - rest;
+		iterations++;
 	}
+
+	std::cout<<"Iterations "<<iterations<<std::endl;
+	std::cout<<"Time updating visible cubes gpu "<<tUpdateGPU<<" seconds"<<std::endl;
+	std::cout<<"Time updating visible cubes cpu "<<tUdateCPU<<" seconds"<<std::endl;
+	std::cout<<"Time pushing cubes to cache "<<tPush<<" seconds"<<std::endl;
+	std::cout<<"Time geting visible cube list "<<tgetlistCubes<<" seconds"<<std::endl;
+	std::cout<<"Time updating visible cubes "<<tUpdateVisibleCubes<<" seconds"<<std::endl;
+	std::cout<<"Time poping cubes from cache "<<tPop<<" seconds"<<std::endl;
 }
 
 int main(int argc, char ** argv)
@@ -124,11 +155,15 @@ int main(int argc, char ** argv)
 	cpc.start();
 	ccc.start();
 
-	for(int i=0; i<100; i++)
+	lunchbox::Clock clock;
+
+	for(int i=0; i<20; i++)
 	{
 		vmml::vector<3,int> s;
 		vmml::vector<3,int> e;
 		int nLevels = 0;
+		int dimA = 0;
+		int dimV = 0;
 		do
 		{
 			s.set(rand() % mD.x(), 0, rand() % mD.z());
@@ -139,19 +174,25 @@ int main(int argc, char ** argv)
 			while(s.x() >= e.x() || s.y() >= e.y() || s.z() >= e.z());
 		 
 			/* Calcular dimension del árbol*/
-			int dim = fmin(e.x()-s.x(), fmin(e.y() - s.y(), e.z() - s.z()));;
-			float aux = logf(dim)/logf(2.0);
+			dimA = fmin(e.x()-s.x(), fmin(e.y() - s.y(), e.z() - s.z()));;
+			float aux = logf(dimA)/logf(2.0);
 			float aux2 = aux - floorf(aux);
 			nLevels = aux2>0.0 ? aux+1 : aux;
+			dimV = exp2(nLevels);
 		}
-		while(nLevels <= 0);
+		while(nLevels <= 1 && (s.x()+dimV >= mD.x() || s.y()+dimV >= mD.y() || s.z()+dimV >= mD.z()));
 
 		int levelCube = rand() % (nLevels - 1) + 1;
 		int rayLevel = rand() % (nLevels - levelCube) + levelCube;
 		int numPixels = (rand() % (MAX_RESOLUTION - MIN_RESOLUTION)) + MIN_RESOLUTION;
 
 		std::cout<<"Test "<<i<<" pixels "<<numPixels<<" nLevels "<<nLevels<<" levelCube "<<levelCube<<" dimension "<<exp2(nLevels - levelCube)<<" offset "<<s<<" : "<<std::endl;
+
+		double time = 0.0;
+		clock.reset();
 		test(nLevels, levelCube, s, rayLevel, numPixels);
+		time = clock.getTimed()/1000.0;
+		std::cout<<"Time: "<<time<<" seconds"<<std::endl;
 	}
 
 

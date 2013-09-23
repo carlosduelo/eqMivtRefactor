@@ -6,7 +6,7 @@ Notes:
 
 */
 
-#include <testVisibleCubes_CUDA.h>
+#include <testVisibleCubes_cuda.h>
 #include <cuda_help.h>
 
 #include <cuda.h>
