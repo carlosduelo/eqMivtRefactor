@@ -75,7 +75,7 @@ void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCasting
 		vc.updateGPU(NOCUBE, 0);
 		tUpdateGPU += clock.getTimed()/1000.0;
 
-		test_randomNOCUBE_To_NOCUBEorCUBE(vc.getVisibleCubesGPU(), vc.getIndexVisibleCubesGPU(), vc.getSizeGPU(), idS, idE);
+		test_randomNOCUBE_To_NOCUBEorCUBE(vc.getVisibleCubesGPU(), vc.getIndexVisibleCubesGPU(), vc.getSizeGPU(), vc.getSize(), idS, idE);
 
 		clock.reset();
 		vc.updateCPU();

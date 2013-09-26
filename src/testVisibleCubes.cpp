@@ -16,6 +16,9 @@ eqMivt::VisibleCubes vC;
 
 int test(eqMivt::statusCube fromState, eqMivt::statusCube toState)
 {
+
+	vC.updateIndexCPU();
+
 	std::vector<int> c = vC.getListCubes(CUBE);
 	std::vector<int> nc = vC.getListCubes(NOCUBE);
 	std::vector<int> ca = vC.getListCubes(CACHED);
@@ -70,7 +73,7 @@ int test(eqMivt::statusCube fromState, eqMivt::statusCube toState)
 
 	vC.updateGPU(fromState , 0);
 
-	test_updateCubesGPU(vC.getVisibleCubesGPU(), vC.getIndexVisibleCubesGPU(), vC.getSizeGPU(), toState);
+	test_updateCubesGPU(vC.getVisibleCubesGPU(), vC.getIndexVisibleCubesGPU(), vC.getSizeGPU(), vC.getSize(), toState);
 
 	vC.updateCPU();
 	c = vC.getListCubes(CUBE);
@@ -96,7 +99,7 @@ int test(eqMivt::statusCube fromState, eqMivt::statusCube toState)
 
 int main(int argc, char ** argv)
 {
-	int start = 25;
+	int start = 10000;
 	int dim = 4*start;
 
 	vC.reSize(dim);
@@ -108,7 +111,7 @@ int main(int argc, char ** argv)
 	std::vector<int> p = vC.getListCubes(PAINTED);
 
 	if (c.size() != 0		||
-		nc.size() != 100	||
+		nc.size() != dim	||
 		ca.size() != 0		||
 		p.size() != 0)
 	{
@@ -156,9 +159,8 @@ int main(int argc, char ** argv)
 		return 0;
 	}
 
-	bool  result =	false;
-#if 0
-					test(CUBE, PAINTED) &&
+	bool  result =	
+					test(CUBE, PAINTED) && 
 					test(PAINTED, CUBE) &&
 					test(CUBE, NOCUBE) &&
 					test(CACHED, NOCUBE) &&
@@ -166,7 +168,6 @@ int main(int argc, char ** argv)
 					test(NOCUBE, PAINTED) &&
 					test(CUBE | NOCUBE | CACHED, PAINTED) &&
 					test( PAINTED | NOCUBE, NOCUBE);
-#endif
 	vC.destroy();
 
 	if (result)

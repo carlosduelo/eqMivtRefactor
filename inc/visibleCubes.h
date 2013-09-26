@@ -58,6 +58,8 @@ class VisibleCubes
 
 		int getSizeGPU();
 
+		int getSize();
+
 		std::vector<int> getListCubes(statusCube type);
 
 		visibleCube_t * getCube(int i);

@@ -115,7 +115,6 @@ void VisibleCubes::reSize(int numPixels)
 	_size = numPixels;
 
 	destroy();
-	
 
 	if (cudaSuccess != cudaMalloc((void**)&_visibleCubesGPU, _size*sizeof(visibleCube_t)))
 	{                                                                                               
@@ -175,6 +174,31 @@ void VisibleCubes::reSize(int numPixels)
 		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
+	if (cudaSuccess != cudaMemset((void*)_cubeG, 0, (1 + _size)*sizeof(int)))
+	{                                                                                               
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
+	if (cudaSuccess != cudaMemset((void*)_nocubeG, 0, (1 + _size)*sizeof(int)))
+	{                                                                                               
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
+	if (cudaSuccess != cudaMemset((void*)_cachedG, 0, (1 + _size)*sizeof(int)))
+	{                                                                                               
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
+	if (cudaSuccess != cudaMemset((void*)_paintedG, 0, (1 + _size)*sizeof(int)))
+	{                                                                                               
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
+	if (cudaSuccess != cudaMemset((void*)_indexGPU, 0, (_size)*sizeof(int)))
+	{                                                                                               
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
 }
 
 void VisibleCubes::init()
@@ -193,8 +217,14 @@ void VisibleCubes::init()
 		_visibleCubes[i].cubeID = 0;
 		_visibleCubes[i].pixel= i;
 		_nocubeC[i+1] = i;
+		_cubeC[i+1] = 0;
+		_cachedC[i+1] = 0;
+		_paintedC[i+1] = 0;
 	}
 	_nocubeC[0] = _size;
+	_cubeC[0] = 0;
+	_cachedC[0] = 0;
+	_paintedC[0] = 0;
 
 	updateGPU(NOCUBE, 0);
 }
@@ -204,6 +234,28 @@ void VisibleCubes::updateIndexCPU()
 	if (cudaSuccess != cudaMemcpy((void*)_visibleCubesGPU, _visibleCubes, _size*sizeof(visibleCube_t), cudaMemcpyHostToDevice))
 	{
 		std::cerr<<"Visible cubes, error updating cpu copy: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
+
+	// Init cuda indexs
+	if (cudaSuccess != cudaMemset((void*)_cubeG, 0, (1 + _size)*sizeof(int)))
+	{                                                                                               
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
+	if (cudaSuccess != cudaMemset((void*)_nocubeG, 0, (1 + _size)*sizeof(int)))
+	{                                                                                               
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
+	if (cudaSuccess != cudaMemset((void*)_cachedG, 0, (1 + _size)*sizeof(int)))
+	{                                                                                               
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
+	if (cudaSuccess != cudaMemset((void*)_paintedG, 0, (1 + _size)*sizeof(int)))
+	{                                                                                               
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
 
@@ -218,6 +270,93 @@ void VisibleCubes::updateIndexCPU()
 		std::cerr<<"Visible cubes, error updating cpu copy: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
+
+	#ifdef NDEBUG
+	for(int i=0; i<_cubeC[0]; i++)
+	{
+		for(int j=0; j<_nocubeC[0]; j++)
+			if (_cubeC[1+i] == _nocubeC[1+j])
+			{
+				std::cerr<<"Visisble Cubes, updating index not stable"<<std::endl;
+				throw;
+			}
+		for(int j=0; j<_cachedC[0]; j++)
+			if (_cubeC[1+i] == _cachedC[1+j])
+			{
+				std::cerr<<"Visisble Cubes, updating index not stable"<<std::endl;
+				throw;
+			}
+		for(int j=0; j<_paintedC[0]; j++)
+			if (_cubeC[1+i] == _paintedC[1+j])
+			{
+				std::cerr<<"Visisble Cubes, updating index not stable"<<std::endl;
+				throw;
+			}
+	}
+	for(int i=0; i<_nocubeC[0]; i++)
+	{
+		for(int j=0; j<_cubeC[0]; j++)
+			if (_nocubeC[1+i] == _cubeC[1+j])
+			{
+				std::cerr<<"Visisble Cubes, updating index not stable"<<std::endl;
+				throw;
+			}
+		for(int j=0; j<_cachedC[0]; j++)
+			if (_nocubeC[1+i] == _cachedC[1+j])
+			{
+				std::cerr<<"Visisble Cubes, updating index not stable"<<std::endl;
+				throw;
+			}
+		for(int j=0; j<_paintedC[0]; j++)
+			if (_nocubeC[1+i] == _paintedC[1+j])
+			{
+				std::cerr<<"Visisble Cubes, updating index not stable"<<std::endl;
+				throw;
+			}
+	}
+	for(int i=0; i<_cachedC[0]; i++)
+	{
+		for(int j=0; j<_nocubeC[0]; j++)
+			if (_cachedC[1+i] == _nocubeC[1+j])
+			{
+				std::cerr<<"Visisble Cubes, updating index not stable"<<std::endl;
+				throw;
+			}
+		for(int j=0; j<_cubeC[0]; j++)
+			if (_cachedC[1+i] == _cubeC[1+j])
+			{
+				std::cerr<<"Visisble Cubes, updating index not stable"<<std::endl;
+				throw;
+			}
+		for(int j=0; j<_paintedC[0]; j++)
+			if (_cachedC[1+i] == _paintedC[1+j])
+			{
+				std::cerr<<"Visisble Cubes, updating index not stable"<<std::endl;
+				throw;
+			}
+	}
+	for(int i=0; i<_paintedC[0]; i++)
+	{
+		for(int j=0; j<_cubeC[0]; j++)
+			if (_paintedC[1+i] == _cubeC[1+j])
+			{
+				std::cerr<<"Visisble Cubes, updating index not stable"<<std::endl;
+				throw;
+			}
+		for(int j=0; j<_nocubeC[0]; j++)
+			if (_paintedC[1+i] == _nocubeC[1+j])
+			{
+				std::cerr<<"Visisble Cubes, updating index not stable"<<std::endl;
+				throw;
+			}
+		for(int j=0; j<_cachedC[0]; j++)
+			if (_paintedC[1+i] == _cachedC[1+j])
+			{
+				std::cerr<<"Visisble Cubes, updating index not stable"<<std::endl;
+				throw;
+			}
+	}
+	#endif
 }
 
 void VisibleCubes::updateCPU()
@@ -225,6 +364,28 @@ void VisibleCubes::updateCPU()
 	if (cudaSuccess != cudaMemcpy((void*)_visibleCubes, _visibleCubesGPU, _size*sizeof(visibleCube_t), cudaMemcpyDeviceToHost))
 	{
 		std::cerr<<"Visible cubes, error updating cpu copy: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
+
+	// Init cuda indexs
+	if (cudaSuccess != cudaMemset((void*)_cubeG, 0, (1 + _size)*sizeof(int)))
+	{                                                                                               
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
+	if (cudaSuccess != cudaMemset((void*)_nocubeG, 0, (1 + _size)*sizeof(int)))
+	{                                                                                               
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
+	if (cudaSuccess != cudaMemset((void*)_cachedG, 0, (1 + _size)*sizeof(int)))
+	{                                                                                               
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
+	if (cudaSuccess != cudaMemset((void*)_paintedG, 0, (1 + _size)*sizeof(int)))
+	{                                                                                               
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
 
@@ -245,7 +406,7 @@ void VisibleCubes::updateGPU(statusCube type, cudaStream_t stream)
 {
 	_sizeGPU = 0;
 
-	if ((type & CUBE) != NONE)
+	if (_cubeC[0] > 0 &&(type & CUBE) != NONE)
 	{
 		if (cudaSuccess != cudaMemcpyAsync((void*)(_indexGPU + _sizeGPU), _cubeC + 1, _cubeC[0]*sizeof(int), cudaMemcpyHostToDevice))
 		{
@@ -254,7 +415,7 @@ void VisibleCubes::updateGPU(statusCube type, cudaStream_t stream)
 		}
 		_sizeGPU+= _cubeC[0];
 	}
-	if ((type & NOCUBE) != NONE)
+	if (_nocubeC[0] > 0 && (type & NOCUBE) != NONE)
 	{
 		if (cudaSuccess != cudaMemcpyAsync((void*)(_indexGPU + _sizeGPU), _nocubeC + 1, _nocubeC[0]*sizeof(int), cudaMemcpyHostToDevice))
 		{
@@ -263,7 +424,7 @@ void VisibleCubes::updateGPU(statusCube type, cudaStream_t stream)
 		}
 		_sizeGPU+=_nocubeC[0];
 	}
-	if ((type & CACHED) != NONE)
+	if (_cachedC[0] > 0 && (type & CACHED) != NONE)
 	{
 		if (cudaSuccess != cudaMemcpyAsync((void*)(_indexGPU + _sizeGPU), _cachedC + 1, _cachedC[0]*sizeof(int), cudaMemcpyHostToDevice))
 		{
@@ -272,7 +433,7 @@ void VisibleCubes::updateGPU(statusCube type, cudaStream_t stream)
 		}
 		_sizeGPU+=_cachedC[0];
 	}
-	if ((type & PAINTED) != NONE)
+	if (_paintedC[0] > 0 && (type & PAINTED) != NONE)
 	{
 		if (cudaSuccess != cudaMemcpyAsync((void*)(_indexGPU + _sizeGPU), _paintedC + 1, _paintedC[0]*sizeof(int), cudaMemcpyHostToDevice))
 		{
@@ -296,6 +457,11 @@ indexVisibleCubeGPU VisibleCubes::getIndexVisibleCubesGPU()
 int VisibleCubes::getSizeGPU()
 {
 	return _sizeGPU;
+}
+
+int VisibleCubes::getSize()
+{
+	return _size;
 }
 
 visibleCube_t * VisibleCubes::getCube(int i)
