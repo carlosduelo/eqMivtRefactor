@@ -23,8 +23,28 @@ set(MIVT_SOURCE
 		visibleCubes.cpp
 	)
 
+# CREATE OCTREE 
+set(CREATE_OCTREE_SOURCE
+		octreeConstructor.cpp
+		visibleCubes.cpp
+		linkedList.cpp
+		cache.cpp
+		controlPlaneCache.cpp
+		controlCubeCache.cpp
+		hdf5File.cpp
+		memoryCheck.cpp
+   )
 
+set(CREATE_OCTREE_CUDA_SOURCE
+	createOctree_cuda.cu
+	visibleCubes_cuda.cu
+)
 
+set(LIBS_NEEDED_CREATE_OCTREE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES} ${Boost_LIBRARIES} ) 
+
+cuda_compile(CREATE_OCTREE_CUDA_OBJECTS ${CREATE_OCTREE_CUDA_SOURCE})
+add_executable(createOctree ${CREATE_OCTREE_SOURCE} ${CREATE_OCTREE_CUDA_OBJECTS} createOctree.cpp) 
+target_link_libraries(createOctree ${LIBS_NEEDED_CREATE_OCTREE} )
 
 # TEST VISIBLE CUBES
 set(TEST_VISIBLE_CUBES_SOURCE

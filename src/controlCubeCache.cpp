@@ -450,12 +450,28 @@ void ControlCubeCache::run()
 					
 					c->id = cube;
 					c->refs = PROCESSING;
-					vmml::vector<3, int> coord = getMinBoxIndex2(cube, _levelCube, _nLevels) + _offset;
-					int minPlane = coord.x() - CUBE_INC;
-					int maxPlane = minPlane + _dimCube;
-					for(int i=minPlane; i<maxPlane; i++)
-						if (i>=_planeCache->getMinPlane() && i< _planeCache->getMaxPlane())
-							c->pendingPlanes.push_back(i);
+					vmml::vector<3, int> coord = getMinBoxIndex2(cube, _levelCube, _nLevels) + _offset - CUBE_INC;
+
+					vmml::vector<3, int> minC = _planeCache->getMinCoord();
+					vmml::vector<3, int> maxC = _planeCache->getMaxCoord();
+
+					#if 1
+					if (coord[1] < maxC[1] && coord[2] < maxC[2] && 
+						minC[1] < (coord[1] + _dimCube) && minC[2] < (coord[2] + _dimCube))
+					{
+						int minPlane = coord.x();
+						int maxPlane = minPlane + _dimCube;
+						for(int i=minPlane; i<maxPlane; i++)
+							if (i>=_planeCache->getMinPlane() && i< _planeCache->getMaxPlane())
+								c->pendingPlanes.push_back(i);
+					}
+					#else
+						int minPlane = coord.x();
+						int maxPlane = minPlane + _dimCube;
+						for(int i=minPlane; i<maxPlane; i++)
+							if (i>=_planeCache->getMinPlane() && i< _planeCache->getMaxPlane())
+								c->pendingPlanes.push_back(i);
+					#endif
 
 					if (cudaSuccess != cudaMemsetAsync((void*)(_memoryCubes + c->element*_sizeCubes), 0, _dimCube*_dimCube*_dimCube*sizeof(float), _stream))
 					{

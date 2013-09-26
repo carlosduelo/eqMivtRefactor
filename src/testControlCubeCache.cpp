@@ -42,6 +42,10 @@ bool test(int nLevels, int levelCube, vmml::vector<3,int> offset)
 	eP[1] = offset.y() + dimV + CUBE_INC >= mD.y() ? mD.y() : offset.y() + dimV + CUBE_INC;
 	eP[2] = offset.z() + dimV + CUBE_INC >= mD.z() ? mD.z() : offset.z() + dimV + CUBE_INC;
 
+	std::cout<<"ReSize Plane Cache "<<sP<<" "<<eP<<std::endl;
+	std::cout<<"Subset volume "<<offset - vmml::vector<3,int>(CUBE_INC,CUBE_INC,CUBE_INC)<<" "<<offset+vmml::vector<3,int>(dimV+CUBE_INC, dimV+CUBE_INC,dimV+CUBE_INC)<<std::endl;
+	std::cout<<"ReSize Cube Cache nLevels "<<nLevels<<" level cube "<<levelCube<<" offset "<<offset<<std::endl;
+
 	cpc.reSize(sP, eP);
 
 	ccc.reSize(nLevels, levelCube, offset);
@@ -125,6 +129,10 @@ void testPerf(int nLevels, int levelCube, vmml::vector<3,int> offset)
 	eP[1] = offset.y() + dimV + CUBE_INC >= mD.y() ? mD.y() : offset.y() + dimV + CUBE_INC;
 	eP[2] = offset.z() + dimV + CUBE_INC >= mD.z() ? mD.z() : offset.z() + dimV + CUBE_INC;
 
+	std::cout<<"ReSize Plane Cache "<<sP<<" "<<eP<<std::endl;
+	std::cout<<"Subset volume "<<offset - vmml::vector<3,int>(CUBE_INC,CUBE_INC,CUBE_INC)<<" "<<offset+vmml::vector<3,int>(dimV+CUBE_INC, dimV+CUBE_INC,dimV+CUBE_INC)<<std::endl;
+	std::cout<<"ReSize Cube Cache nLevels "<<nLevels<<" level cube "<<levelCube<<" offset "<<offset<<std::endl;
+
 	cpc.reSize(sP, eP);
 
 	ccc.reSize(nLevels, levelCube, offset);
@@ -162,6 +170,8 @@ int main(int argc, char ** argv)
 	int nLevels = 10;
 	int levelCube = 8;
 	vmml::vector<3,int> offset(0,0,0);
+
+	lunchbox::Clock clock;
 
 
 	std::vector<std::string> parameters;
@@ -217,8 +227,6 @@ int main(int argc, char ** argv)
 		}
 	}
 
-	lunchbox::Clock clock;
-
 	std::cout<<"Checking performance........."<<std::endl;
 
 	for(int i=0; i<10 && !error; i++)
@@ -242,6 +250,7 @@ int main(int argc, char ** argv)
 			float aux = logf(dimA)/logf(2.0);
 			float aux2 = aux - floorf(aux);
 			nLevels = aux2>0.0 ? aux+1 : aux;
+			dimV = exp2(nLevels);
 		}
 		while(nLevels <= 1 || s.x()+dimV >= dim.x() || s.y()+dimV >= dim.y() || s.z()+dimV >= dim.z());
 
@@ -258,12 +267,13 @@ int main(int argc, char ** argv)
 		std::cout<<"Test "<<s<<" "<<e<<": "<<time<<" seconds ~ "<<bw<<" MB/s"<<std::endl;
 	}
 
-	int dimV = dim.x()*dim.y()*dim.z();
+	int dimA = fmax(dim.x(), fmaxf(dim.y(), dim.z()));
 	nLevels = 0;
 	/* Calcular dimension del árbol*/
-	float aux = logf(dimV)/logf(2.0);
+	float aux = logf(dimA)/logf(2.0);
 	float aux2 = aux - floorf(aux);
 	nLevels = aux2>0.0 ? aux+1 : aux;
+	int dimV = exp2(nLevels);
 
 	levelCube = rand() % (nLevels - 1) + 1;
 	double time = 0.0;
@@ -278,11 +288,6 @@ int main(int argc, char ** argv)
 	ccc.stopProcessing();
 	cpc.stopProcessing();
 	hdf5File.close();
-
-	if (error)
-		std::cout<<"Test Fail"<<std::endl;
-	else
-		std::cout<<"Test OK"<<std::endl;
 
 	return 0;
 }

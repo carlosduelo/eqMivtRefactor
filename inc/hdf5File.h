@@ -35,6 +35,8 @@ class hdf5File
 		std::string		_yGrid;
 		std::string		_zGrid;
 
+		bool readGrid(int ngrid, float ** grid);
+
 	public:
 
 		bool init(std::vector<std::string> file_params);
@@ -43,9 +45,9 @@ class hdf5File
 
 		~hdf5File();
 
-		bool getxGrid(double ** xGrid);
-		bool getyGrid(double ** yGrid);
-		bool getzGrid(double ** zGrid);
+		bool getxGrid(float ** xGrid);
+		bool getyGrid(float ** yGrid);
+		bool getzGrid(float ** zGrid);
 
 		void readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, int> e);
 

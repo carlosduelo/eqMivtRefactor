@@ -71,6 +71,7 @@ bool hdf5File::init(std::vector<std::string> file_params)
 hdf5File::~hdf5File()
 {
 }
+
 void hdf5File::close()
 {
 	herr_t      status;
@@ -96,32 +97,50 @@ vmml::vector<3, int> hdf5File::getRealDimension()
 	return vmml::vector<3, int>(_dims[0],_dims[1],_dims[2]);
 }
 
-bool hdf5File::getxGrid(double ** xGrid)
+bool hdf5File::readGrid(int ngrid, float ** grid)
 {
-	(*xGrid) = new double[_dims[0]];
-
-	if (_xGrid == "")
+	std::string name;
+	int dim = 0;
+	if (ngrid == 0)
 	{
-		for(int i=0; i<_dims[0]; i++)
-			(*xGrid)[i] = (double)i;
+		dim = _dims[0];
+		name = _xGrid;
+	}
+	else if (ngrid == 1)
+	{
+		dim = _dims[1];
+		name = _yGrid;
 	}
 	else
 	{
+		dim = _dims[2];
+		name = _zGrid;
+	}
+
+	if (name == "")
+	{
+		(*grid) = new float[dim];
+		for(int i=0; i<dim; i++)
+			(*grid)[i] = (float)i;
+	}
+	else
+	{
+		double * g = new double[dim];
+
 		hid_t           dataset_id;
 		hid_t           spaceid;
 		hid_t			datatype;
 		herr_t	status;
 
-		if ((dataset_id = H5Dopen1(_file_id, _xGrid.c_str())) < 0 )
+		if ((dataset_id = H5Dopen1(_file_id, name.c_str())) < 0 )
 		{
-			delete [] (*xGrid);
-			std::cerr<<"hdf5: unable to open the requested data set "<<_xGrid<<std::endl;
+			delete [] g;
+			std::cerr<<"hdf5: unable to open the requested data set "<<name<<std::endl;
 			return false;
 		}
 
 		if (( datatype = H5Dget_type(dataset_id)) < 0)
 		{
-			delete [] (*xGrid);
 			std::cerr<<"hdf5: unable to data set type"<<std::endl;
 			if ((status = H5Dclose(dataset_id)) < 0)
 			{
@@ -133,7 +152,7 @@ bool hdf5File::getxGrid(double ** xGrid)
 
 		if ((spaceid    = H5Dget_space(dataset_id)) < 0)
 		{
-			delete [] (*xGrid);
+			delete[] g;
 			std::cerr<<"hdf5: unable to open the requested data space"<<std::endl;
 			if ((status = H5Dclose(dataset_id)) < 0)
 			{
@@ -147,7 +166,7 @@ bool hdf5File::getxGrid(double ** xGrid)
 		hsize_t dims[3];
 		if ((ndim       = H5Sget_simple_extent_dims (spaceid, dims, NULL)) < 0)
 		{
-			delete [] (*xGrid);
+			delete[] g;
 			std::cerr<<"hdf5: handling file"<<std::endl;
 			if ((status = H5Dclose(dataset_id)) < 0)
 			{
@@ -156,10 +175,10 @@ bool hdf5File::getxGrid(double ** xGrid)
 			}
 			return false;
 		}
-		if (ndim != 1 || dims[0] != _dims[0])
+		if (ndim != 1 || dims[0] != dim)
 		{
 			std::cerr<<"hdf5: x grid dimension no equal to data dimension"<<std::endl;
-			delete [] (*xGrid);
+			delete[] g;
 			if ((status = H5Dclose(dataset_id)) < 0)
 			{
 				std::cerr<<"hdf5: unable to close the data set"<<std::endl;
@@ -168,9 +187,9 @@ bool hdf5File::getxGrid(double ** xGrid)
 			return false;
 		}
 
-		if ((status = H5Dread(dataset_id, H5T_IEEE_F64LE/*datatype*/, H5S_ALL, spaceid, H5P_DEFAULT, (*xGrid))) < 0)
+		if ((status = H5Dread(dataset_id, H5T_IEEE_F64LE/*datatype*/, H5S_ALL, spaceid, H5P_DEFAULT, g)) < 0)
 		{
-			delete [] (*xGrid);
+			delete[] g;
 			std::cerr<<"hdf5: reading x grid"<<std::endl;
 			if ((status = H5Dclose(dataset_id)) < 0)
 			{
@@ -182,200 +201,34 @@ bool hdf5File::getxGrid(double ** xGrid)
 
 		if ((status = H5Dclose(dataset_id)) < 0)
 		{
-			delete [] (*xGrid);
+			delete[] g;
 			std::cerr<<"hdf5: unable to close the data set"<<std::endl;
 			return false;
 		}
-
+		(*grid) = new float[dim];
+		for(int i=0; i<dim; i++)
+			(*grid)[i] = (float)g[i];
+		delete[] g;
 	}
+
 	return true;
 }
 
-bool hdf5File::getyGrid(double ** yGrid)
+bool hdf5File::getxGrid(float ** xGrid)
 {
-	(*yGrid) = new double[_dims[1]];
-
-	if (_yGrid == "")
-	{
-		for(int i=0; i<_dims[1]; i++)
-			(*yGrid)[i] = i;
-	}
-	else
-	{
-		hid_t           dataset_id;
-		hid_t           spaceid;
-		hid_t			datatype;
-		herr_t	status;
-
-		if ((dataset_id = H5Dopen1(_file_id, _yGrid.c_str())) < 0 )
-		{
-			std::cerr<<"hdf5: unable to open the requested data set "<<_yGrid<<std::endl;
-			delete [] (*yGrid);
-			return false;
-		}
-
-		if (( datatype = H5Dget_type(dataset_id)) < 0)
-		{
-			std::cerr<<"hdf5: unable to data set type"<<std::endl;
-			delete [] (*yGrid);
-			if ((status = H5Dclose(dataset_id)) < 0)
-			{
-				std::cerr<<"hdf5: unable to close the data set"<<std::endl;
-				return false;
-			}
-			return false;
-		}
-
-		if ((spaceid    = H5Dget_space(dataset_id)) < 0)
-		{
-			std::cerr<<"hdf5: unable to open the requested data space"<<std::endl;
-			delete [] (*yGrid);
-			if ((status = H5Dclose(dataset_id)) < 0)
-			{
-				std::cerr<<"hdf5: unable to close the data set"<<std::endl;
-				return false;
-			}
-			return false;
-		}
-
-		int ndim = 0;
-		hsize_t dims[3];
-		if ((ndim       = H5Sget_simple_extent_dims (spaceid, dims, NULL)) < 0)
-		{
-			std::cerr<<"hdf5: handling file"<<std::endl;
-			delete [] (*yGrid);
-			if ((status = H5Dclose(dataset_id)) < 0)
-			{
-				std::cerr<<"hdf5: unable to close the data set"<<std::endl;
-				return false;
-			}
-			return false;
-		}
-		if (ndim != 1 || dims[0] != _dims[1])
-		{
-			std::cerr<<"hdf5: y grid dimension no equal to data dimension"<<std::endl;
-			delete [] (*yGrid);
-			if ((status = H5Dclose(dataset_id)) < 0)
-			{
-				std::cerr<<"hdf5: unable to close the data set"<<std::endl;
-				return false;
-			}
-			return false;
-		}
-
-		if ((status = H5Dread(dataset_id, H5T_IEEE_F64LE/*datatype*/, H5S_ALL, spaceid, H5P_DEFAULT, (*yGrid))) < 0)
-		{
-			std::cerr<<"hdf5: reading y grid"<<std::endl;
-			delete [] (*yGrid);
-			if ((status = H5Dclose(dataset_id)) < 0)
-			{
-				std::cerr<<"hdf5: unable to close the data set"<<std::endl;
-				return false;
-			}
-			return false;
-		}
-
-		if ((status = H5Dclose(dataset_id)) < 0)
-		{
-			std::cerr<<"hdf5: unable to close the data set"<<std::endl;
-			delete [] (*yGrid);
-			return false;
-		}
-
-	}
-	return true;
+	return readGrid(0, xGrid);
 }
 
-bool hdf5File::getzGrid(double ** zGrid)
+bool hdf5File::getyGrid(float ** yGrid)
 {
-	(*zGrid) = new double[_dims[2]];
-
-	if (_zGrid == "")
-	{
-		for(int i=0; i<_dims[2]; i++)
-			(*zGrid)[i] = i;
-	}
-	else
-	{
-		hid_t           dataset_id;
-		hid_t           spaceid;
-		hid_t			datatype;
-		herr_t	status;
-
-		if ((dataset_id = H5Dopen1(_file_id, _zGrid.c_str())) < 0 )
-		{
-			std::cerr<<"hdf5: unable to open the requested data set "<<_zGrid<<std::endl;
-			delete [] (*zGrid);
-			return false;
-		}
-
-		if (( datatype = H5Dget_type(dataset_id)) < 0)
-		{
-			std::cerr<<"hdf5: unable to data set type"<<std::endl;
-			delete [] (*zGrid);
-			if ((status = H5Dclose(dataset_id)) < 0)
-			{
-				std::cerr<<"hdf5: unable to close the data set"<<std::endl;
-				return false;
-			}
-			return false;
-		}
-
-		if ((spaceid    = H5Dget_space(dataset_id)) < 0)
-		{
-			std::cerr<<"hdf5: unable to open the requested data space"<<std::endl;
-			delete [] (*zGrid);
-			if ((status = H5Dclose(dataset_id)) < 0)
-			{
-				std::cerr<<"hdf5: unable to close the data set"<<std::endl;
-				return false;
-			}
-			return false;
-		}
-
-		int ndim = 0;
-		hsize_t dims[3];
-		if ((ndim       = H5Sget_simple_extent_dims (spaceid, dims, NULL)) < 0)
-		{
-			std::cerr<<"hdf5: handling file"<<std::endl;
-			delete [] (*zGrid);
-			if ((status = H5Dclose(dataset_id)) < 0)
-			{
-				std::cerr<<"hdf5: unable to close the data set"<<std::endl;
-				return false;
-			}
-			return false;
-		}
-		if (ndim != 1 || dims[0] != _dims[2])
-		{
-			std::cerr<<"hdf5: z grid dimension no equal to data dimension"<<std::endl;
-			delete [] (*zGrid);
-			return false;
-		}
-
-		if ((status = H5Dread(dataset_id, H5T_IEEE_F64LE/*datatype*/, H5S_ALL, spaceid, H5P_DEFAULT, (*zGrid))) < 0)
-		{
-			std::cerr<<"hdf5: reading z grid"<<std::endl;
-			delete [] (*zGrid);
-			if ((status = H5Dclose(dataset_id)) < 0)
-			{
-				std::cerr<<"hdf5: unable to close the data set"<<std::endl;
-				return false;
-			}
-			return false;
-		}
-
-		if ((status = H5Dclose(dataset_id)) < 0)
-		{
-			std::cerr<<"hdf5: unable to close the data set"<<std::endl;
-			delete [] (*zGrid);
-			return false;
-		}
-
-	}
-
-	return true;
+	return readGrid(1, yGrid);
 }
+
+bool hdf5File::getzGrid(float ** zGrid)
+{
+	return readGrid(2, zGrid);
+}
+
 
 void hdf5File::readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, int> e)
 {
