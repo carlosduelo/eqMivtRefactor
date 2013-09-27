@@ -1,5 +1,5 @@
-	/*
-	Author: Carlos Duelo Serrano 
+/*
+Author: Carlos Duelo Serrano 
 Company: Cesvima
 
 Notes:
@@ -349,7 +349,7 @@ void _checkCube_cuda(std::vector<eqMivt::octreeConstructor *> octrees, std::vect
 {
 	vmml::vector<3, int> coorCubeStart = eqMivt::getMinBoxIndex2(idCube, cubeLevel, nLevels);
 	vmml::vector<3, int> coorCubeFinish = coorCubeStart + (cubeDim - 2*CUBE_INC);
-	int coorCubeStartV[3] = {coorCubeStart.x(), coorCubeStart.y(), coorCubeStart.z()};
+	int coorCubeStartV[3] = {coorCubeStart.x() - CUBE_INC, coorCubeStart.y() - CUBE_INC, coorCubeStart.z() - CUBE_INC};
 
 	eqMivt::index_node_t start = idCube << 3*(nodeLevel - cubeLevel); 
 	eqMivt::index_node_t finish = eqMivt::coordinateToIndex(coorCubeFinish - 1, nodeLevel, nLevels);
