@@ -10,6 +10,8 @@ Notes:
 
 #include <mortonCodeUtil_CPU.h>
 
+#include <lunchbox/sleep.h>
+
 #define PROCESSING -1
 #define PROCESSED -2
 
@@ -136,6 +138,21 @@ void ControlCubeCache::reSizeStructures()
 	std::swap(_readingCubes, emptyQ);
 
 	_resize = false;
+}
+
+float * ControlCubeCache::getAndBlockCubeWait(index_node_t cube)
+{
+	float * d = 0;
+	do
+	{
+		d = getAndBlockCube(cube);
+		if (d == 0)
+			lunchbox::sleep(100);
+			
+	}
+	while(d == 0);
+
+	return 0;
 }
 
 float * ControlCubeCache::getAndBlockCube(index_node_t cube)

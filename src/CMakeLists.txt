@@ -46,6 +46,10 @@ cuda_compile(CREATE_OCTREE_CUDA_OBJECTS ${CREATE_OCTREE_CUDA_SOURCE})
 add_executable(createOctree ${CREATE_OCTREE_SOURCE} ${CREATE_OCTREE_CUDA_OBJECTS} createOctree.cpp) 
 target_link_libraries(createOctree ${LIBS_NEEDED_CREATE_OCTREE} )
 
+# PRINT OCTREE
+add_executable(printOctree printOctree.cpp) 
+
+
 # TEST VISIBLE CUBES
 set(TEST_VISIBLE_CUBES_SOURCE
 		visibleCubes.cpp

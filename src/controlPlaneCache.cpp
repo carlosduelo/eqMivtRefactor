@@ -13,7 +13,7 @@ Notes:
 #include <cuda_runtime.h>
 
 #define READING -1
-#define WAITING 100
+#define WAITING 2000
 
 namespace eqMivt
 {
@@ -273,7 +273,7 @@ void	ControlPlaneCache::unlockPlane(int plane)
 	#ifndef NDEBUG
 	else
 	{
-		std::cerr<<"Control Plane Cache, error unlocking plane that not exists"<<std::endl;
+		std::cerr<<"Control Plane Cache, error unlocking plane that not exists "<<plane<<std::endl;
 		throw;
 	}
 	#endif

@@ -1,5 +1,5 @@
-/*
-Author: Carlos Duelo Serrano 
+	/*
+	Author: Carlos Duelo Serrano 
 Company: Cesvima
 
 Notes:
@@ -16,6 +16,7 @@ Notes:
 #include <boost/lexical_cast.hpp>
 #include <boost/foreach.hpp>
 #include <boost/tokenizer.hpp>
+#include <boost/progress.hpp>
 
 #include <vector>
 #include <iostream>
@@ -199,9 +200,9 @@ bool parseConfigFile(std::string file_name)
 		float aux2 = aux - floorf(aux);
 		param.nLevels = aux2>0.0 ? aux+1 : aux;
 
-		param.end[0] = param.start[0] + dim;
-		param.end[1] = param.start[1] + dim;
-		param.end[2] = param.start[2] + dim;
+		param.end[0] = param.start[0] + dim >= realDimVolume.x() ? realDimVolume.x() : param.start[0] + dim;
+		param.end[1] = param.start[1] + dim >= realDimVolume.y() ? realDimVolume.y() : param.start[1] + dim;
+		param.end[2] = param.start[2] + dim >= realDimVolume.z() ? realDimVolume.z() : param.start[2] + dim;
 
 		float sizeD = 0.0f;
 		param.maxLevel = 0;
@@ -347,11 +348,11 @@ bool checkParameters(const int argc, char ** argv)
 void _checkCube_cuda(std::vector<eqMivt::octreeConstructor *> octrees, std::vector<float> isos, int nLevels, int nodeLevel, int dimNode, eqMivt::index_node_t idCube, int cubeLevel, int cubeDim, float * cube)
 {
 	vmml::vector<3, int> coorCubeStart = eqMivt::getMinBoxIndex2(idCube, cubeLevel, nLevels);
-	vmml::vector<3, int> coorCubeFinish = coorCubeStart + cubeDim - CUBE_INC;
+	vmml::vector<3, int> coorCubeFinish = coorCubeStart + (cubeDim - 2*CUBE_INC);
 	int coorCubeStartV[3] = {coorCubeStart.x(), coorCubeStart.y(), coorCubeStart.z()};
 
 	eqMivt::index_node_t start = idCube << 3*(nodeLevel - cubeLevel); 
-	eqMivt::index_node_t finish = eqMivt::coordinateToIndex(coorCubeFinish, nodeLevel, nLevels);
+	eqMivt::index_node_t finish = eqMivt::coordinateToIndex(coorCubeFinish - 1, nodeLevel, nLevels);
 
 	double freeMemory = octreeConstructorGetFreeMemory();
 	int inc = finish - start + 1;
@@ -389,8 +390,10 @@ void _checkCube_cuda(std::vector<eqMivt::octreeConstructor *> octrees, std::vect
 			{
 				if (resultCPU[j] != (eqMivt::index_node_t)0)
 				{
+					#if 0
 					vmml::vector<3, int> coorNodeStart = eqMivt::getMinBoxIndex2(resultCPU[j], nodeLevel, nLevels);
 					vmml::vector<3, int> coorNodeFinish = coorNodeStart + dimNode - 1;
+					#endif
 					octrees[i]->addVoxel(resultCPU[j]);
 				}
 			}
@@ -403,7 +406,6 @@ void _checkCube_cuda(std::vector<eqMivt::octreeConstructor *> octrees, std::vect
 
 bool createOctree(octreeParameter_t p)
 {
-
 	std::vector<eqMivt::octreeConstructor *> oc;
 	for(std::vector<float>::iterator it = p.isos.begin(); it!=p.isos.end(); it++)
 	{
@@ -448,42 +450,34 @@ bool createOctree(octreeParameter_t p)
 	cpc.reSize(sP, eP);
 	ccc.reSize(p.nLevels, cubeLevel, p.start);
 
-
 	float * cube = 0;
 
-	vmml::vector<3, int> coord(0,0,0);
+	eqMivt::index_node_t idS = eqMivt::coordinateToIndex(vmml::vector<3,int>(0,0,0), cubeLevel, p.nLevels);
+	eqMivt::index_node_t idE = eqMivt::coordinateToIndex(vmml::vector<3,int>(dimV-1,dimV-1,dimV-1), cubeLevel, p.nLevels);
 
-	for(int i=0; i<dimV; i+=cubeDim)
+	#ifndef DISK_TIMING 
+		boost::progress_display show_progress(idE-idS+1);
+	#endif
+
+	for(eqMivt::index_node_t id = idS; id<=idE; id++)
 	{
-		coord[1] = 0;
-		for(int j=0; j<dimV; j+=cubeDim)
+		vmml::vector<3,int> c = eqMivt::getMinBoxIndex2(id, ccc.getCubeLevel(), p.nLevels) + p.start;
+		if (c.x() < realDimVolume.x() || c.y() < realDimVolume.y() || c.z() < realDimVolume.z())
 		{
-			coord[2] = 0;
-			for(int k=0; k<dimV; k+=cubeDim)
+			cube = 0;
+			do
 			{
-				if (coord[0] < realDimVolume[0] && coord[1] < realDimVolume[1] && coord[2] < realDimVolume[2])
-				{
-					std::cout<<coord<<std::endl;
-					eqMivt::index_node_t id = eqMivt::coordinateToIndex(coord, cubeLevel, p.nLevels);
-					do
-					{
-						cube = ccc.getAndBlockCube(id);
-					}
-					while(cube == 0);
-
-					_checkCube_cuda(oc, p.isos, p.nLevels, p.maxLevel, dimNode, id, cubeLevel, cubeDim, cube);
-
-					ccc.unlockCube(id);
-				}
-
-				coord[2] += cubeDim;
+				cube = ccc.getAndBlockCube(id);
 			}
-			coord[1] += cubeDim;
+			while(cube == 0);
+
+			_checkCube_cuda(oc, p.isos, p.nLevels, p.maxLevel, dimNode, id, ccc.getCubeLevel(), ccc.getDimCube(), cube);
 		}
-		coord[0] += cubeDim;
+		ccc.unlockCube(id);
+		#ifndef DISK_TIMING 
+			++show_progress;
+		#endif
 	}
-
-
 
 	ccc.stopProcessing();
 	cpc.stopProcessing();
@@ -532,13 +526,59 @@ int main( const int argc, char ** argv)
 	file.write((char*)yGrid, realDimVolume[1]*sizeof(float));
 	file.write((char*)zGrid, realDimVolume[2]*sizeof(float));
 
+	for(std::vector<octreeParameter_t>::iterator it=octreeList.begin(); it!=octreeList.end(); it++)
+	{
+		int nO = it->isos.size();
+		file.write((char*)&nO, sizeof(int));
+		file.write((char*)&it->start.array,3*sizeof(int));
+		file.write((char*)&it->end.array,3*sizeof(int));
+		file.write((char*)&it->nLevels, sizeof(int));
+		file.write((char*)&it->maxLevel, sizeof(int));
+	}
+
+	for(std::vector<octreeParameter_t>::iterator it=octreeList.begin(); it!=octreeList.end(); it++)
+		for(std::vector<float>::iterator itS = it->isos.begin(); itS!=it->isos.end(); itS++)
+		{
+			float iso = *itS;
+			file.write((char*)&iso,sizeof(float));
+		}
+	
+		// offset from start
+		int initDesp =	5*sizeof(int) + realDimVolume[0]*sizeof(float) + realDimVolume[1]*sizeof(float) + realDimVolume[2]*sizeof(float) +
+					octreeList.size() * 9 *sizeof(int) + numOctrees * sizeof(float);
+
+		int desp	= 5*sizeof(int) + realDimVolume[0]*sizeof(float) + realDimVolume[1]*sizeof(float) + realDimVolume[2]*sizeof(float) +
+						octreeList.size() * 9 *sizeof(int) + numOctrees * sizeof(float) + numOctrees*sizeof(int);
+
+		int offsets[numOctrees];
+		offsets[0] = desp;
+
+		int i = 0;
+		for(std::vector<eqMivt::octreeConstructor*>::iterator it=octreesT.begin(); it!=octreesT.end(); it++)
+		{
+			file.seekp(initDesp, std::ios_base::beg);
+			file.write((char*)&desp, sizeof(desp));
+			initDesp += sizeof(int);
+
+			eqMivt::octreeConstructor * o = *it;
+			o->completeOctree();	
+			desp = o->getSize();
+			if (i < numOctrees-1)
+				offsets[i+1] = desp;
+
+			file.seekp(offsets[0], std::ios_base::beg);
+			for(int d=1; d<=i; d++)
+				file.seekp(offsets[d], std::ios_base::cur);
+
+			o->writeToFile(&file);
+			i++;
+		}
+
 	file.close();
 
 	for(std::vector<eqMivt::octreeConstructor*>::iterator it=octreesT.begin(); it!=octreesT.end(); it++)
 	{
 		eqMivt::octreeConstructor * o = *it;
-		o->completeOctree();
-		o->printTree();
 		delete o;
 	}
 

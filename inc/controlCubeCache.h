@@ -90,9 +90,13 @@ class  ControlCubeCache : public lunchbox::Thread
 
 		float * getAndBlockCube(index_node_t cube);
 
+		float * getAndBlockCubeWait(index_node_t cube);
+
 		void	unlockCube(index_node_t cube);
 
 		int		getCubeLevel() { return _levelCube; }
+
+		int		getDimCube() { return _dimCube; }
 };
 
 }

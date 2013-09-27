@@ -54,10 +54,8 @@ bool test(int nLevels, int levelCube, vmml::vector<3,int> offset)
 	eqMivt::index_node_t idF = eqMivt::coordinateToIndex(vmml::vector<3,int>(dimV-1, dimV-1, dimV-1), levelCube, nLevels);
 
 	bool error = false;
-	#ifdef NDEBUG
 	#ifndef DISK_TIMING 
 		boost::progress_display show_progress(idF - idS + 1);
-	#endif
 	#endif
 
 	for(eqMivt::index_node_t id=idS; id<=idF && !error; id++)
@@ -97,10 +95,8 @@ bool test(int nLevels, int levelCube, vmml::vector<3,int> offset)
 			vmml::vector<3, int> ce = cs + vmml::vector<3, int>(dimC,dimC, dimC);
 			std::cerr<<"Cube id "<<id<<" coordinates "<<cs<<" "<<ce<<" nLevels "<<nLevels<<" levelCube "<<levelCube<<" offset "<<offset<<std::endl;
 		}
-		#ifdef NDEBUG
 		#ifndef DISK_TIMING 
 			++show_progress;
-		#endif
 		#endif
 	}
 
@@ -140,27 +136,26 @@ void testPerf(int nLevels, int levelCube, vmml::vector<3,int> offset)
 	eqMivt::index_node_t idS = eqMivt::coordinateToIndex(vmml::vector<3,int>(0,0,0), levelCube, nLevels);
 	eqMivt::index_node_t idF = eqMivt::coordinateToIndex(vmml::vector<3,int>(dimV-1, dimV-1, dimV-1), levelCube, nLevels);
 
-	#ifdef NDEBUG
 	#ifndef DISK_TIMING 
 		boost::progress_display show_progress(idF - idS + 1);
-	#endif
 	#endif
 
 	for(eqMivt::index_node_t id=idS; id<=idF; id++)
 	{
 		vmml::vector<3,int> coord = eqMivt::getMinBoxIndex2(id, levelCube, nLevels) + offset - vmml::vector<3,int>(CUBE_INC, CUBE_INC, CUBE_INC);
-		do
+		if (coord.x() < mD.x() && coord.y() < mD.y() && coord.z() < mD.z())
 		{
-			cubeG = ccc.getAndBlockCube(id);
-		}
-		while(cubeG == 0);
+			do
+			{
+				cubeG = ccc.getAndBlockCube(id);
+			}
+			while(cubeG == 0);
 
-		ccc.unlockCube(id);
+			ccc.unlockCube(id);
+		}
 		
-		#ifdef NDEBUG
 		#ifndef DISK_TIMING 
 			++show_progress;
-		#endif
 		#endif
 	}
 }
@@ -275,12 +270,12 @@ int main(int argc, char ** argv)
 	nLevels = aux2>0.0 ? aux+1 : aux;
 	int dimV = exp2(nLevels);
 
-	levelCube = rand() % (nLevels - 1) + 1;
+	levelCube = rand() % (nLevels - 4) + 4;
 	double time = 0.0;
 	clock.reset();
 	testPerf(nLevels, levelCube, vmml::vector<3,int>(0,0,0));
 	time = clock.getTimed()/1000.0;
-	double bw = ((dimV*sizeof(float))/1204.0/1024.0)/time;
+	double bw = (((dim.x()*dim.y()*dim.z())*sizeof(float))/1204.0/1024.0)/time;
 
 	std::cout<<"Read complete volume "<<dim<<" : "<<time<<" seconds ~ "<<bw<<" MB/s"<<std::endl; 
 

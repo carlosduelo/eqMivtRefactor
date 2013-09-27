@@ -105,11 +105,11 @@ Notes:
 				{
 					for(int z=coorNodeStart.z; z<=coorNodeFinish.z; z++)
 					{	
-							if ( cuda_checkIsosurface(x, y, z, cubeDim, cube, iso))
-							{
-								cubes[tid] = id;
-								return;
-							}
+						if ( cuda_checkIsosurface(x, y, z, cubeDim, cube, iso))
+						{
+							cubes[tid] = id;
+							return;
+						}
 					}
 				}
 			}
