@@ -59,9 +59,9 @@ bool octreeConstructor::_addElement(index_node_t id, int level)
 }
 
 
-octreeConstructor::octreeConstructor(int nLevels, int maxLevel, float iso, vmml::vector<3, int> start, vmml::vector<3, int> finish)
+octreeConstructor::octreeConstructor(int nLevels, int maxLevel, float iso, vmml::vector<3, int> start, vmml::vector<3, int> finish, bool disk)
 {
-
+	_disk		= disk;
 	_octree		= new std::vector<index_node_t>[maxLevel + 1];
 	_numCubes	= new int[maxLevel + 1];	
 	bzero(_numCubes, (maxLevel + 1)*sizeof(int));
@@ -75,17 +75,22 @@ octreeConstructor::octreeConstructor(int nLevels, int maxLevel, float iso, vmml:
 
 	_start = start;
 	_finish = finish;
+	_lastLevel.clear();
 
-	std::ostringstream convert;
-	convert <<rand() <<nLevels << maxLevel << iso << ".tmp";
-	_nameFile = convert.str();
+	if (_disk)
+	{
+		std::ostringstream convert;
+		convert <<rand() <<nLevels << maxLevel << iso << ".tmp";
+		_nameFile = convert.str();
 
-	_tempFile.open(_nameFile.c_str(), std::ofstream::binary | std::ofstream::trunc);
+		_tempFile.open(_nameFile.c_str(), std::ofstream::binary | std::ofstream::trunc);
+	}
 }
 
 octreeConstructor::~octreeConstructor()
 {
-	remove(_nameFile.c_str());
+	if (_disk)
+		remove(_nameFile.c_str());
 	if (_octree != 0)
 		delete[] _octree;
 	if (_numCubes != 0)
@@ -96,20 +101,22 @@ void octreeConstructor::completeOctree()
 {
 	try
 	{
-		_tempFile.close();
-		std::vector<index_node_t> lastLevel;
-		std::ifstream File(_nameFile.c_str(), std::ifstream::binary);
-
-		for(int i=0; i< _numElements; i++)
+		if (_disk)
 		{
-			index_node_t a = 0;
-			File.read((char*) &a, sizeof(index_node_t));
-			lastLevel.push_back(a);
+			_tempFile.close();
+			std::ifstream File(_nameFile.c_str(), std::ifstream::binary);
+
+			for(int i=0; i< _numElements; i++)
+			{
+				index_node_t a = 0;
+				File.read((char*) &a, sizeof(index_node_t));
+				_lastLevel.push_back(a);
+			}
 		}
 
-		std::sort(lastLevel.begin(), lastLevel.end());
-		lastLevel.erase( std::unique( lastLevel.begin(), lastLevel.end() ), lastLevel.end() );
-		for (std::vector<index_node_t>::iterator it=lastLevel.begin(); it!=lastLevel.end(); ++it)
+		std::sort(_lastLevel.begin(), _lastLevel.end());
+		_lastLevel.erase( std::unique( _lastLevel.begin(), _lastLevel.end() ), _lastLevel.end() );
+		for (std::vector<index_node_t>::iterator it=_lastLevel.begin(); it!=_lastLevel.end(); ++it)
 		{
 			index_node_t id = *it;
 
@@ -124,8 +131,7 @@ void octreeConstructor::completeOctree()
 				id >>= 3;
 			}
 		}
-		lastLevel.clear();
-
+		_lastLevel.clear();
 	}
 	catch (...)
 	{
@@ -136,8 +142,23 @@ void octreeConstructor::completeOctree()
 
 void octreeConstructor::addVoxel(index_node_t id)
 {
-	_numElements++;
-	_tempFile.write((char*)&id, sizeof(index_node_t));
+	if (_disk)
+	{
+		_numElements++;
+		_tempFile.write((char*)&id, sizeof(index_node_t));
+	}
+	else
+	{
+		try
+		{
+			_lastLevel.push_back(id);
+		}
+		catch(...)
+		{
+			std::cerr<<"Possible not enought memory aviable, please use disk option"<<std::endl;
+			throw;
+		}
+	}
 }
 
 float octreeConstructor::getIso()
@@ -170,7 +191,8 @@ void octreeConstructor::writeToFile(std::ofstream * file)
 	{
 		file->write((char*)_octree[i].data(), _octree[i].size()*sizeof(index_node_t));
 	}
-	remove(_nameFile.c_str());
+	if (_disk)
+		remove(_nameFile.c_str());
 	delete[] _octree; _octree = 0;
 	delete[] _numCubes; _numCubes = 0;
 

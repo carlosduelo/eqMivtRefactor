@@ -34,6 +34,7 @@ struct octreeParameter_t
 	int						maxLevel;
 };
 
+bool						disk;
 std::vector<std::string>	file_params;
 std::string					config_file_name;
 std::string					octree_file_name;
@@ -247,10 +248,11 @@ bool checkParameters(const int argc, char ** argv)
 {
     boost::program_options::options_description desc("Allowed options");
     desc.add_options()
-    ("help", "produce help message")
+    ("help,h", "produce help message")
     ("data-file,d", boost::program_options::value< std::vector<std::string> >()->multitoken(), "hdf5_file-path data-set-name [x_grid y_grid z_grid]")
 	("output-file-name,o", boost::program_options::value< std::vector<std::string> >()->multitoken(), "set name of output file, optional, by default same name as data with extension octree")
 	("config-file,f", boost::program_options::value< std::vector<std::string> >()->multitoken(), "config file")
+	("use-disk,k", "use it when a limited memory machine")
     ;
 
 	boost::program_options::variables_map vm;
@@ -271,6 +273,10 @@ bool checkParameters(const int argc, char ** argv)
         std::cout << desc << "\n";
 		return false;
     }
+    if (vm.count("use-disk"))
+		disk = true;
+	else
+		disk = false;
 
 	if (vm.count("data-file"))
 	{
@@ -409,7 +415,7 @@ bool createOctree(octreeParameter_t p)
 	std::vector<eqMivt::octreeConstructor *> oc;
 	for(std::vector<float>::iterator it = p.isos.begin(); it!=p.isos.end(); it++)
 	{
-		eqMivt::octreeConstructor * o = new eqMivt::octreeConstructor(p.nLevels, p.maxLevel, *it, p.start, p.end);
+		eqMivt::octreeConstructor * o = new eqMivt::octreeConstructor(p.nLevels, p.maxLevel, *it, p.start, p.end, disk);
 		oc.push_back(o);
 		octreesT.push_back(o);
 	}

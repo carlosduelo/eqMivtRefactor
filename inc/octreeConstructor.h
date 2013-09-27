@@ -20,6 +20,7 @@ namespace eqMivt
 	class octreeConstructor
 	{
 		private: 
+			std::vector<index_node_t> 	_lastLevel;
 			std::vector<index_node_t> *	_octree;
 			int		*					_numCubes;
 			int							_dim;
@@ -32,11 +33,12 @@ namespace eqMivt
 			int							_numElements;
 			std::string					_nameFile;
 			std::ofstream				_tempFile;
+			bool						_disk;
 
 			bool _addElement(index_node_t id, int level);
 
 		public:
-			octreeConstructor(int nLevels, int maxLevel, float iso, vmml::vector<3, int> start, vmml::vector<3, int> finish);
+			octreeConstructor(int nLevels, int maxLevel, float iso, vmml::vector<3, int> start, vmml::vector<3, int> finish, bool disk);
 
 			~octreeConstructor();
 
