@@ -45,7 +45,7 @@ void LinkedList::reSize(int size)
 			memoryList[i].after 	= 0;
 			memoryList[i].before 	= &memoryList[i-1];
 			memoryList[i].element 	= i;
-			memoryList[i].id		= 0;
+			memoryList[i].id		= -1;
 			memoryList[i].refs		= 0;
 		}
 		else
@@ -53,7 +53,7 @@ void LinkedList::reSize(int size)
 			memoryList[i].after 	= &memoryList[i+1];
 			memoryList[i].before 	= &memoryList[i-1];
 			memoryList[i].element 	= i;
-			memoryList[i].id		= 0;
+			memoryList[i].id		= -1;
 			memoryList[i].refs		= 0;
 		}
 	}

@@ -22,7 +22,9 @@ Notes:
 #include <iostream>
 #include <fstream>
 
-#define MAX_DIMENSION 512.0f
+#include <lunchbox/clock.h>
+
+#define MAX_DIMENSION 1024.0f
 #define MIN_DIMENSION 128
 
 struct octreeParameter_t
@@ -128,11 +130,12 @@ bool parseConfigFile(std::string file_name)
 			size++;
 		}
 
-		if (size < 4 || (isosPos != 4 && isosPos != 2))
+		if (size < 3 || !findL || (isosPos != 2 && isosPos != 6))
 		{
 			std::cerr<<"Error parsing config file"<<std::endl;
-			std::cerr<<"X0 [Y0 Z0] dim l iso1 iso2 iso3 ..."<<std::endl;
-			std::cerr<<"dim has to be power of 2 and >= 128"<<std::endl;
+			std::cerr<<"X0 [Y0 Z0] X1 [ Y1 Z1 ] l iso1 iso2 iso3 ..."<<std::endl;
+			std::cerr<<"Please, if you provide Y0 and Z0, provide Y1 and Z1 as well."<<std::endl;
+			std::cerr<<line<<std::endl;
 			infile.close();
 			return false;
 		}
@@ -156,29 +159,60 @@ bool parseConfigFile(std::string file_name)
 		if (param.start[0] >= realDimVolume[0] || param.start[1] >= realDimVolume[1] ||param.start[2] >= realDimVolume[2])
 		{
 			std::cerr<<"Error parsing config file"<<std::endl;
-			std::cerr<<"Start coordinates X0 Y0 Z0 has to be < volume dimension: "<<param.start<<" "<<realDimVolume<<std::endl;
+			std::cerr<<"X0 [Y0 Z0] X1 [ Y1 Z1 ] l iso1 iso2 iso3 ..."<<std::endl;
+			std::cerr<<"Please, if you provide Y0 and Z0, provide Y1 and Z1 as well."<<std::endl;
+			std::cerr<<line<<std::endl;
 			infile.close();
 			return false;
 
 		}
 
-		int dim = toInt(*tok_iter);    if (dim <= 0) {infile.close(); return false;} tok_iter++; 
+		param.end[0] = toInt(*tok_iter); if (param.end[0] < 0) {infile.close(); return false; } tok_iter++;
 
-		// Dim power of 2 ?
-		if (((dim & (dim - 1)) != 0) || dim < 128)
+		if (isosPos == 2)
+		{
+			param.end[1] = realDimVolume[1]; 
+			param.end[2] = realDimVolume[2];
+		}
+		else
+		{
+			if ("M" == *tok_iter)
+			{
+				param.end[1] = realDimVolume[1];
+			}
+			else
+			{
+				param.end[1] = toInt(*tok_iter); if (param.end[1] < 0) {infile.close(); return false; }
+			}
+			tok_iter++;
+			if ("M" == *tok_iter)
+			{
+				param.end[2] = realDimVolume[2];
+			}
+			else
+			{
+				param.end[2] = toInt(*tok_iter); if (param.end[2] < 0) {infile.close(); return false; }
+			}
+			tok_iter++;
+		}
+
+		if (param.end[0] > realDimVolume[0] || param.end[1] > realDimVolume[1] || param.end[2] > realDimVolume[2])
 		{
 			std::cerr<<"Error parsing config file"<<std::endl;
-			std::cerr<<"X0 [Y0 Z0] dim l iso1 iso2 iso3 ..."<<std::endl;
-			std::cerr<<"dim has to be power of 2 and >= 128"<<std::endl;
+			std::cerr<<"X0 [Y0 Z0] X1 [ Y1 Z1 ] l iso1 iso2 iso3 ..."<<std::endl;
+			std::cerr<<"Please, if you provide Y0 and Z0, provide Y1 and Z1 as well."<<std::endl;
+			std::cerr<<line<<std::endl;
 			infile.close();
 			return false;
+
 		}
 
 		if ("l" != *tok_iter)
 		{
 			std::cerr<<"Error parsing config file"<<std::endl;
-			std::cerr<<"X0 [Y0 Z0] dim l iso1 iso2 iso3 ..."<<std::endl;
-			std::cerr<<"dim has to be power of 2 and >= 128"<<std::endl;
+			std::cerr<<"X0 [Y0 Z0] X1 [ Y1 Z1 ] l iso1 iso2 iso3 ..."<<std::endl;
+			std::cerr<<"Please, if you provide Y0 and Z0, provide Y1 and Z1 as well."<<std::endl;
+			std::cerr<<line<<std::endl;
 			infile.close();
 			return false;
 		}
@@ -197,13 +231,11 @@ bool parseConfigFile(std::string file_name)
 			numOctrees++;
 		}
 
+		int dim = fmaxf(param.end[0] - param.start[0], fmaxf(param.end[1] - param.start[1], param.end[2] - param.start[2]));
+
 		float aux = logf(dim)/logf(2.0f);
 		float aux2 = aux - floorf(aux);
 		param.nLevels = aux2>0.0 ? aux+1 : aux;
-
-		param.end[0] = param.start[0] + dim >= realDimVolume.x() ? realDimVolume.x() : param.start[0] + dim;
-		param.end[1] = param.start[1] + dim >= realDimVolume.y() ? realDimVolume.y() : param.start[1] + dim;
-		param.end[2] = param.start[2] + dim >= realDimVolume.z() ? realDimVolume.z() : param.start[2] + dim;
 
 		float sizeD = 0.0f;
 		param.maxLevel = 0;
@@ -396,10 +428,6 @@ void _checkCube_cuda(std::vector<eqMivt::octreeConstructor *> octrees, std::vect
 			{
 				if (resultCPU[j] != (eqMivt::index_node_t)0)
 				{
-					#if 0
-					vmml::vector<3, int> coorNodeStart = eqMivt::getMinBoxIndex2(resultCPU[j], nodeLevel, nLevels);
-					vmml::vector<3, int> coorNodeFinish = coorNodeStart + dimNode - 1;
-					#endif
 					octrees[i]->addVoxel(resultCPU[j]);
 				}
 			}
@@ -435,9 +463,15 @@ bool createOctree(octreeParameter_t p)
 	sP[0] = p.start.x() - CUBE_INC < 0 ? 0 : p.start.x() - CUBE_INC; 
 	sP[1] = p.start.y() - CUBE_INC < 0 ? 0 : p.start.y() - CUBE_INC; 
 	sP[2] = p.start.z() - CUBE_INC < 0 ? 0 : p.start.z() - CUBE_INC; 
+	#if 1
+	eP[0] = p.end.x() + CUBE_INC >= realDimVolume.x() ? realDimVolume.x() : p.end.x() + CUBE_INC;
+	eP[1] = p.end.y() + CUBE_INC >= realDimVolume.y() ? realDimVolume.y() : p.end.y() + CUBE_INC;
+	eP[2] = p.end.z() + CUBE_INC >= realDimVolume.z() ? realDimVolume.z() : p.end.z() + CUBE_INC;
+	#else
 	eP[0] = p.start.x() + dimV + CUBE_INC >= realDimVolume.x() ? realDimVolume.x() : p.start.x() + dimV + CUBE_INC;
 	eP[1] = p.start.y() + dimV + CUBE_INC >= realDimVolume.y() ? realDimVolume.y() : p.start.y() + dimV + CUBE_INC;
 	eP[2] = p.start.z() + dimV + CUBE_INC >= realDimVolume.z() ? realDimVolume.z() : p.start.z() + dimV + CUBE_INC;
+	#endif
 
 	#ifndef NDEBUG
 	std::cout<<"ReSize Plane Cache "<<sP<<" "<<eP<<std::endl;
@@ -468,7 +502,8 @@ bool createOctree(octreeParameter_t p)
 	for(eqMivt::index_node_t id = idS; id<=idE; id++)
 	{
 		vmml::vector<3,int> c = eqMivt::getMinBoxIndex2(id, ccc.getCubeLevel(), p.nLevels) + p.start;
-		if (c.x() < realDimVolume.x() || c.y() < realDimVolume.y() || c.z() < realDimVolume.z())
+		if (//c.x() < realDimVolume.x() || c.y() < realDimVolume.y() || c.z() < realDimVolume.z() ||
+			c.x() < p.end.x() || c.y() < p.end.y() || c.z() < p.end.z())
 		{
 			cube = 0;
 			do
@@ -478,8 +513,9 @@ bool createOctree(octreeParameter_t p)
 			while(cube == 0);
 
 			_checkCube_cuda(oc, p.isos, p.nLevels, p.maxLevel, dimNode, id, ccc.getCubeLevel(), ccc.getDimCube(), cube);
+
+			ccc.unlockCube(id);
 		}
-		ccc.unlockCube(id);
 		#ifndef DISK_TIMING 
 			++show_progress;
 		#endif
@@ -496,11 +532,16 @@ int main( const int argc, char ** argv)
 	if (!checkParameters(argc, argv))
 		return 0;
 
+	lunchbox::Clock clock;
 
 	for(std::vector<octreeParameter_t>::iterator it = octreeList.begin(); it!=octreeList.end(); it++)
 	{
+		clock.reset();
 		createOctree(*it);
+		std::cout<<"Time to create octree: "<<clock.getTimed()/1000.0<<" seconds."<<std::endl;
 	}
+
+	clock.reset();
 
 	std::ofstream file(octree_file_name.c_str(), std::ofstream::binary);
 	
@@ -581,6 +622,8 @@ int main( const int argc, char ** argv)
 		}
 
 	file.close();
+
+	std::cout<<"Time to write file "<<clock.getTimed()/1000.0<<" seconds."<<std::endl;
 
 	for(std::vector<eqMivt::octreeConstructor*>::iterator it=octreesT.begin(); it!=octreesT.end(); it++)
 	{
