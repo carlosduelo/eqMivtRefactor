@@ -43,6 +43,8 @@ void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCasting
 	vc.reSize(numPixels);
 	vc.init();
 
+	ccc.freeMemoryAndPause();
+
 	eqMivt::Cache				cache;
 	cache.init(&ccc);
 	cache.setRayCastingLevel(rayCastingLevel);

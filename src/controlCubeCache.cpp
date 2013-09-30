@@ -45,6 +45,7 @@ bool ControlCubeCache::initParameter(ControlPlaneCache * planeCache)
 	
 	_end = false;
 	_resize = false;
+	_free = false;
 
 	if (cudaSuccess != cudaStreamCreate(&_stream))
 	{
@@ -56,12 +57,26 @@ bool ControlCubeCache::initParameter(ControlPlaneCache * planeCache)
 void ControlCubeCache::stopProcessing()
 {
 	_lockEnd.set();
+		_end = true;
 		_emptyPendingCubes.broadcast();
 		_fullSlots.broadcast();
-		_end = true;
 	_lockEnd.unset();
 
 	join();
+}
+
+void ControlCubeCache::freeMemory()
+{
+	if (_memoryCubes != 0)
+	{
+		if(cudaSuccess != cudaFree((void*)_memoryCubes))
+		{
+			std::cerr<<"Control Cubes Cache, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+			throw;
+		}
+	}
+	_memoryCubes = 0;
+	_lockResize.broadcast();
 }
 
 void ControlCubeCache::exit()
@@ -166,7 +181,7 @@ float * ControlCubeCache::getAndBlockCube(index_node_t cube)
 	_lockEnd.unset();
 
 	_lockResize.lock();
-		if (_resize)
+		if (_resize || _free)
 		{
 			_lockResize.wait();
 			_lockResize.unlock();
@@ -225,7 +240,7 @@ void ControlCubeCache::unlockCube(index_node_t cube)
 		}
 	_lockEnd.unset();
 	_lockResize.lock();
-		if (_resize)
+		if (_resize || _free)
 		{
 			_lockResize.wait();
 			_lockResize.unlock();
@@ -266,17 +281,31 @@ void ControlCubeCache::unlockCube(index_node_t cube)
 	_fullSlots.unlock();
 }
 
+bool ControlCubeCache::freeMemoryAndPause()
+{
+	_lockResize.lock();
+		_free = true;
+		_emptyPendingCubes.signal();
+		_fullSlots.signal();
+		_lockResize.wait();
+	_lockResize.unlock();
+}
+
+
 bool ControlCubeCache::reSize(int nLevels, int levelCube, vmml::vector<3, int> offset)
 {
 	_lockResize.lock();
 
+		_resize = true;
+		_free = false;
+
 		_emptyPendingCubes.signal();
 		_fullSlots.signal();
+		_lockResize.broadcast();
 
 		_nextOffset	= offset;
 		_nextnLevels = nLevels;
 		_nextLevelCube = levelCube;
-		_resize = true;
 
 	_lockResize.wait();
 
@@ -357,6 +386,11 @@ void ControlCubeCache::run()
 
 			_fullSlots.lock();
 				_lockResize.lock();
+					if (_free)
+					{
+						freeMemory();
+						_lockResize.wait();
+					}
 					if (_resize)
 					{
 						reSizeStructures();	
@@ -400,6 +434,11 @@ void ControlCubeCache::run()
 					_emptyPendingCubes.wait();
 
 				_lockResize.lock();
+					if (_free)
+					{
+						freeMemory();
+						_lockResize.wait();
+					}
 					if (_resize)
 					{
 						reSizeStructures();	
@@ -428,6 +467,11 @@ void ControlCubeCache::run()
 					_fullSlots.wait();
 
 				_lockResize.lock();
+					if (_free)
+					{
+						freeMemory();
+						_lockResize.wait();
+					}
 					if (_resize)
 					{
 						reSizeStructures();	

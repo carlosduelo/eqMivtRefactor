@@ -64,6 +64,7 @@ class  ControlCubeCache : public lunchbox::Thread
 
 		lunchbox::Lock		_lockEnd;
 		bool				_end;
+		bool				_free;
 		lunchbox::Condition	_lockResize;
 		bool				_resize;
 
@@ -71,6 +72,8 @@ class  ControlCubeCache : public lunchbox::Thread
 
 		lunchbox::Condition	_emptyPendingCubes;
 		lunchbox::Condition	_fullSlots;
+
+		void freeMemory();
 
 		void reSizeStructures();
 
@@ -83,6 +86,8 @@ class  ControlCubeCache : public lunchbox::Thread
 
 		virtual void run();
 		virtual void exit();
+
+		bool freeMemoryAndPause();
 
 		bool reSize(int nLevels, int levelCube, vmml::vector<3,int> offset );
 
