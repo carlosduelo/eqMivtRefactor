@@ -65,6 +65,7 @@ bool hdf5File::init(std::vector<std::string> file_params)
 		_zGrid = file_params[4];
 	}
 
+	_isOpen = true;
 	return true;
 }
 
@@ -74,6 +75,9 @@ hdf5File::~hdf5File()
 
 void hdf5File::close()
 {
+	if (!_isOpen)
+		return;
+
 	herr_t      status;
 
 	if ((status = H5Dclose(_dataset_id)) < 0)
@@ -230,7 +234,7 @@ bool hdf5File::getzGrid(float ** zGrid)
 }
 
 
-void hdf5File::readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, int> e)
+bool hdf5File::readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, int> e)
 {
 	#ifdef DISK_TIMING
 	lunchbox::Clock     timingC; 
@@ -259,7 +263,7 @@ void hdf5File::readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, i
 		std::cerr<<"end "<<e.x()<<" "<<e.y()<<" "<<e.z()<<std::endl;
 		std::cerr<<"Dimension plane "<<dim[0]<<" "<<dim[1]<<" "<<dim[2]<<std::endl;
 
-		return;
+		return true;
 	}
 
 	herr_t	status;
@@ -287,6 +291,7 @@ void hdf5File::readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, i
 	if ((status = H5Sselect_hyperslab(_spaceid, H5S_SELECT_SET, offset, NULL, dimR, NULL)) < 0)
 	{
 		std::cerr<<"hdf5: defining hyperslab in the dataset"<<std::endl;
+		return false;
 	}
 	#ifdef DISK_TIMING
 	time = timing.getTimed(); 
@@ -303,6 +308,7 @@ void hdf5File::readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, i
 	//if ((memspace = H5Screate_simple(3, dimR, NULL)) < 0)
 	{
 		std::cerr<<"hdf5: defining the memory space"<<std::endl;
+		return false;
 	}
 	#ifdef DISK_TIMING
 	time = timing.getTimed(); 
@@ -335,6 +341,7 @@ void hdf5File::readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, i
 	if ((status = H5Dread(_dataset_id, H5T_IEEE_F32LE/*_datatype*/, memspace, _spaceid, H5P_DEFAULT, cube)) < 0)
 	{
 		std::cerr<<"hdf5: reading data from hyperslab un the file"<<std::endl;
+		return false;
 	}
 	#ifdef DISK_TIMING
 	time = timing.getTimed(); 
@@ -348,6 +355,7 @@ void hdf5File::readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, i
 	if ((status = H5Sclose(memspace)) < 0)
 	{
 		std::cerr<<"hdf5: closing dataspace"<<std::endl;
+		return false;
 	}
 	#ifdef DISK_TIMING
 	time = timing.getTimed(); 

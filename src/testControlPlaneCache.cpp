@@ -19,18 +19,16 @@ eqMivt::ControlPlaneCache cpc;
 
 bool test(vmml::vector<3,int> start, vmml::vector<3,int> finish)
 {
-
-	cpc.reSize(start, finish);
+	cpc.freeCacheAndPause();
+	cpc.reSizeCacheAndContinue(start, finish);
 
 	int dim = (finish.y() - start.y())*(finish.z() - start.z());
 	float * planeH = new float[dim];
 
 	bool error = false;
 
-	#ifdef NDEBUG
 	#ifndef DISK_TIMING 
 		boost::progress_display show_progress(finish.x() - start.x());
-	#endif
 	#endif
 
 	for(int i = start.x(); i<finish.x() && !error; i++)
@@ -56,10 +54,8 @@ bool test(vmml::vector<3,int> start, vmml::vector<3,int> finish)
 		
 		cpc.unlockPlane(i);	
 
-		#ifdef NDEBUG
 		#ifndef DISK_TIMING 
 			++show_progress;
-		#endif
 		#endif
 	}
 
@@ -70,15 +66,13 @@ bool test(vmml::vector<3,int> start, vmml::vector<3,int> finish)
 
 void testPerf(vmml::vector<3,int> start, vmml::vector<3,int> finish)
 {
-
-	cpc.reSize(start, finish);
+	cpc.freeCacheAndPause();
+	cpc.reSizeCacheAndContinue(start, finish);
 
 	int dim = (finish.y() - start.y())*(finish.z() - start.z());
 
-	#ifdef NDEBUG
 	#ifndef DISK_TIMING 
 		boost::progress_display show_progress(finish.x() - start.x());
-	#endif
 	#endif
 
 	for(int i = start.x(); i<finish.x(); i++)
@@ -93,10 +87,8 @@ void testPerf(vmml::vector<3,int> start, vmml::vector<3,int> finish)
 
 		cpc.unlockPlane(i);	
 
-		#ifdef NDEBUG
 		#ifndef DISK_TIMING 
 			++show_progress;
-		#endif
 		#endif
 	}
 }
@@ -111,8 +103,6 @@ int main(int argc, char ** argv)
 	hdf5File.init(parameters);
 
 	vmml::vector<3, int> dim = hdf5File.getRealDimension();
-
-	cpc.start();
 
 	std::cout<<"Checking errors........."<<std::endl;
 
@@ -171,7 +161,7 @@ int main(int argc, char ** argv)
 
 	std::cout<<"Read complete volume "<<dim<<" : "<<time<<" seconds ~ "<<bw<<" MB/s"<<std::endl; 
 
-	cpc.stopProcessing();
+	cpc.stopWork();
 
 	hdf5File.close();
 

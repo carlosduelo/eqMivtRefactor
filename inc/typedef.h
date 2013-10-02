@@ -17,6 +17,8 @@ typedef unsigned long long index_node_t;
 
 typedef unsigned char statusCube;
 
+typedef int	device_t;
+
 #define CUBE		(eqMivt::statusCube)0b00001000
 #define PAINTED		(eqMivt::statusCube)0b00000100
 #define CACHED		(eqMivt::statusCube)0b00000010
@@ -33,6 +35,11 @@ typedef unsigned char statusCube;
 #define COLOR_INC 0.00390625f
 
 #define CUBE_INC 2
+
+#define RUNNING 4
+#define STOPPED 3
+#define PAUSED  2
+#define STARTED 1
 
 }
 #endif /* EQ_MIVT_TYPEDEF_H */

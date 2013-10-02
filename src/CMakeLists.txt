@@ -68,6 +68,7 @@ target_link_libraries(testVisibleCubes ${LIBS_NEEDED_TEST_VISIBLE_CUBES} )
 
 # TEST CONTROL PLANE CACHE 
 set(TEST_CONTROL_PLANE_CACHE_SOURCE
+		controlCache.cpp
 		controlPlaneCache.cpp
 		linkedList.cpp
 		hdf5File.cpp

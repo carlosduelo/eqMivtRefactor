@@ -62,14 +62,14 @@ class  ControlCubeCache : public lunchbox::Thread
 		int		_nextnLevels;
 		int		_nextLevelCube;
 
-		lunchbox::Lock		_lockEnd;
-		bool				_end;
-		bool				_free;
-		lunchbox::Condition	_lockResize;
-		bool				_resize;
+		device_t _device;
 
 		ControlPlaneCache * _planeCache;
 
+		bool				_resize;
+		bool				_free;
+		unsigned int		_state;
+		lunchbox::Condition _stateCache;
 		lunchbox::Condition	_emptyPendingCubes;
 		lunchbox::Condition	_fullSlots;
 
@@ -82,20 +82,23 @@ class  ControlCubeCache : public lunchbox::Thread
 	public:
 		virtual ~ControlCubeCache();
 
-		bool initParameter(ControlPlaneCache * planeCache);
+		bool initParameter(ControlPlaneCache * planeCache, device_t device);
 
 		virtual void run();
-		virtual void exit();
+
+		void stopProcessing();
+
+		bool pauseProcessing();
+
+		bool continueProcessing();
 
 		bool freeMemoryAndPause();
 
 		bool reSize(int nLevels, int levelCube, vmml::vector<3,int> offset );
 
-		void stopProcessing();
+		bool reSizeAndContinue(int nLevels, int levelCube, vmml::vector<3,int> offset );
 
 		float * getAndBlockCube(index_node_t cube);
-
-		float * getAndBlockCubeWait(index_node_t cube);
 
 		void	unlockCube(index_node_t cube);
 
