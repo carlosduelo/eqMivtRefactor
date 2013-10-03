@@ -116,9 +116,12 @@ void ControlPlaneCache::_threadWork()
 				_lruPlanes.moveToLastPosition(c);
 				_lastPlane = c->id;
 
-				_emptyPendingPlanes.lock();
-					_pendingPlanes.erase(_pendingPlanes.begin());
-				_emptyPendingPlanes.unlock();
+				if (!prefetching)
+				{
+					_emptyPendingPlanes.lock();
+						_pendingPlanes.erase(_pendingPlanes.begin());
+					_emptyPendingPlanes.unlock();
+				}
 			}
 		}
 
