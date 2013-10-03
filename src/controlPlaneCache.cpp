@@ -185,9 +185,16 @@ void ControlPlaneCache::_reSizeCache()
 	}
 
 	_maxNumPlanes = _memoryAviable / (_sizePlane * sizeof(float));
-	while((_maxNumPlanes*_sizePlane*sizeof(float) + _maxNumPlanes*sizeof(NodeLinkedList)) > _memoryAviable)
+	if (_max.x()-_min.x() + 1 < _maxNumPlanes)
 	{
-		_maxNumPlanes -= 10;
+		_maxNumPlanes = _max.x()-_min.x() + 1;
+	}
+	else
+	{
+		while((_maxNumPlanes*_sizePlane*sizeof(float) + _maxNumPlanes*sizeof(NodeLinkedList)) > _memoryAviable)
+		{
+			_maxNumPlanes -= 10;
+		}
 	}
 
 	_freeSlots = _maxNumPlanes;
