@@ -194,7 +194,36 @@ void ControlCache::run()
 
 		while(_notEnd)
 		{
-			if (_state == STARTED)
+			if (_state == RUNNING)
+			{
+				_operationCond.lock();
+				if (_pause)
+				{
+					_pause = false;
+					_state == PAUSED;
+					_operationCond.signal();
+					_operationCond.unlock();
+				}
+				else if (_free)
+				{
+					_freeCache();
+					_free = false;
+					_state = PAUSED;
+					_operationCond.signal();
+					_operationCond.unlock();
+				}
+				else if (!_notEnd)
+				{
+					_state = STOPPED; 
+					_operationCond.unlock();
+				}
+				else
+				{
+					_operationCond.unlock();
+					_threadWork();
+				}
+			}
+			else if (_state == STARTED)
 			{
 				_stateCond.wait();
 
@@ -241,35 +270,6 @@ void ControlCache::run()
 					_operationCond.signal();
 				}
 				_operationCond.unlock();
-			}
-			else if (_state == RUNNING)
-			{
-				_operationCond.lock();
-				if (_pause)
-				{
-					_pause = false;
-					_state == PAUSED;
-					_operationCond.signal();
-					_operationCond.unlock();
-				}
-				else if (_free)
-				{
-					_freeCache();
-					_free = false;
-					_state = PAUSED;
-					_operationCond.signal();
-					_operationCond.unlock();
-				}
-				else if (!_notEnd)
-				{
-					_state = STOPPED; 
-					_operationCond.unlock();
-				}
-				else
-				{
-					_operationCond.unlock();
-					_threadWork();
-				}
 			}
 			else if (_state == STOPPED)
 			{
