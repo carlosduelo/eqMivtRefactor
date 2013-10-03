@@ -325,6 +325,7 @@ bool hdf5File::readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, i
 	if ((status = H5Sselect_hyperslab(memspace, H5S_SELECT_SET, offset_out, NULL, dimR, NULL)) < 0)
 	{
 		std::cerr<<"hdf5: defining the memory hyperslab"<<std::endl;
+		return false;
 	}
 	#ifdef DISK_TIMING
 	time = timing.getTimed(); 
@@ -364,6 +365,8 @@ bool hdf5File::readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, i
 	std::cerr<<"Read in MB: "<<(dimR[0]*dimR[1]*dimR[2]*sizeof(float)/1024.f/1024.f)<<" in "<<(timeC/1000.0f)<<" seconds."<<std::endl;
 	std::cerr<<"Bandwidth: "<<(dimR[0]*dimR[1]*dimR[2]*sizeof(float)/1024.f/1024.f)/(timeC/1000.0f)<<" MB/seconds."<<std::endl;
 	#endif
+	
+	return true;
 }
 
 void hdf5File::readCube(index_node_t index, float * cube, int levelCube, int nLevels, vmml::vector<3, int>    cubeDim, vmml::vector<3, int> offsetCube)

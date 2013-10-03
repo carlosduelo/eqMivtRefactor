@@ -19,8 +19,11 @@ eqMivt::ControlPlaneCache cpc;
 
 bool test(vmml::vector<3,int> start, vmml::vector<3,int> finish)
 {
-	cpc.freeCacheAndPause();
-	cpc.reSizeCacheAndContinue(start, finish);
+	if (!cpc.freeCacheAndPause() || !cpc.reSizeCacheAndContinue(start, finish))
+	{
+		std::cerr<<"Error, resizing plane cache"<<std::endl;
+		return true;
+	}
 
 	int dim = (finish.y() - start.y())*(finish.z() - start.z());
 	float * planeH = new float[dim];
@@ -66,8 +69,11 @@ bool test(vmml::vector<3,int> start, vmml::vector<3,int> finish)
 
 void testPerf(vmml::vector<3,int> start, vmml::vector<3,int> finish)
 {
-	cpc.freeCacheAndPause();
-	cpc.reSizeCacheAndContinue(start, finish);
+	if (!cpc.freeCacheAndPause() || !cpc.reSizeCacheAndContinue(start, finish))
+	{
+		std::cerr<<"Error, resizing plane cache"<<std::endl;
+		return;
+	}
 
 	int dim = (finish.y() - start.y())*(finish.z() - start.z());
 
@@ -98,7 +104,11 @@ int main(int argc, char ** argv)
 	std::vector<std::string> parameters;
 	parameters.push_back(std::string(argv[1]));
 	parameters.push_back(std::string(argv[2]));
-	cpc.initParameter(parameters);
+	if (!cpc.initParameter(parameters))
+	{
+		std::cerr<<"Error init control plane cache"<<std::endl;
+		return 0;
+	}
 
 	hdf5File.init(parameters);
 

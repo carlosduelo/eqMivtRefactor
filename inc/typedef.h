@@ -35,11 +35,5 @@ typedef int	device_t;
 #define COLOR_INC 0.00390625f
 
 #define CUBE_INC 2
-
-#define RUNNING 4
-#define STOPPED 3
-#define PAUSED  2
-#define STARTED 1
-
 }
 #endif /* EQ_MIVT_TYPEDEF_H */

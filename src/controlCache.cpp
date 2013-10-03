@@ -10,78 +10,63 @@ Notes:
 
 #include <iostream>
 
+#define RUNNING 4
+#define STOPPED 3
+#define PAUSED  2
+#define STARTED 1
+
 namespace eqMivt
 {
 
 bool ControlCache::_initControlCache()
 {
-	_state = STARTED;
-	_resize = false;
-	_free = false;
-	_safeArea = false;
-	_notEnd = true;
-	_pause = false;
+	_operationCond.lock();
 
-	return start();
+	bool r = start();
+	if (r)
+	{
+		_operationCond.wait();
+	}
+	_operationCond.unlock();
+	return r;
 }
 
 bool ControlCache::stopWork()
 {
 	bool r = false;
 
-	_stateCond.lock();
+	_operationCond.lock();
 	if (_state != STOPPED)
 	{
-		_notEnd = false;
 		if (_state == PAUSED || _state == STARTED)
 		{
-			_pauseCond.signal();
+			_stateCond.lock();
+			_stateCond.signal();
+			_stateCond.unlock();
 		}
-
+		_notEnd = false;
+		_operationCond.wait();
 		r = true;
-		_stateCond.wait();
 	}
-	_stateCond.unlock();
+	_operationCond.unlock();
 	if (r)
-		join();
-
-	return r;
-}
-
-bool ControlCache::_startProceted()
-{
-	_stateCond.lock();
-	if (_state == RUNNING)
-	{
-		_safeArea = true;
-		return true;
-	}
-
-	_stateCond.unlock();
-	return false;
-}
-
-bool ControlCache::_endProtected()
-{
-	if (!_safeArea)
-	{
-		std::cerr<<"Control Cache, try to end safe aread not protected before"<<std::endl;
+		return join();
+	else
 		return false;
-	}
 }
 
 bool ControlCache::pauseWork()
 {
 	bool r = false;
 
-	_stateCond.lock();
+	_operationCond.lock();
 	if (_state == RUNNING)
 	{
 		_pause = true;
-		_stateCond.wait();
+		_operationCond.wait();
 		r = true;
 	}
-	_stateCond.unlock();
+	_operationCond.unlock();
 
 	return r;
 }
@@ -90,14 +75,16 @@ bool ControlCache::_pauseWorkAndFreeCache()
 {
 	bool r = false;
 
-	_stateCond.lock();
-	if (_state == RUNNING)
+	_operationCond.lock();
+	if (_state == STARTED)
+		r = true;
+	else if (_state == RUNNING)
 	{
 		r = true;
 		_free = true;
-		_stateCond.wait();
+		_operationCond.wait();
 	}
-	_stateCond.unlock();
+	_operationCond.unlock();
 
 	return r;
 }
@@ -106,7 +93,7 @@ bool ControlCache::continueWork()
 {
 	bool r = false;
 
-	_stateCond.lock();
+	_operationCond.lock();
 	if (_state == STARTED)
 	{
 		std::cerr<<"Try to continue first time without resize"<<std::endl;
@@ -120,10 +107,12 @@ bool ControlCache::continueWork()
 	if (_state == PAUSED)
 	{
 		r = true;
-		_pauseCond.signal();
-		_stateCond.wait();
+		_stateCond.lock();
+		_stateCond.signal();
+		_stateCond.unlock();
+		_operationCond.wait();
 	}
-	_stateCond.unlock();
+	_operationCond.unlock();
 
 	return r;
 }
@@ -132,26 +121,31 @@ bool ControlCache::_continueWorkAndReSize()
 {
 	bool r = false;
 
-	_stateCond.lock();
+	_operationCond.lock();
 	if (_state == STARTED)
 	{
+		_stateCond.lock();
+		_stateCond.signal();
 		_resize = true;
-		_pauseCond.signal();
-		_stateCond.wait();
+		_stateCond.unlock();
+		_operationCond.wait();
+		r = true;
 	}
-	else if (!_free)
+	else if (_free)
 	{
 		std::cerr<<"Try to continue and resize without pause and free"<<std::endl;
 		throw;
 	}
 	else if (_state == PAUSED)
 	{
-		r = true;
+		_stateCond.lock();
+		_stateCond.signal();
+		_stateCond.unlock();
 		_resize = true;
-		_pauseCond.signal();
-		_stateCond.wait();
+		_operationCond.wait();
+		r = true;
 	}
-	_stateCond.unlock();
+	_operationCond.unlock();
 
 	return r;
 }
@@ -160,10 +154,10 @@ bool ControlCache::_checkRunning()
 {
 	bool r = false;
 
-	_stateCond.lock();
+	_operationCond.lock();
 	if (_state == RUNNING)
 		r = true;
-	_stateCond.unlock();
+	_operationCond.unlock();
 
 	return r;
 }
@@ -172,91 +166,99 @@ bool ControlCache::_checkStarted()
 {
 	bool r = false;
 
-	_stateCond.lock();
+	_operationCond.lock();
 	if (_state == STARTED)
 		r = true;
-	_stateCond.unlock();
+	_operationCond.unlock();
 
 	return r;
 }
 
 void ControlCache::run()
 {
-	_stateCond.lock();
+	_operationCond.lock();
+
+		_resize = false;
+		_free = false;
+		_notEnd = true;
+		_pause = false;
+		_state = STARTED;
+		_stateCond.lock();
+
+	_operationCond.signal();
+	_operationCond.unlock();
+
 
 	if (_threadInit())
 	{
-		_stateCond.unlock();
 
 		while(_notEnd)
 		{
-			_stateCond.lock();
-
 			if (_state == STARTED)
 			{
-				_stateCond.unlock();
-				_pauseCond.wait();
-				_pauseCond.unlock();
+				_stateCond.wait();
 
+				_operationCond.lock();
 				if (!_notEnd)
 				{
-					_stateCond.lock();
 					_state = STOPPED;
+					_operationCond.signal();
 				}
 				else if (_resize)
 				{
-					_stateCond.lock();
 					_reSizeCache();
 					_resize = false;
 					_state = RUNNING;
-					_stateCond.signal();
+					_operationCond.signal();
 				}
 				else
 				{
 					std::cerr<<"Control Cache, try to continue wihtout resizing the first time"<<std::endl;
 					throw;
 				}
+				_operationCond.unlock();
 			}
 			else if (_state == PAUSED)
 			{
-				_stateCond.unlock();
-				_pauseCond.wait();
-				_pauseCond.unlock();
+				_stateCond.wait();
 
+				_operationCond.lock();
 				if (!_notEnd)
 				{
-					_stateCond.lock();
 					_state = STOPPED;
+					_operationCond.signal();
 				}
 				else if (_resize)
 				{
-					_stateCond.lock();
 					_reSizeCache();
 					_resize = false;
 					_state = RUNNING;
-					_stateCond.signal();
+					_operationCond.signal();
 				}
 				else 
 				{
-					_stateCond.lock();
 					_state = RUNNING;
-					_stateCond.signal();
+					_operationCond.signal();
 				}
+				_operationCond.unlock();
 			}
 			else if (_state == RUNNING)
 			{
+				_operationCond.lock();
 				if (_pause)
 				{
 					_pause = false;
 					_state == PAUSED;
-					_stateCond.signal();
+					_operationCond.signal();
+					_operationCond.unlock();
 				}
 				else if (_free)
 				{
 					_freeCache();
 					_free = false;
-					_state == PAUSED;
-					_stateCond.signal();
+					_state = PAUSED;
+					_operationCond.signal();
+					_operationCond.unlock();
 				}
 				else if (!_notEnd)
 				{
@@ -264,12 +266,13 @@ void ControlCache::run()
 				}
 				else
 				{
+					_operationCond.unlock();
 					_threadWork();
 				}
 			}
 			else if (_state == STOPPED)
 			{
-				_stateCond.signal();
+				_operationCond.lock();
 				break;
 			}
 			else
@@ -277,13 +280,12 @@ void ControlCache::run()
 				std::cerr<<"Contal Cache, worng state"<<std::endl;
 				throw;
 			}
-
-			_stateCond.unlock();
 		}
 
 		_threadStop();
 
-		_stateCond.signal();
+		_operationCond.signal();
+		_operationCond.unlock(); 
 	}
 	else
 		_state = STOPPED;

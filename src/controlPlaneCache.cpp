@@ -48,7 +48,13 @@ bool ControlPlaneCache::_threadInit()
 
 void ControlPlaneCache::_threadStop()
 {
-	_freeCache();
+	if (_memoryPlane != 0)
+		if(cudaSuccess != cudaFreeHost((void*)_memoryPlane))
+		{
+			std::cerr<<"Control Plane Cache, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
+			throw;
+		}
+	_memoryPlane = 0;
 	_file.close();
 }
 
@@ -117,17 +123,13 @@ void ControlPlaneCache::_threadWork()
 		}
 
 	_fullSlots.unlock();
+
+	return;
 }
 
 void ControlPlaneCache::_freeCache()
 {
-	if (_memoryPlane != 0)
-		if(cudaSuccess != cudaFreeHost((void*)_memoryPlane))
-		{
-			std::cerr<<"Control Plane Cache, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
-			throw;
-		}
-	_memoryPlane = 0;
+	// DO NOT FREE, FREE AT THE END 
 }
 
 
@@ -171,10 +173,13 @@ void ControlPlaneCache::_reSizeCache()
 		{
 			_memoryAviable *=0.7;
 		}
-		if (cudaSuccess != cudaHostAlloc((void**)&_memoryPlane, _memoryAviable, cudaHostAllocDefault))
+		while (cudaSuccess != cudaHostAlloc((void**)&_memoryPlane, _memoryAviable, cudaHostAllocDefault))
 		{                                                                                               
-			std::cerr<<"Control Plane Cache, error allocating memory "<<_memoryAviable<<" : "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
-			throw;
+			std::cerr<<"Control Plane Cache, error allocating memory "<<_memoryAviable/1024.0f/1024.0f<<" : "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+			if (_memoryAviable <= 0)
+				throw;
+			else
+				_memoryAviable -= _memoryAviable * 0.1;
 		}
 
 	}
@@ -204,7 +209,7 @@ bool ControlPlaneCache::freeCacheAndPause()
 
 bool ControlPlaneCache::reSizeCacheAndContinue(vmml::vector<3,int> min, vmml::vector<3,int> max)
 {
-	if (_checkRunning() || _checkStarted())
+	if (_checkRunning())
 		return false;
 
 	_minFuture = min;
@@ -215,13 +220,10 @@ bool ControlPlaneCache::reSizeCacheAndContinue(vmml::vector<3,int> min, vmml::ve
 
 float * ControlPlaneCache::getAndBlockPlane(int plane)
 {
-	if (!_startProceted())
-		return 0;
-
 	#ifndef NDEBUG
 	if (plane >= _max.x() || plane < _min.x())
 	{
-		std::cerr<<"Control Plane Cache, error adding plane that not exists"<<std::endl;
+		std::cerr<<"Control Plane Cache, error adding plane that not exists "<<_min<<" "<<_max<<" "<<plane<<std::endl;
 		return 0;
 	}
 	#endif
@@ -256,17 +258,11 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 
 	_fullSlots.unlock();
 
-	if (_endProtected())
-		return dplane;
-	else
-		return 0;
+	return dplane;
 }
 
 void	ControlPlaneCache::unlockPlane(int plane)
 {
-	if (!_startProceted())
-		return;
-
 	boost::unordered_map<int, NodeLinkedList *>::iterator it;
 
 	_fullSlots.lock();
@@ -300,9 +296,6 @@ void	ControlPlaneCache::unlockPlane(int plane)
 	#endif
 
 	_fullSlots.unlock();
-
-	if (!_endProtected())
-		throw;
 }
 
 

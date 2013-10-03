@@ -11,6 +11,7 @@ Notes:
 
 #include <lunchbox/thread.h>
 #include <lunchbox/condition.h>
+#include <lunchbox/lock.h>
 
 #include <typedef.h>
 
@@ -20,16 +21,14 @@ namespace eqMivt
 class ControlCache : public lunchbox::Thread
 {
 private:
-	lunchbox::Condition		_pauseCond;
-	bool					_state;
+	int						_state;
 	lunchbox::Condition		_stateCond;
+	lunchbox::Condition		_operationCond;
 
 	bool	_notEnd;
 	bool	_resize;
 	bool	_free;
 	bool	_pause;
-
-	bool	_safeArea;
 
 protected:
 	bool _initControlCache();
@@ -37,10 +36,6 @@ protected:
 	bool _checkRunning();
 
 	bool _checkStarted();
-
-	bool _startProceted();
-
-	bool _endProtected();
 
 	virtual void _threadWork() = 0;
 

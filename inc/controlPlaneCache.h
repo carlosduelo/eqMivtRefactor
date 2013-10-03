@@ -18,9 +18,6 @@ Notes:
 #include <boost/unordered_map.hpp>
 #include<ctime>
 
-
-#include <lunchbox/lock.h>
-
 namespace eqMivt
 {
 
