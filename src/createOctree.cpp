@@ -11,6 +11,7 @@ Notes:
 #include <octreeConstructor.h>
 #include <createOctree_cuda.h>
 #include <mortonCodeUtil_CPU.h>
+#include <cuda_help.h>
 
 #include <boost/program_options.hpp>
 #include <boost/lexical_cast.hpp>
@@ -480,15 +481,28 @@ bool createOctree(octreeParameter_t p)
 	#endif
 
 	eqMivt::ControlPlaneCache cpc;
-	cpc.initParameter(file_params);
-	cpc.start();
+	if (!cpc.initParameter(file_params))
+	{
+		std::cerr<<"Error init control plane cache"<<std::endl;
+		return 0;
+	}
 
 	eqMivt::ControlCubeCache ccc;
-	ccc.initParameter(&cpc);
-	ccc.start();
+	if (!ccc.initParameter(&cpc, eqMivt::getBestDevice()))
+	{
+		std::cerr<<"Error init control cube cache"<<std::endl;
+	}
 
-	cpc.reSize(sP, eP);
-	ccc.reSize(p.nLevels, cubeLevel, p.start);
+	if (!cpc.freeCacheAndPause() || !cpc.reSizeCacheAndContinue(sP, eP))
+	{
+		std::cerr<<"Error, resizing plane cache"<<std::endl;
+		return false;
+	}
+	if (!ccc.freeCacheAndPause() || !ccc.reSizeCacheAndContinue(p.nLevels, cubeLevel, p.start))
+	{
+		std::cerr<<"Error, resizing plane cache"<<std::endl;
+		return false;
+	}
 
 	float * cube = 0;
 
@@ -521,8 +535,8 @@ bool createOctree(octreeParameter_t p)
 		#endif
 	}
 
-	ccc.stopProcessing();
-	cpc.stopProcessing();
+	ccc.stopWork();
+	cpc.stopWork();
 }
 
 int main( const int argc, char ** argv)

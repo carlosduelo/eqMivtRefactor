@@ -25,6 +25,8 @@ set(MIVT_SOURCE
 
 # CREATE OCTREE 
 set(CREATE_OCTREE_SOURCE
+		cuda_help.cpp
+		controlCache.cpp
 		octreeConstructor.cpp
 		visibleCubes.cpp
 		linkedList.cpp
@@ -82,6 +84,8 @@ target_link_libraries(testControlPlaneCache ${LIBS_NEEDED_TEST_CONTROL_PLANE_CAC
 
 # TEST CACHE 
 set(TEST_CACHE_SOURCE
+		cuda_help.cpp
+		controlCache.cpp
 		visibleCubes.cpp
 		linkedList.cpp
 		cache.cpp
@@ -104,6 +108,8 @@ target_link_libraries(testCache ${LIBS_NEEDED_TEST_CACHE} )
 
 # TEST CONTROL CUBE CACHE 
 set(TEST_CONTROL_CUBE_CACHE_SOURCE
+		cuda_help.cpp
+		controlCache.cpp
 		controlPlaneCache.cpp
 		controlCubeCache.cpp
 		hdf5File.cpp

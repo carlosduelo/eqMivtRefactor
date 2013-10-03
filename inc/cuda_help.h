@@ -45,5 +45,8 @@ inline dim3 getThreads(int dim)
 	dim3 threads(t);//,0,0);
 	return threads;
 }
+
+int getBestDevice();
+
 }
 #endif

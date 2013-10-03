@@ -75,7 +75,7 @@ class  ControlPlaneCache : public ControlCache
 
 		// NO SAFE CALLS
 		/* (x,y) = (y_dim, z_dim) */
-		vmml::vector<2,int>	getPlaneDim() {vmml::vector<2,int> r (_max.y() - _min.y(), _max.z() - _min.z());}
+		vmml::vector<2,int>	getPlaneDim() { return vmml::vector<2,int> (_max.y() - _min.y(), _max.z() - _min.z());}
 		vmml::vector<3,int> getMinCoord() { return _min; }
 		vmml::vector<3,int> getMaxCoord() { return _max; }
 

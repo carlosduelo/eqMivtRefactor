@@ -263,6 +263,7 @@ void ControlCache::run()
 				else if (!_notEnd)
 				{
 					_state = STOPPED; 
+					_operationCond.unlock();
 				}
 				else
 				{
@@ -293,6 +294,8 @@ void ControlCache::run()
 	_stateCond.unlock();
 
 	lunchbox::Thread::exit();
+
+	return;
 }
 
 }

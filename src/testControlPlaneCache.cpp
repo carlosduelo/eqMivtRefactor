@@ -163,13 +163,16 @@ int main(int argc, char ** argv)
 		std::cout<<"Test "<<s<<" "<<e<<": "<<time<<" seconds ~ "<<bw<<" MB/s"<<std::endl;
 	}
 	
-	double time = 0.0;
-	clock.reset();
-	testPerf(vmml::vector<3,int>(0,0,0), dim);
-	time = clock.getTimed()/1000.0;
-	double bw = ((dim.x()*dim.y()*dim.z()*sizeof(float))/1204.0/1024.0)/time;
+	if (!error)
+	{
+		double time = 0.0;
+		clock.reset();
+		testPerf(vmml::vector<3,int>(0,0,0), dim);
+		time = clock.getTimed()/1000.0;
+		double bw = ((dim.x()*dim.y()*dim.z()*sizeof(float))/1204.0/1024.0)/time;
 
-	std::cout<<"Read complete volume "<<dim<<" : "<<time<<" seconds ~ "<<bw<<" MB/s"<<std::endl; 
+		std::cout<<"Read complete volume "<<dim<<" : "<<time<<" seconds ~ "<<bw<<" MB/s"<<std::endl; 
+	}
 
 	cpc.stopWork();
 

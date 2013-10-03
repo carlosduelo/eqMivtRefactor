@@ -10,6 +10,7 @@ Notes:
 
 #include <mortonCodeUtil_CPU.h>
 #include <testVisibleCubes_cuda.h>
+#include <cuda_help.h>
 
 #include <lunchbox/sleep.h>
 #include <lunchbox/clock.h>
@@ -43,14 +44,20 @@ void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCasting
 	vc.reSize(numPixels);
 	vc.init();
 
-	ccc.freeMemoryAndPause();
-
 	eqMivt::Cache				cache;
 	cache.init(&ccc);
 	cache.setRayCastingLevel(rayCastingLevel);
 
-	cpc.reSize(sP, eP);
-	ccc.reSize(nLevels, levelCube, offset);
+	if (!cpc.freeCacheAndPause() || !cpc.reSizeCacheAndContinue(sP, eP))
+	{
+		std::cerr<<"Error, resizing plane cache"<<std::endl;
+		return;
+	}
+	if (!ccc.freeCacheAndPause() || !ccc.reSizeCacheAndContinue(nLevels, levelCube, offset))
+	{
+		std::cerr<<"Error, resizing plane cache"<<std::endl;
+		return;
+	}
 
 	eqMivt::index_node_t idS = eqMivt::coordinateToIndex(vmml::vector<3,int>(0,0,0), rayCastingLevel,nLevels);
 	eqMivt::index_node_t idE = eqMivt::coordinateToIndex(vmml::vector<3,int>(dimV-1, dimV-1, dimV-1), rayCastingLevel,nLevels);
@@ -138,17 +145,21 @@ int main(int argc, char ** argv)
 	parameters.push_back(std::string(argv[1]));
 	parameters.push_back(std::string(argv[2]));
 
-	cpc.initParameter(parameters);
-	ccc.initParameter(&cpc);
+	if (!cpc.initParameter(parameters))
+	{
+		std::cerr<<"Error init control plane cache"<<std::endl;
+		return 0;
+	}
+	if (!ccc.initParameter(&cpc, eqMivt::getBestDevice()))
+	{
+		std::cerr<<"Error init control cube cache"<<std::endl;
+	}
 
 	hdf5File.init(parameters);
 	mD = hdf5File.getRealDimension();
 	hdf5File.close();
 
 	std::cout<<"Volume size "<<mD<<std::endl;
-
-	cpc.start();
-	ccc.start();
 
 	lunchbox::Clock clock;
 
@@ -191,8 +202,8 @@ int main(int argc, char ** argv)
 	}
 
 
-	ccc.stopProcessing();
-	cpc.stopProcessing();
+	ccc.stopWork();
+	cpc.stopWork();
 	vc.destroy();
 
 	return 0;

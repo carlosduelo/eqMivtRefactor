@@ -13,7 +13,7 @@ Notes:
 #include <cuda_runtime.h>
 
 #define READING -1
-#define WAITING 2000
+#define WAITING 200
 
 namespace eqMivt
 {

@@ -10,7 +10,7 @@ Notes:
 
 #include <mortonCodeUtil_CPU.h>
 
-#include <cuda_runtime.h>
+#include <cuda_help.h>
 
 #include <lunchbox/sleep.h>
 #include <lunchbox/clock.h>
@@ -46,9 +46,16 @@ bool test(int nLevels, int levelCube, vmml::vector<3,int> offset)
 	std::cout<<"Subset volume "<<offset - vmml::vector<3,int>(CUBE_INC,CUBE_INC,CUBE_INC)<<" "<<offset+vmml::vector<3,int>(dimV+CUBE_INC, dimV+CUBE_INC,dimV+CUBE_INC)<<std::endl;
 	std::cout<<"ReSize Cube Cache nLevels "<<nLevels<<" level cube "<<levelCube<<" offset "<<offset<<std::endl;
 
-	cpc.reSize(sP, eP);
-
-	ccc.reSize(nLevels, levelCube, offset);
+	if (!cpc.freeCacheAndPause() || !cpc.reSizeCacheAndContinue(sP, eP))
+	{
+		std::cerr<<"Error, resizing plane cache"<<std::endl;
+		return true;
+	}
+	if (!ccc.freeCacheAndPause() || !ccc.reSizeCacheAndContinue(nLevels, levelCube, offset))
+	{
+		std::cerr<<"Error, resizing plane cache"<<std::endl;
+		return true;
+	}
 
 	eqMivt::index_node_t idS = eqMivt::coordinateToIndex(vmml::vector<3,int>(0,0,0), levelCube, nLevels);
 	eqMivt::index_node_t idF = eqMivt::coordinateToIndex(vmml::vector<3,int>(dimV-1, dimV-1, dimV-1), levelCube, nLevels);
@@ -129,9 +136,16 @@ void testPerf(int nLevels, int levelCube, vmml::vector<3,int> offset)
 	std::cout<<"Subset volume "<<offset - vmml::vector<3,int>(CUBE_INC,CUBE_INC,CUBE_INC)<<" "<<offset+vmml::vector<3,int>(dimV+CUBE_INC, dimV+CUBE_INC,dimV+CUBE_INC)<<std::endl;
 	std::cout<<"ReSize Cube Cache nLevels "<<nLevels<<" level cube "<<levelCube<<" offset "<<offset<<std::endl;
 
-	cpc.reSize(sP, eP);
-
-	ccc.reSize(nLevels, levelCube, offset);
+	if (!cpc.freeCacheAndPause() || !cpc.reSizeCacheAndContinue(sP, eP))
+	{
+		std::cerr<<"Error, resizing plane cache"<<std::endl;
+		return;
+	}
+	if (!ccc.freeCacheAndPause() || !ccc.reSizeCacheAndContinue(nLevels, levelCube, offset))
+	{
+		std::cerr<<"Error, resizing plane cache"<<std::endl;
+		return;
+	}
 
 	eqMivt::index_node_t idS = eqMivt::coordinateToIndex(vmml::vector<3,int>(0,0,0), levelCube, nLevels);
 	eqMivt::index_node_t idF = eqMivt::coordinateToIndex(vmml::vector<3,int>(dimV-1, dimV-1, dimV-1), levelCube, nLevels);
@@ -173,12 +187,17 @@ int main(int argc, char ** argv)
 	parameters.push_back(std::string(argv[1]));
 	parameters.push_back(std::string(argv[2]));
 
-	cpc.initParameter(parameters);
+	if (!cpc.initParameter(parameters))
+	{
+		std::cerr<<"Error init control plane cache"<<std::endl;
+		return 0;
+	}
 	hdf5File.init(parameters);
-	ccc.initParameter(&cpc);
+	if (!ccc.initParameter(&cpc, eqMivt::getBestDevice()))
+	{
+		std::cerr<<"Error init control cube cache"<<std::endl;
+	}
 
-	cpc.start();
-	ccc.start();
 	vmml::vector<3, int> dim = hdf5File.getRealDimension();
 
 	std::cout<<"Checking errors........."<<std::endl;
@@ -262,26 +281,29 @@ int main(int argc, char ** argv)
 		std::cout<<"Test "<<s<<" "<<e<<": "<<time<<" seconds ~ "<<bw<<" MB/s"<<std::endl;
 	}
 
-	int dimA = fmax(dim.x(), fmaxf(dim.y(), dim.z()));
-	nLevels = 0;
-	/* Calcular dimension del árbol*/
-	float aux = logf(dimA)/logf(2.0);
-	float aux2 = aux - floorf(aux);
-	nLevels = aux2>0.0 ? aux+1 : aux;
-	int dimV = exp2(nLevels);
+	if (!error)
+	{
+		int dimA = fmax(dim.x(), fmaxf(dim.y(), dim.z()));
+		nLevels = 0;
+		/* Calcular dimension del árbol*/
+		float aux = logf(dimA)/logf(2.0);
+		float aux2 = aux - floorf(aux);
+		nLevels = aux2>0.0 ? aux+1 : aux;
+		int dimV = exp2(nLevels);
 
-	levelCube = rand() % (nLevels - 4) + 4;
-	double time = 0.0;
-	clock.reset();
-	testPerf(nLevels, levelCube, vmml::vector<3,int>(0,0,0));
-	time = clock.getTimed()/1000.0;
-	double bw = (((dim.x()*dim.y()*dim.z())*sizeof(float))/1204.0/1024.0)/time;
+		levelCube = rand() % (nLevels - 4) + 4;
+		double time = 0.0;
+		clock.reset();
+		testPerf(nLevels, levelCube, vmml::vector<3,int>(0,0,0));
+		time = clock.getTimed()/1000.0;
+		double bw = (((dim.x()*dim.y()*dim.z())*sizeof(float))/1204.0/1024.0)/time;
 
-	std::cout<<"Read complete volume "<<dim<<" : "<<time<<" seconds ~ "<<bw<<" MB/s"<<std::endl; 
+		std::cout<<"Read complete volume "<<dim<<" : "<<time<<" seconds ~ "<<bw<<" MB/s"<<std::endl; 
+	}
 
 
-	ccc.stopProcessing();
-	cpc.stopProcessing();
+	ccc.stopWork();
+	cpc.stopWork();
 	hdf5File.close();
 
 	return 0;

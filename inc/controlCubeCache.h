@@ -36,7 +36,7 @@ struct find_pending_cube
 	}
 };
 
-class  ControlCubeCache : public lunchbox::Thread
+class  ControlCubeCache : public ControlCache 
 {
 	private:
 		LinkedList			_lruCubes;
@@ -66,42 +66,37 @@ class  ControlCubeCache : public lunchbox::Thread
 
 		ControlPlaneCache * _planeCache;
 
-		bool				_resize;
-		bool				_free;
-		unsigned int		_state;
-		lunchbox::Condition _stateCache;
 		lunchbox::Condition	_emptyPendingCubes;
 		lunchbox::Condition	_fullSlots;
 
-		void freeMemory();
-
-		void reSizeStructures();
-
 		bool readCube(NodeLinkedList * c);
 
+		void _addNewCube(index_node_t cube);
+
+		virtual void _threadWork();
+
+		virtual bool _threadInit();
+
+		virtual void _threadStop();
+
+		virtual void _freeCache();
+
+		virtual void _reSizeCache();
+
 	public:
-		virtual ~ControlCubeCache();
+		virtual ~ControlCubeCache() {};
 
 		bool initParameter(ControlPlaneCache * planeCache, device_t device);
 
-		virtual void run();
+		bool freeCacheAndPause();
 
-		void stopProcessing();
-
-		bool pauseProcessing();
-
-		bool continueProcessing();
-
-		bool freeMemoryAndPause();
-
-		bool reSize(int nLevels, int levelCube, vmml::vector<3,int> offset );
-
-		bool reSizeAndContinue(int nLevels, int levelCube, vmml::vector<3,int> offset );
+		bool reSizeCacheAndContinue(int nLevels, int levelCube, vmml::vector<3, int> offset);
 
 		float * getAndBlockCube(index_node_t cube);
 
 		void	unlockCube(index_node_t cube);
 
+		// NO SAFE CALLS
 		int		getCubeLevel() { return _levelCube; }
 
 		int		getDimCube() { return _dimCube; }
