@@ -121,3 +121,17 @@ set(LIBS_NEEDED_TEST_CONTROL_CUBE_CACHE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} 
 
 add_executable(testControlCubeCache ${TEST_CONTROL_CUBE_CACHE_SOURCE} testControlCubeCache.cpp) 
 target_link_libraries(testControlCubeCache ${LIBS_NEEDED_TEST_CONTROL_CUBE_CACHE} )
+
+# TEST OCTREE 
+set(TEST_OCTREE_SOURCE
+	octreeContainer.cpp
+   )
+
+set(TEST_OCTREE_CUDA_SOURCE
+)
+
+set(LIBS_NEEDED_TEST_OCTREE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES}) 
+
+cuda_compile(TEST_OCTREE_CUDA_OBJECTS ${TEST_OCTREE_CUDA_SOURCE})
+add_executable(testOctree ${TEST_OCTREE_SOURCE} ${TEST_OCTREE_CUDA_OBJECTS} testOctree.cpp) 
+target_link_libraries(testOctree ${LIBS_NEEDED_TEST_OCTREE} )

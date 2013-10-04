@@ -250,6 +250,16 @@ bool OctreeContainer::loadPreviusIsosurface()
 	return true;
 }
 
+vmml::vector<3, int> OctreeContainer::getStartCoord()
+{
+	return _octrees[_currentPosition].start;
+}
+
+vmml::vector<3, int> OctreeContainer::getEndCoord()
+{
+	return _octrees[_currentPosition].end;
+}
+
 int OctreeContainer::getnLevels()
 {
 	return _octrees[_currentPosition].nLevels;
@@ -275,4 +285,13 @@ int	OctreeContainer::getCurrentOctree()
 	return _octrees[_currentPosition].index[_currentIsosurface];
 }
 
+int	OctreeContainer::getMaxHeight()
+{	
+	return _octrees[_currentPosition].maxHeight[_currentIsosurface];
+}
+
+int	OctreeContainer::getIsosurface()
+{	
+	return _octrees[_currentPosition].isos[_currentIsosurface];
+}
 }

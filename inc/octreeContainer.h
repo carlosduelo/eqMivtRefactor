@@ -92,10 +92,14 @@ class OctreeContainer
 
 		int	getCurrentOctree();
 
+		vmml::vector<3, int> getStartCoord();
+		vmml::vector<3, int> getEndCoord();
 		int getnLevels();
 		int getmaxLevel();
 		int	getCubeLevel();
 		int getRayCastingLevel();
+		int	getMaxHeight();
+		int getIsosurface();
 
 		index_node_t * getOctree() { return _octree; }
 		int	* getSizes(){ return _sizes; }
