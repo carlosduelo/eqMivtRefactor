@@ -142,7 +142,7 @@ void ControlPlaneCache::_reSizeCache()
 
 	if (_minFuture.x() >= _maxFuture.x() || _minFuture.y() >= _maxFuture.y() || _minFuture.z() >= _maxFuture.z())
 	{
-		std::cerr<<"Control Plane Cache, minimum and maximum coordinates should be min > max"<<std::endl;
+		std::cerr<<"Control Plane Cache, minimum and maximum coordinates should be min < max"<<std::endl;
 		throw;
 	}
 	if (_minFuture.x() < 0 || _minFuture.y()  < 0 || _minFuture.z() < 0)

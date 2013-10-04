@@ -169,7 +169,7 @@ bool parseConfigFile(std::string file_name)
 		}
 
 		param.end[0] = toInt(*tok_iter); if (param.end[0] < 0) {infile.close(); return false; } tok_iter++;
-
+		
 		if (isosPos == 2)
 		{
 			param.end[1] = realDimVolume[1]; 
@@ -197,7 +197,8 @@ bool parseConfigFile(std::string file_name)
 			tok_iter++;
 		}
 
-		if (param.end[0] > realDimVolume[0] || param.end[1] > realDimVolume[1] || param.end[2] > realDimVolume[2])
+		if (param.end[0] > realDimVolume[0] || param.end[1] > realDimVolume[1] || param.end[2] > realDimVolume[2] ||
+			param.start[0] >= param.end[0] || param.start[1] >= param.end[1] || param.start[2] >= param.end[2])
 		{
 			std::cerr<<"Error parsing config file"<<std::endl;
 			std::cerr<<"X0 [Y0 Z0] X1 [ Y1 Z1 ] l iso1 iso2 iso3 ..."<<std::endl;
