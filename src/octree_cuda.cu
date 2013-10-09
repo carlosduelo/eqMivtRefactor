@@ -603,6 +603,7 @@ __global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLev
 	if (cudaSuccess != cudaDeviceSynchronize())
 	{
 		std::cerr<<"Error octree: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
 	}
 	#endif
 }
@@ -633,6 +634,7 @@ void insertOctreePointers(index_node_t ** octreeGPU, int * sizes, index_node_t *
 	if (cudaSuccess != cudaDeviceSynchronize())
 	{
 		std::cerr<<"Error init octree: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
 	}
 	#endif
 }

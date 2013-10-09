@@ -140,3 +140,30 @@ set(LIBS_NEEDED_TEST_OCTREE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRA
 cuda_compile(TEST_OCTREE_CUDA_OBJECTS ${TEST_OCTREE_CUDA_SOURCE})
 add_executable(testOctree ${TEST_OCTREE_SOURCE} ${TEST_OCTREE_CUDA_OBJECTS} testOctree.cpp) 
 target_link_libraries(testOctree ${LIBS_NEEDED_TEST_OCTREE} )
+
+# TEST RAYCASTING 
+set(TEST_RAYCASTING_SOURCE
+	cuda_help.cpp
+	controlCache.cpp
+	visibleCubes.cpp
+	linkedList.cpp
+	cache.cpp
+	controlPlaneCache.cpp
+	controlCubeCache.cpp
+	hdf5File.cpp
+	memoryCheck.cpp
+	octree.cpp
+	octreeContainer.cpp
+   )
+
+set(TEST_RAYCASTING_CUDA_SOURCE
+	rayCaster_cuda.cu
+	octree_cuda.cu
+	visibleCubes_cuda.cu
+)
+
+set(LIBS_NEEDED_TEST_RAYCASTING ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES} freeimage) 
+
+cuda_compile(TEST_RAYCASTING_CUDA_OBJECTS ${TEST_RAYCASTING_CUDA_SOURCE})
+add_executable(testRayCasting ${TEST_RAYCASTING_SOURCE} ${TEST_RAYCASTING_CUDA_OBJECTS} testRayCasting.cpp) 
+target_link_libraries(testRayCasting ${LIBS_NEEDED_TEST_RAYCASTING} )

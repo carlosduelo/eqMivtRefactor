@@ -30,22 +30,22 @@ int test(eqMivt::statusCube fromState, eqMivt::statusCube toState)
 	int ep = p.size();
 
 	int add = 0;
-	if ((fromState & CUBE) != NONE)
+	if ((fromState & CUBE) != EMPTY)
 	{
 		add += ec;
 		ec = 0;
 	}
-	if ((fromState & NOCUBE) != NONE)
+	if ((fromState & NOCUBE) != EMPTY)
 	{
 		add += enc;
 		enc = 0;
 	}
-	if ((fromState & CACHED) != NONE)
+	if ((fromState & CACHED) != EMPTY)
 	{
 		add += eca;
 		eca = 0;
 	}
-	if ((fromState & PAINTED) != NONE)
+	if ((fromState & PAINTED) != EMPTY)
 	{
 		add += ep;
 		ep = 0;

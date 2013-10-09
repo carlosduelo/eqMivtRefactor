@@ -309,7 +309,7 @@ float * ControlCubeCache::getAndBlockCube(index_node_t cube)
 				pcube.id = cube;
 				pcube.coord = getMinBoxIndex2(cube, _levelCube, _nLevels); 
 				_pendingCubes.push_back(pcube);
-				std::sort(_pendingCubes.begin(), _pendingCubes.end(), ComparePendingCubes);
+				//std::sort(_pendingCubes.begin(), _pendingCubes.end(), ComparePendingCubes);
 			}
 			if (_pendingCubes.size() == 1)
 				_emptyPendingCubes.signal();

@@ -276,7 +276,7 @@ void VisibleCubes::updateIndexCPU()
 		throw;
 	}
 
-	#ifndef NDEBUG
+	#ifdef DEBUG
 	for(int i=0; i<_cubeC[0]; i++)
 	{
 		for(int j=0; j<_nocubeC[0]; j++)
@@ -417,7 +417,7 @@ void VisibleCubes::updateGPU(statusCube type, cudaStream_t stream)
 
 	_sizeGPU = 0;
 
-	if (_cubeC[0] > 0 &&(type & CUBE) != NONE)
+	if (_cubeC[0] > 0 &&(type & CUBE) != EMPTY)
 	{
 		if (cudaSuccess != cudaMemcpyAsync((void*)(_indexGPU + _sizeGPU), (void*)(_cubeC + 1), _cubeC[0]*sizeof(int), cudaMemcpyHostToDevice))
 		{
@@ -426,7 +426,7 @@ void VisibleCubes::updateGPU(statusCube type, cudaStream_t stream)
 		}
 		_sizeGPU+= _cubeC[0];
 	}
-	if (_nocubeC[0] > 0 && (type & NOCUBE) != NONE)
+	if (_nocubeC[0] > 0 && (type & NOCUBE) != EMPTY)
 	{
 		if (cudaSuccess != cudaMemcpyAsync((void*)(_indexGPU + _sizeGPU), (void*)(_nocubeC + 1), _nocubeC[0]*sizeof(int), cudaMemcpyHostToDevice))
 		{
@@ -435,7 +435,7 @@ void VisibleCubes::updateGPU(statusCube type, cudaStream_t stream)
 		}
 		_sizeGPU+=_nocubeC[0];
 	}
-	if (_cachedC[0] > 0 && (type & CACHED) != NONE)
+	if (_cachedC[0] > 0 && (type & CACHED) != EMPTY)
 	{
 		if (cudaSuccess != cudaMemcpyAsync((void*)(_indexGPU + _sizeGPU), (void*)(_cachedC + 1), _cachedC[0]*sizeof(int), cudaMemcpyHostToDevice))
 		{
@@ -444,7 +444,7 @@ void VisibleCubes::updateGPU(statusCube type, cudaStream_t stream)
 		}
 		_sizeGPU+=_cachedC[0];
 	}
-	if (_paintedC[0] > 0 && (type & PAINTED) != NONE)
+	if (_paintedC[0] > 0 && (type & PAINTED) != EMPTY)
 	{
 		if (cudaSuccess != cudaMemcpyAsync((void*)(_indexGPU + _sizeGPU), (void*)(_paintedC + 1), _paintedC[0]*sizeof(int), cudaMemcpyHostToDevice))
 		{
@@ -490,13 +490,13 @@ std::vector<int> VisibleCubes::getListCubes(statusCube type)
 {
 	std::vector<int> result;
 
-	if ((type & CUBE) != NONE && _cubeC[0] > 0)
+	if ((type & CUBE) != EMPTY && _cubeC[0] > 0)
 		result.insert(result.end(), &_cubeC[1], &_cubeC[_cubeC[0]+1]);
-	if ((type & NOCUBE) != NONE && _nocubeC[0] > 0)
+	if ((type & NOCUBE) != EMPTY && _nocubeC[0] > 0)
 		result.insert(result.end(), &_nocubeC[1], &_nocubeC[_nocubeC[0]+1]);
-	if ((type & CACHED) != NONE && _cachedC[0] > 0)
+	if ((type & CACHED) != EMPTY && _cachedC[0] > 0)
 		result.insert(result.end(), &_cachedC[1], &_cachedC[_cachedC[0]+1]);
-	if ((type & PAINTED) != NONE && _paintedC[0] > 0)
+	if ((type & PAINTED) != EMPTY && _paintedC[0] > 0)
 		result.insert(result.end(), &_paintedC[1], &_paintedC[_paintedC[0]+1]);
 	
 	return result;
@@ -506,13 +506,13 @@ int VisibleCubes::getNumElements(statusCube type)
 {
 	int num = 0;
 
-	if ((type & CUBE) != NONE)
+	if ((type & CUBE) != EMPTY)
 		num += _cubeC[0];
-	if ((type & NOCUBE) != NONE)
+	if ((type & NOCUBE) != EMPTY)
 		num += _nocubeC[0];
-	if ((type & CACHED) != NONE)
+	if ((type & CACHED) != EMPTY)
 		num += _cachedC[0];
-	if ((type & PAINTED) != NONE)
+	if ((type & PAINTED) != EMPTY)
 		num +=_paintedC[0];
 
 	return num;
