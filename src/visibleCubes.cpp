@@ -174,6 +174,11 @@ void VisibleCubes::reSize(int numPixels)
 		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
+	if (cudaSuccess != cudaMemset((void*)_visibleCubesGPU, 0, _size*sizeof(visibleCube_t)))
+	{                                                                                               
+		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
 	if (cudaSuccess != cudaMemset((void*)_cubeG, 0, (1 + _size)*sizeof(int)))
 	{                                                                                               
 		std::cerr<<"Visible cubes, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
@@ -271,7 +276,7 @@ void VisibleCubes::updateIndexCPU()
 		throw;
 	}
 
-	#ifdef NDEBUG
+	#ifndef NDEBUG
 	for(int i=0; i<_cubeC[0]; i++)
 	{
 		for(int j=0; j<_nocubeC[0]; j++)
@@ -404,6 +409,12 @@ void VisibleCubes::updateCPU()
 
 void VisibleCubes::updateGPU(statusCube type, cudaStream_t stream)
 {
+	if (cudaSuccess != cudaMemcpy((void*)_visibleCubesGPU, (void*)_visibleCubes, _size*sizeof(visibleCube_t), cudaMemcpyHostToDevice))
+	{
+		std::cerr<<"Visible cubes, error updating cpu copy: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
+
 	_sizeGPU = 0;
 
 	if (_cubeC[0] > 0 &&(type & CUBE) != NONE)

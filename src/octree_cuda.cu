@@ -109,7 +109,6 @@ inline __device__ float3 _cuda_BoxToCoordinates(int3 pos, float * xGrid, float *
 
 __device__ bool _cuda_RayAABB(index_node_t index, float3 origin, float3 dir,  float * tnear, float * tfar, int nLevels, float * xGrid, float * yGrid, float * zGrid, int3 realDim)
 {
-	printf("%f %f %f %f %f %f\n", origin.x, origin.y, origin.z, dir.x, dir.y, dir.z);
 	int3 minBoxC;
 	int3 maxBoxC;
 	int level;
@@ -514,6 +513,7 @@ __global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLev
 		int js = i / pvpW;
 
 		float3 ray = LB - origin;
+		ray = normalize(ray);
 		ray += (js*h)*up + (is*w)*right;
 		ray = normalize(ray);
 

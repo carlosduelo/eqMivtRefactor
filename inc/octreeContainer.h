@@ -92,6 +92,7 @@ class OctreeContainer
 
 		int	getCurrentOctree();
 
+		int getNumOctrees(){ return _numOctrees; }
 		vmml::vector<3, int> getStartCoord();
 		vmml::vector<3, int> getEndCoord();
 		int getnLevels();

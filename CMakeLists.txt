@@ -53,6 +53,14 @@ else()
 	message(ERROR "HDF5 NOT FOUND")
 endif()
 
+# FREE IMAGE
+IF(FREEIMAGE_FOUND)
+	SET(HAVE_FREEIMAGE ${FREEIMAGE_FOUND} CACHE BOOL "Set to TRUE if FreeImage is found, FALSE otherwise")
+	MESSAGE(STATUS "Looking for FreeImage - found")
+ELSE(FREEIMAGE_FOUND)
+	MESSAGE(STATUS "Looking for FreeImage - not found")
+ENDIF(FREEIMAGE_FOUND)
+
 # MIVT
 include_directories(${mivt_SOURCE_DIR}/inc)
 add_subdirectory(${mivt_SOURCE_DIR}/src)
