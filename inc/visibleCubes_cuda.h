@@ -13,7 +13,7 @@ Notes:
 
 namespace eqMivt
 {
-void updateIndex(visibleCubeGPU cubes, int size, int * cube, int * sCube, int * nocube, int * sNocube, int * cached, int * sCached, int * painted, int * sPainted);
+void updateIndex(visibleCubeGPU_t cubes, int size, int * cube, int * sCube, int * nocube, int * sNocube, int * cached, int * sCached, int * painted, int * sPainted);
 }
 
 #endif /*EQ_MIVT_VISIBLE_CUBES_CUDA_H*/

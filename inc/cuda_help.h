@@ -9,9 +9,14 @@ Notes:
 #ifndef _EQ_MIVT_CUDA_HELP_H_
 #define _EQ_MIVT_CUDA_HELP_H_
 
+#include <cuda_runtime.h>
+
 #define BLOCK_SIZE 128
 
 #define EPS 0.0001f
+
+#define VectorToFloat3(v) make_float3((v).x(), (v).y(), (v).z())
+#define VectorToInt3(v) make_int3((v).x(), (v).y(), (v).z())
 
 namespace eqMivt
 {

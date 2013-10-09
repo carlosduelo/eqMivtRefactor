@@ -12,7 +12,7 @@ Notes:
 
 #include <cuda.h>
 
-__global__ void cuda_updateCubesGPU(eqMivt::visibleCubeGPU cubes, eqMivt::indexVisibleCubeGPU index, int sizeG, int sizeC, eqMivt::statusCube status)
+__global__ void cuda_updateCubesGPU(eqMivt::visibleCubeGPU_t cubes, eqMivt::indexVisibleCubeGPU_t index, int sizeG, int sizeC, eqMivt::statusCube status)
 {
 	int idx = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
 	if (idx < sizeG)
@@ -27,7 +27,7 @@ __global__ void cuda_updateCubesGPU(eqMivt::visibleCubeGPU cubes, eqMivt::indexV
 	return;
 }
 
-void test_updateCubesGPU(eqMivt::visibleCubeGPU cubes, eqMivt::indexVisibleCubeGPU index, int sizeG, int sizeC, eqMivt::statusCube status)
+void test_updateCubesGPU(eqMivt::visibleCubeGPU_t cubes, eqMivt::indexVisibleCubeGPU_t index, int sizeG, int sizeC, eqMivt::statusCube status)
 {
 	dim3 threads = eqMivt::getThreads(sizeG);
 	dim3 blocks = eqMivt::getBlocks(sizeG);
@@ -42,7 +42,7 @@ void test_updateCubesGPU(eqMivt::visibleCubeGPU cubes, eqMivt::indexVisibleCubeG
 	#endif
 }
 
-__global__ void cuda_randomNOCUBE_To_NOCUBEorCUBE(eqMivt::visibleCubeGPU cubes, eqMivt::indexVisibleCubeGPU index, int sizeG, int sizeC, eqMivt::index_node_t idS, eqMivt::index_node_t idE)
+__global__ void cuda_randomNOCUBE_To_NOCUBEorCUBE(eqMivt::visibleCubeGPU_t cubes, eqMivt::indexVisibleCubeGPU_t index, int sizeG, int sizeC, eqMivt::index_node_t idS, eqMivt::index_node_t idE)
 {
 	int idx = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
 	if (idx < sizeG)
@@ -58,7 +58,7 @@ __global__ void cuda_randomNOCUBE_To_NOCUBEorCUBE(eqMivt::visibleCubeGPU cubes, 
 	return;
 }
  
-void test_randomNOCUBE_To_NOCUBEorCUBE(eqMivt::visibleCubeGPU cubes, eqMivt::indexVisibleCubeGPU index, int sizeG, int sizeC, eqMivt::index_node_t idS, eqMivt::index_node_t idE)
+void test_randomNOCUBE_To_NOCUBEorCUBE(eqMivt::visibleCubeGPU_t cubes, eqMivt::indexVisibleCubeGPU_t index, int sizeG, int sizeC, eqMivt::index_node_t idS, eqMivt::index_node_t idE)
 {
 	dim3 threads = eqMivt::getThreads(sizeG);
 	dim3 blocks = eqMivt::getBlocks(sizeG);

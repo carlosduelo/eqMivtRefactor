@@ -18,7 +18,7 @@ Notes:
 namespace eqMivt
 {
 
-__global__ void cuda_updateIndex(visibleCubeGPU cubes, int size, int * cube, int * sCube, int * nocube, int * sNocube, int * cached, int * sCached, int * painted, int * sPainted)
+__global__ void cuda_updateIndex(visibleCubeGPU_t cubes, int size, int * cube, int * sCube, int * nocube, int * sNocube, int * cached, int * sCached, int * painted, int * sPainted)
 {
 	int idx = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
 
@@ -39,7 +39,7 @@ __global__ void cuda_updateIndex(visibleCubeGPU cubes, int size, int * cube, int
 	}
 }
 
-void updateIndex(visibleCubeGPU cubes, int size, int * cube, int * sCube, int * nocube, int * sNocube, int * cached, int * sCached, int * painted, int * sPainted)
+void updateIndex(visibleCubeGPU_t cubes, int size, int * cube, int * sCube, int * nocube, int * sNocube, int * cached, int * sCached, int * painted, int * sPainted)
 {
 	dim3 threads = eqMivt::getThreads(size);
 	dim3 blocks = eqMivt::getBlocks(size);

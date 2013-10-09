@@ -19,6 +19,18 @@ typedef unsigned char statusCube;
 
 typedef int	device_t;
 
+typedef struct
+{
+	index_node_t	id;
+	float *			data;
+	statusCube		state;
+	index_node_t	cubeID;
+	int				pixel;
+} visibleCube_t;
+
+typedef visibleCube_t * visibleCubeGPU_t;
+typedef int *			indexVisibleCubeGPU_t;
+
 #define CUBE		(eqMivt::statusCube)0b00001000
 #define PAINTED		(eqMivt::statusCube)0b00000100
 #define CACHED		(eqMivt::statusCube)0b00000010

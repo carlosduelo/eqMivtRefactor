@@ -73,23 +73,23 @@ bool OctreeContainer::init(std::string file_name)
 
 	_file.read((char*)&_numOctrees,sizeof(_numOctrees));
 	_file.read((char*)_realDimVolume.array,3*sizeof(int));
-	_xGrid = new float[4 + _realDimVolume.x()];
-	_yGrid = new float[4 + _realDimVolume.y()];
-	_zGrid = new float[4 + _realDimVolume.z()];
-	_file.read((char*)(_xGrid+2),_realDimVolume.x()*sizeof(float));
-	_file.read((char*)(_yGrid+2),_realDimVolume.y()*sizeof(float));
-	_file.read((char*)(_zGrid+2),_realDimVolume.z()*sizeof(float));
-	for(int i=1; i>=0 ;i--)
+	_xGrid = new float[2*CUBE_INC + _realDimVolume.x()];
+	_yGrid = new float[2*CUBE_INC + _realDimVolume.y()];
+	_zGrid = new float[2*CUBE_INC + _realDimVolume.z()];
+	_file.read((char*)(_xGrid+CUBE_INC),_realDimVolume.x()*sizeof(float));
+	_file.read((char*)(_yGrid+CUBE_INC),_realDimVolume.y()*sizeof(float));
+	_file.read((char*)(_zGrid+CUBE_INC),_realDimVolume.z()*sizeof(float));
+	for(int i=CUBE_INC-1; i>=0 ;i--)
 	{
 		_xGrid[i] = _xGrid[i+1] - 1.0f;
 		_yGrid[i] = _yGrid[i+1] - 1.0f;
 		_zGrid[i] = _zGrid[i+1] - 1.0f;
 	}
-	for(int i=0; i<2; i++)
+	for(int i=0; i<CUBE_INC; i++)
 	{
-		_xGrid[2 + _realDimVolume.x() + i] = _xGrid[2 + _realDimVolume.x() + i - 1] + 1.0f;
-		_yGrid[2 + _realDimVolume.y() + i] = _yGrid[2 + _realDimVolume.y() + i - 1] + 1.0f;
-		_zGrid[2 + _realDimVolume.z() + i] = _zGrid[2 + _realDimVolume.z() + i - 1] + 1.0f;
+		_xGrid[CUBE_INC + _realDimVolume.x() + i] = _xGrid[CUBE_INC + _realDimVolume.x() + i - 1] + 1.0f;
+		_yGrid[CUBE_INC + _realDimVolume.y() + i] = _yGrid[CUBE_INC + _realDimVolume.y() + i - 1] + 1.0f;
+		_zGrid[CUBE_INC + _realDimVolume.z() + i] = _zGrid[CUBE_INC + _realDimVolume.z() + i - 1] + 1.0f;
 		
 	}
 
@@ -203,7 +203,7 @@ void OctreeContainer::_readCurrentOctree()
 	s = 0;
 	for(int i=0; i<=_octrees[_currentPosition].maxLevel; i++)
 	{
-		_file.read((char*)_octree + s, _sizes[i]*sizeof(index_node_t));
+		_file.read((char*)(_octree + s), _sizes[i]*sizeof(index_node_t));
 		s+=_sizes[i];
 	}
 }

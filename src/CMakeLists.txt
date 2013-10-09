@@ -124,10 +124,15 @@ target_link_libraries(testControlCubeCache ${LIBS_NEEDED_TEST_CONTROL_CUBE_CACHE
 
 # TEST OCTREE 
 set(TEST_OCTREE_SOURCE
+	visibleCubes.cpp
+	cuda_help.cpp
+	octree.cpp
 	octreeContainer.cpp
    )
 
 set(TEST_OCTREE_CUDA_SOURCE
+	octree_cuda.cu
+	visibleCubes_cuda.cu
 )
 
 set(LIBS_NEEDED_TEST_OCTREE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES}) 

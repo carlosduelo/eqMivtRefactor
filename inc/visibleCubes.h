@@ -20,18 +20,6 @@ Notes:
 namespace eqMivt
 {
 
-typedef struct
-{
-	index_node_t	id;
-	float *			data;
-	statusCube		state;
-	index_node_t	cubeID;
-	int				pixel;
-} visibleCube_t;
-
-typedef visibleCube_t * visibleCubeGPU;
-typedef int *			indexVisibleCubeGPU;
-
 class VisibleCubes
 {
 	public:
@@ -52,9 +40,9 @@ class VisibleCubes
 
 		void updateGPU(statusCube type, cudaStream_t stream);
 
-		indexVisibleCubeGPU getIndexVisibleCubesGPU();
+		indexVisibleCubeGPU_t getIndexVisibleCubesGPU();
 
-		visibleCubeGPU getVisibleCubesGPU();
+		visibleCubeGPU_t getVisibleCubesGPU();
 
 		int getSizeGPU();
 
@@ -79,9 +67,9 @@ class VisibleCubes
 			int	* _cachedG;
 			int	* _nocubeG;
 
-			int					_sizeGPU;
-			indexVisibleCubeGPU	_indexGPU;
-			visibleCubeGPU		_visibleCubesGPU;
+			int						_sizeGPU;
+			indexVisibleCubeGPU_t	_indexGPU;
+			visibleCubeGPU_t		_visibleCubesGPU;
 };
 
 }
