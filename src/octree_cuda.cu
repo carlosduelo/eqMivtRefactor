@@ -513,7 +513,6 @@ __global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLev
 		int js = i / pvpW;
 
 		float3 ray = LB - origin;
-		ray = normalize(ray);
 		ray += (js*h)*up + (is*w)*right;
 		ray = normalize(ray);
 
