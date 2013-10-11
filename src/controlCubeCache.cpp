@@ -41,7 +41,7 @@ bool ControlCubeCache::_threadInit()
 	_maxCubes = 0;
 
 	_offset.set(0,0,0);
-	_nextOffset.set(0,0,0);
+	_nextOffset.set(-1,-1,-1);
 	_nextnLevels = -1;
 	_nextLevelCube = -1;
 	_nLevels = 0;
@@ -111,7 +111,7 @@ void ControlCubeCache::_addNewCube(index_node_t cube)
 					c->pendingPlanes.push_back(i);
 		#endif
 
-		if (cudaSuccess != cudaMemsetAsync((void*)(_memoryCubes + c->element*_sizeCubes), 0, _dimCube*_dimCube*_dimCube*sizeof(float), _stream))
+		if (cudaSuccess != cudaMemsetAsync((void*)(_memoryCubes + c->element*_sizeCubes), 0, _sizeCubes*sizeof(float), _stream))
 		{
 			std::cerr<<"Control Cube Cache, error copying cube to GPU: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 			throw;
@@ -228,7 +228,7 @@ void ControlCubeCache::_reSizeCache()
 	_nLevels = _nextnLevels;
 	_levelCube = _nextLevelCube;
 	_offset	= _nextOffset;
-	_nextnLevels = 0;;
+	_nextnLevels = 0;
 	_nextLevelCube = 0;
 
 	_dimCube = exp2(_nLevels - _levelCube) + 2 * CUBE_INC;
