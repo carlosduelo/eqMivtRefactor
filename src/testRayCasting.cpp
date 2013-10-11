@@ -19,6 +19,8 @@ Notes:
 
 #include <vmmlib/matrix.hpp>
 
+#include <lunchbox/clock.h>
+
 eqMivt::OctreeContainer oC;
 eqMivt::Octree o;
 eqMivt::VisibleCubes vc;
@@ -91,7 +93,6 @@ bool testCubes()
 		right = RB - LB;
 		right.normalize();
 		up.normalize();
-		std::cout<<up<<" "<<right<<std::endl;
 
 		vc.reSize(numPixels);
 		vc.init();
@@ -103,7 +104,6 @@ bool testCubes()
 										vc.getVisibleCubesGPU(), vc.getIndexVisibleCubesGPU(),
 										o.getxGrid(), o.getyGrid(), o.getzGrid(), VectorToInt3(o.getRealDim()), 0);
 
-		std::cout<<"Octree--> No hit: "<<vc.getNumElements(NOCUBE)<<" hit: "<<vc.getNumElements(CUBE)<<std::endl;
 		/* LAUNCH OCTREE */
 
 		/* Ray Casting */
@@ -113,8 +113,6 @@ bool testCubes()
 								o.getMaxHeight(), buffer, o.getxGrid(), o.getyGrid(), o.getzGrid(),
 								VectorToInt3(o.getRealDim()), r, g, b, 0);
 		/* Ray Casting */
-
-		std::cout<<"Ray Casting --> No hit: "<<vc.getNumElements(NOCUBE)<<" hit: "<<vc.getNumElements(PAINTED)<<std::endl;
 
 		if (cudaSuccess != cudaMemcpy((void*)bufferC, (void*)buffer, 3*numPixels*sizeof(float), cudaMemcpyDeviceToHost))
 		{
@@ -239,13 +237,19 @@ bool test()
 		right = RB - LB;
 		right.normalize();
 		up.normalize();
-		std::cout<<up<<" "<<right<<std::endl;
 
 		vc.reSize(numPixels);
 		vc.init();
 
+		lunchbox::Clock clockOperation;
+		lunchbox::Clock clockTotal;
+		double oT = 0.0; 
+		double cT = 0.0; 
+		double rT = 0.0; 
+		clockTotal.reset();
 		while(vc.getNumElements(PAINTED) != vc.getSize())
 		{
+			clockOperation.reset();
 			/* LAUNG OCTREE */
 			vc.updateGPU(NOCUBE, 0);
 
@@ -256,20 +260,28 @@ bool test()
 											o.getxGrid(), o.getyGrid(), o.getzGrid(), VectorToInt3(o.getRealDim()), 0);
 
 			vc.updateCPU();
+			#if 0
 			int t = vc.getNumElements(NOCUBE) + vc.getNumElements(CUBE) + vc.getNumElements(CACHED) + vc.getNumElements(PAINTED);
 			std::cout<<"Octree--> NOCUBE: "<<vc.getNumElements(NOCUBE)<<" CUBE: "<<vc.getNumElements(CUBE)<<" CACHED: "<<vc.getNumElements(CACHED)<<" PAINTED: "<<vc.getNumElements(PAINTED)<<" "<<t<<" "<<vc.getSize()<<std::endl;
+			#endif
 			/* LAUNCH OCTREE */
+			oT+=clockOperation.getTimed()/1000.0;
 
+			clockOperation.reset();
 			/* Lock Cubes*/
 			cache.pushCubes(&vc);
 			vc.updateIndexCPU();
-			vc.updateGPU(NOCUBE | CACHED, 0);
 			/* Lock Cubes*/
+			cT += clockOperation.getTimed()/1000.0;
 
+			#if 0
 			t = vc.getNumElements(NOCUBE) + vc.getNumElements(CUBE) + vc.getNumElements(CACHED) + vc.getNumElements(PAINTED);
 			std::cout<<"Cache--> NOCUBE: "<<vc.getNumElements(NOCUBE)<<" CUBE: "<<vc.getNumElements(CUBE)<<" CACHED: "<<vc.getNumElements(CACHED)<<" PAINTED: "<<vc.getNumElements(PAINTED)<<" "<<t<<" "<<vc.getSize()<<std::endl;
+			#endif
 		
+			clockOperation.reset();
 			/* Ray Casting */
+			vc.updateGPU(NOCUBE | CACHED, 0);
 			eqMivt::rayCaster(	VectorToFloat3(origin), VectorToFloat3(LB), VectorToFloat3(up), VectorToFloat3(right),
 									w, h, pvpW, pvpH, vc.getSizeGPU(), o.getRayCastingLevel(), o.getCubeLevel(), o.getnLevels(),
 									o.getIsosurface(), vc.getVisibleCubesGPU(), vc.getIndexVisibleCubesGPU(), 
@@ -277,14 +289,23 @@ bool test()
 									VectorToInt3(o.getRealDim()), r, g, b, 0);
 			vc.updateCPU();
 			/* Ray Casting */
+			rT += clockOperation.getTimed()/1000.0;
 
+			clockOperation.reset();
 			/* Unlock Cubes*/
 			cache.popCubes();
 			/* Unlock Cubes*/
+			cT += clockOperation.getTimed()/1000.0;
 
+			#if 0
 			t = vc.getNumElements(NOCUBE) + vc.getNumElements(CUBE) + vc.getNumElements(CACHED) + vc.getNumElements(PAINTED);
 			std::cout<<"Ray Casting--> NOCUBE: "<<vc.getNumElements(NOCUBE)<<" CUBE: "<<vc.getNumElements(CUBE)<<" CACHED: "<<vc.getNumElements(CACHED)<<" PAINTED: "<<vc.getNumElements(PAINTED)<<" "<<t<<" "<<vc.getSize()<<std::endl;
+			#endif
 		}
+		std::cout<<"Octree elapsed time "<<oT<<" seconds"<<std::endl;
+		std::cout<<"Cache elapsed time "<<cT<<" seconds"<<std::endl;
+		std::cout<<"RayCaster elapsed time "<<rT<<" seconds"<<std::endl;
+		std::cout<<"Total elapsed time "<<clockTotal.getTimed()/1000.0<<" seconds"<<std::endl;
 
 		if (cudaSuccess != cudaMemcpy((void*)bufferC, (void*)buffer, 3*numPixels*sizeof(float), cudaMemcpyDeviceToHost))
 		{
