@@ -168,15 +168,15 @@ void Octree::stop()
 
 float * Octree::getxGrid()
 {
-	return &_xGrid[CUBE_INC + _oc->getStartCoord().x()];
+	return _xGrid + CUBE_INC + _oc->getStartCoord().x();
 }
 
 float * Octree::getyGrid()
 {
-	return &_yGrid[CUBE_INC + _oc->getStartCoord().y()];
+	return _yGrid + CUBE_INC + _oc->getStartCoord().y();
 }
 float * Octree::getzGrid()
 {
-	return &_zGrid[CUBE_INC + _oc->getStartCoord().z()];
+	return _zGrid + CUBE_INC + _oc->getStartCoord().z();
 }
 }

@@ -100,7 +100,7 @@ class OctreeContainer
 		int	getCubeLevel();
 		int getRayCastingLevel();
 		int	getMaxHeight();
-		int getIsosurface();
+		float getIsosurface();
 
 		index_node_t * getOctree() { return _octree; }
 		int	* getSizes(){ return _sizes; }

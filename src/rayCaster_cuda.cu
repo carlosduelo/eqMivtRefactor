@@ -133,7 +133,7 @@ inline __device__ float3 getNormal(float3 pos, float * data, int3 minBox, int3 m
 				(getElementInterpolateGrid(make_float3(pos.x,pos.y,pos.z-1),data,minBox,maxBox) - getElementInterpolateGrid(make_float3(pos.x,pos.y,pos.z+1.0f),data,minBox,maxBox))        /2.0f));
 }
 
-__global__ void cuda_rayCasterGrid(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, float iso, visibleCube_t * cube, int * indexCube, int levelO, int levelC, int nLevel, float maxHeight, float * xGrid, float * yGrid, float * zGrid, int3 realDim, float * r, float * g, float * b, float * screen)
+__global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, float iso, visibleCube_t * cube, int * indexCube, int levelO, int levelC, int nLevel, float maxHeight, float * xGrid, float * yGrid, float * zGrid, int3 realDim, float * r, float * g, float * b, float * screen)
 {
 	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -194,7 +194,7 @@ __global__ void cuda_rayCasterGrid(float3 origin, float3  LB, float3 up, float3 
 					(minBox.y-1 <= pos.y && pos.y <= maxBox.y) &&
 					(minBox.z-1 <= pos.z && pos.z <= maxBox.z))
 				{
-					if (pos.x >= 0 && pos.y >= 0 && pos.z >= 0 && pos.x < realDim.x && pos.y < realDim.y && pos.z < realDim.z)
+					if (pos.x >= 0 && pos.y >= 0 && pos.z >= 0 && pos.x < realDim.x-1 && pos.y < realDim.y-1 && pos.z < realDim.z-1)
 					{
 						float3 xyz = make_float3(	pos.x + ((Xnear.x-xGrid[pos.x])/(xGrid[pos.x+1]-xGrid[pos.x])),
 													pos.y + ((Xnear.y-yGrid[pos.y])/(yGrid[pos.y+1]-yGrid[pos.y])),
@@ -288,7 +288,7 @@ __global__ void cuda_rayCasterGrid(float3 origin, float3  LB, float3 up, float3 
 	}
 }
 
-__global__ void cuda_rayCasterGrid_Cubes(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, visibleCube_t * cube, int * indexCube, int levelO, int nLevel, float maxHeight, float * xGrid, float * yGrid, float * zGrid, int3 realDim, float * r, float * g, float * b, float * screen)
+__global__ void cuda_rayCaster_Cubes(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, visibleCube_t * cube, int * indexCube, int levelO, int nLevel, float maxHeight, float * xGrid, float * yGrid, float * zGrid, int3 realDim, float * r, float * g, float * b, float * screen)
 {
 	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -396,7 +396,7 @@ __global__ void cuda_rayCasterGrid_Cubes(float3 origin, float3  LB, float3 up, f
 	dim3 threads = getThreads(numRays);
 	dim3 blocks = getBlocks(numRays);
 
-	cuda_rayCasterGrid<<<blocks, threads, 0, stream>>>(origin, LB, up, right, w, h, pvpW, pvpH, numRays, iso, cube, indexCube, levelO, levelC, nLevel, maxHeight, xGrid, yGrid, zGrid, realDim, r, g, b, pixelBuffer);
+	cuda_rayCaster<<<blocks, threads, 0, stream>>>(origin, LB, up, right, w, h, pvpW, pvpH, numRays, iso, cube, indexCube, levelO, levelC, nLevel, maxHeight, xGrid, yGrid, zGrid, realDim, r, g, b, pixelBuffer);
 	#ifndef NDEBUG
 	if (cudaSuccess != cudaDeviceSynchronize())
 	{
@@ -410,7 +410,7 @@ __global__ void cuda_rayCasterGrid_Cubes(float3 origin, float3  LB, float3 up, f
 	dim3 threads = getThreads(numRays);
 	dim3 blocks = getBlocks(numRays);
 
-	cuda_rayCasterGrid_Cubes<<<blocks, threads, 0, stream>>>(origin, LB, up, right, w, h, pvpW, pvpH, numRays, cube, indexCube, levelO, nLevel, maxHeight, xGrid, yGrid, zGrid, realDim, r, g, b, pixelBuffer);
+	cuda_rayCaster_Cubes<<<blocks, threads, 0, stream>>>(origin, LB, up, right, w, h, pvpW, pvpH, numRays, cube, indexCube, levelO, nLevel, maxHeight, xGrid, yGrid, zGrid, realDim, r, g, b, pixelBuffer);
 	#ifndef NDEBUG
 	if (cudaSuccess != cudaDeviceSynchronize())
 	{

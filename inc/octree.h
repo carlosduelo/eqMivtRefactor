@@ -54,7 +54,7 @@ class Octree
 		int	getCubeLevel(){return _oc->getCubeLevel() ;}
 		int getRayCastingLevel(){return _oc->getRayCastingLevel() ;}
 		int	getMaxHeight(){return _oc->getMaxHeight() ;}
-		int getIsosurface(){return _oc->getIsosurface() ;}
+		float getIsosurface(){return _oc->getIsosurface() ;}
 };
 
 }

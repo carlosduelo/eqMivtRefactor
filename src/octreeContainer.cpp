@@ -290,7 +290,7 @@ int	OctreeContainer::getMaxHeight()
 	return _octrees[_currentPosition].maxHeight[_currentIsosurface];
 }
 
-int	OctreeContainer::getIsosurface()
+float OctreeContainer::getIsosurface()
 {	
 	return _octrees[_currentPosition].isos[_currentIsosurface];
 }
