@@ -29,8 +29,8 @@ bool ControlPlaneCache::_threadInit()
 {
 	_min = vmml::vector<3,int>(0,0,0);
 	_max = vmml::vector<3,int>(0,0,0);
-	_minFuture = vmml::vector<3,int>(0,0,0);
-	_maxFuture = vmml::vector<3,int>(0,0,0);
+	_minFuture = vmml::vector<3,int>(-1,-1,-1);
+	_maxFuture = vmml::vector<3,int>(-1,-1,1);
 
 	_memoryAviable = 0;
 	_memoryPlane = 0;
@@ -138,6 +138,10 @@ void ControlPlaneCache::_freeCache()
 
 void ControlPlaneCache::_reSizeCache()
 {
+	// If the same new paramenters avoid resize
+	if (_min == _minFuture && _max == _maxFuture)
+		return;
+
 	vmml::vector<3, int> dimVolume = _file.getRealDimension();
 
 	if (_minFuture.x() >= _maxFuture.x() || _minFuture.y() >= _maxFuture.y() || _minFuture.z() >= _maxFuture.z())
