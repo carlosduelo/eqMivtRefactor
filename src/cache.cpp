@@ -13,6 +13,9 @@ namespace eqMivt
 
 bool Cache::init(ControlCubeCache * cubeCache)
 {
+	if (cubeCache == 0)
+		return false;
+
 	_cubeCache = cubeCache;
 
 	_rayCastingLevel = 0;

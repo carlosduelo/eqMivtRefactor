@@ -11,6 +11,7 @@ Notes:
 #include <visibleCubes.h>
 #include <cuda_help.h>
 #include <cache.h>
+#include <cacheManager.h>
 #include <rayCaster_cuda.h>
 
 #include <FreeImage.h>
@@ -24,13 +25,14 @@ Notes:
 eqMivt::OctreeContainer oC;
 eqMivt::Octree o;
 eqMivt::VisibleCubes vc;
-eqMivt::ControlPlaneCache	cpc;
-eqMivt::ControlCubeCache	ccc;
+eqMivt::CacheManager cM;
 	
 float * colors = 0;
 float * r = 0;
 float * g = 0;
 float * b = 0;
+
+int device = 0;
 
 vmml::vector<3, int> realDimVolume;
 
@@ -163,14 +165,9 @@ bool test()
 {
 	for(int f=0; f<oC.getNumOctrees(); f++)
 	{
-		if (!cpc.freeCacheAndPause())
+		if (!cM.freeMemoryAndPause())
 		{
 			std::cerr<<"Error, free plane cache"<<std::endl;
-			return false;
-		}
-		if (!ccc.freeCacheAndPause())
-		{
-			std::cerr<<"Error, free cube cache"<<std::endl;
 			return false;
 		}
 
@@ -189,19 +186,20 @@ bool test()
 		eP[0] = o.getEndCoord().x() + CUBE_INC >= realDimVolume.x() ? realDimVolume.x() : o.getEndCoord().x() + CUBE_INC;
 		eP[1] = o.getEndCoord().y() + CUBE_INC >= realDimVolume.y() ? realDimVolume.y() : o.getEndCoord().y() + CUBE_INC;
 		eP[2] = o.getEndCoord().z() + CUBE_INC >= realDimVolume.z() ? realDimVolume.z() : o.getEndCoord().z() + CUBE_INC;
-		if (!cpc.reSizeCacheAndContinue(sP, eP))
+
+		if (!cM.reSizeAndContinue(sP, eP, o.getnLevels(), o.getCubeLevel(), o.getStartCoord()))
 		{
 			std::cerr<<"Error, resizing plane cache"<<std::endl;
 			return false;
 		}
-		if (!ccc.reSizeCacheAndContinue(o.getnLevels(), o.getCubeLevel(), o.getStartCoord()))
-		{
-			std::cerr<<"Error, resizing cube cache"<<std::endl;
-			return false;
-		}
 		// Create Cache
 		eqMivt::Cache				cache;
-		cache.init(&ccc);
+		if (!cache.init(cM.getCubeCache(device)))
+		{
+			std::cerr<<"Error, creating cache in device"<<std::endl;
+			return false;
+		}
+		
 		cache.setRayCastingLevel(o.getRayCastingLevel());
 
 		int pvpW = 1024;
@@ -373,14 +371,12 @@ int main(int argc, char ** argv)
 	parameters.push_back(std::string(argv[1]));
 	parameters.push_back(std::string(argv[2]));
 
-	if (!cpc.initParameter(parameters))
+	device = eqMivt::getBestDevice();
+
+	if (!cM.init(parameters))
 	{
 		std::cerr<<"Error init control plane cache"<<std::endl;
 		return 0;
-	}
-	if (!ccc.initParameter(&cpc, eqMivt::getBestDevice()))
-	{
-		std::cerr<<"Error init control cube cache"<<std::endl;
 	}
 
 	if (!oC.init(argv[3]))
@@ -388,7 +384,7 @@ int main(int argc, char ** argv)
 		std::cerr<<"Error init octree container"<<std::endl;
 		return 0;
 	}
-	if (!o.init(&oC, eqMivt::getBestDevice()))
+	if (!o.init(&oC, device))
 	{
 		std::cerr<<"Error init octree"<<std::endl;
 		return 0;
@@ -471,8 +467,7 @@ int main(int argc, char ** argv)
 
 	o.stop();
 	oC.stop();
-	ccc.stopWork();
-	cpc.stopWork();
+	cM.stop();
 	vc.destroy();
 	cudaFree(colors);
 }

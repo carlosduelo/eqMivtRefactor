@@ -144,6 +144,7 @@ target_link_libraries(testOctree ${LIBS_NEEDED_TEST_OCTREE} )
 # TEST RAYCASTING 
 set(TEST_RAYCASTING_SOURCE
 	cuda_help.cpp
+	cacheManager.cpp
 	controlCache.cpp
 	visibleCubes.cpp
 	linkedList.cpp
