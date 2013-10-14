@@ -292,13 +292,21 @@ int main(int argc, char ** argv)
 		int dimV = exp2(nLevels);
 
 		levelCube = rand() % (nLevels - 4) + 4;
-		double time = 0.0;
-		clock.reset();
-		testPerf(nLevels, levelCube, vmml::vector<3,int>(0,0,0));
-		time = clock.getTimed()/1000.0;
-		double bw = (((dim.x()*dim.y()*dim.z())*sizeof(float))/1204.0/1024.0)/time;
+		std::cout<<"Test reading complete volume"<<std::endl;
+		if (test(nLevels, levelCube, vmml::vector<3,int>(0,0,0)))
+		{
+			std::cerr<<"Test Fail!!"<<std::endl;	
+		}
+		else
+		{
+			double time = 0.0;
+			clock.reset();
+			testPerf(nLevels, levelCube, vmml::vector<3,int>(0,0,0));
+			time = clock.getTimed()/1000.0;
+			double bw = (((dim.x()*dim.y()*dim.z())*sizeof(float))/1204.0/1024.0)/time;
 
-		std::cout<<"Read complete volume "<<dim<<" : "<<time<<" seconds ~ "<<bw<<" MB/s"<<std::endl; 
+			std::cout<<"Read complete volume "<<dim<<" : "<<time<<" seconds ~ "<<bw<<" MB/s"<<std::endl; 
+		}
 	}
 
 

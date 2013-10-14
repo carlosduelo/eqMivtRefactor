@@ -40,7 +40,11 @@ bool testCubes()
 	for(int f=0; f<oC.getNumOctrees(); f++)
 	{
 		// Load in gpu octree
-		o.loadCurrentOctree();
+		if (!o.loadCurrentOctree())
+		{
+			std::cerr<<"Error loading octree in GPU"<<std::endl;
+			return false;
+		}
 
 		int pvpW = 1024;
 		int pvpH = 1024;
@@ -159,8 +163,23 @@ bool test()
 {
 	for(int f=0; f<oC.getNumOctrees(); f++)
 	{
+		if (!cpc.freeCacheAndPause())
+		{
+			std::cerr<<"Error, free plane cache"<<std::endl;
+			return false;
+		}
+		if (!ccc.freeCacheAndPause())
+		{
+			std::cerr<<"Error, free cube cache"<<std::endl;
+			return false;
+		}
+
 		// Load in gpu octree
-		o.loadCurrentOctree();
+		if (!o.loadCurrentOctree())
+		{
+			std::cerr<<"Error loading octree in GPU"<<std::endl;
+			return false;
+		}
 
 		// Resize cube cache and plane cache
 		vmml::vector<3, int> sP, eP;
@@ -170,14 +189,14 @@ bool test()
 		eP[0] = o.getEndCoord().x() + CUBE_INC >= realDimVolume.x() ? realDimVolume.x() : o.getEndCoord().x() + CUBE_INC;
 		eP[1] = o.getEndCoord().y() + CUBE_INC >= realDimVolume.y() ? realDimVolume.y() : o.getEndCoord().y() + CUBE_INC;
 		eP[2] = o.getEndCoord().z() + CUBE_INC >= realDimVolume.z() ? realDimVolume.z() : o.getEndCoord().z() + CUBE_INC;
-		if (!cpc.freeCacheAndPause() || !cpc.reSizeCacheAndContinue(sP, eP))
+		if (!cpc.reSizeCacheAndContinue(sP, eP))
 		{
 			std::cerr<<"Error, resizing plane cache"<<std::endl;
 			return false;
 		}
-		if (!ccc.freeCacheAndPause() || !ccc.reSizeCacheAndContinue(o.getnLevels(), o.getCubeLevel(), o.getStartCoord()))
+		if (!ccc.reSizeCacheAndContinue(o.getnLevels(), o.getCubeLevel(), o.getStartCoord()))
 		{
-			std::cerr<<"Error, resizing plane cache"<<std::endl;
+			std::cerr<<"Error, resizing cube cache"<<std::endl;
 			return false;
 		}
 		// Create Cache
@@ -204,7 +223,7 @@ bool test()
 		vmml::vector<3, int> startV = o.getStartCoord();
 		vmml::vector<3, int> endV = o.getEndCoord();
 		//vmml::vector<4, float> origin(36 , 38, 2, 1.0f);
-		vmml::vector<4, float> origin(startV.x() + ((endV.x()-startV.x())/3.0f), o.getMaxHeight(), 1.5f*endV.z(), 1.0f);
+		vmml::vector<4, float> origin(startV.x() + ((endV.x()-startV.x())/3.0f), o.getMaxHeight(), 1.1f*endV.z(), 1.0f);
 		//vmml::vector<4, float> origin( 0, 0, 1.1f*endV.z(), 1.0f);
 		vmml::vector<4, float> up(0.0f, 1.0f, 0.0f, 0.0f);
 		vmml::vector<4, float> right(1.0f, 0.0f, 0.0f, 0.0f);
@@ -425,6 +444,19 @@ int main(int argc, char ** argv)
 	delete[] _colorsC;
 
 	realDimVolume = oC.getRealDimVolume();
+
+	std::cout<<"============ Creating cube pictures ============"<<std::endl;
+	if (!testCubes())
+	{
+		std::cout<<"Test Fail"<<std::endl;
+	}
+	for(int f=0; f<oC.getNumOctrees(); f++)
+	{
+		if (!oC.loadPreviusIsosurface())
+			oC.loadPreviusPosition();
+	}
+
+	std::cout<<"============ Creating pictures ============"<<std::endl;
 
 	if (test())
 	{

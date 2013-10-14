@@ -194,7 +194,7 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 					(minBox.y-1 <= pos.y && pos.y <= maxBox.y) &&
 					(minBox.z-1 <= pos.z && pos.z <= maxBox.z))
 				{
-					if (pos.x >= 0 && pos.y >= 0 && pos.z >= 0 && pos.x < realDim.x && pos.y < realDim.y && pos.z < realDim.z)
+					if (pos.x >= 0 && pos.y >= 0 && pos.z >= 0 && pos.x < realDim.x-1 && pos.y < realDim.y-1 && pos.z < realDim.z-1)
 					{
 						float3 xyz = make_float3(	pos.x + ((Xnear.x-xGrid[pos.x])/(xGrid[pos.x+1]-xGrid[pos.x])),
 													pos.y + ((Xnear.y-yGrid[pos.y])/(yGrid[pos.y+1]-yGrid[pos.y])),
