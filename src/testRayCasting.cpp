@@ -6,7 +6,7 @@ Notes:
 
 */
 
-#include <octree.h>
+#include <octreeManager.h>
 #include <octree_cuda.h>
 #include <visibleCubes.h>
 #include <cuda_help.h>
@@ -22,8 +22,7 @@ Notes:
 
 #include <lunchbox/clock.h>
 
-eqMivt::OctreeContainer oC;
-eqMivt::Octree o;
+eqMivt::OctreeManager oM;
 eqMivt::VisibleCubes vc;
 eqMivt::CacheManager cM;
 	
@@ -39,14 +38,9 @@ vmml::vector<3, int> realDimVolume;
 
 bool testCubes()
 {
-	for(int f=0; f<oC.getNumOctrees(); f++)
+	for(int f=0; f<oM.getNumOctrees(); f++)
 	{
-		// Load in gpu octree
-		if (!o.loadCurrentOctree())
-		{
-			std::cerr<<"Error loading octree in GPU"<<std::endl;
-			return false;
-		}
+		eqMivt::Octree * o = oM.getOctree(device);
 
 		int pvpW = 1024;
 		int pvpH = 1024;
@@ -64,10 +58,10 @@ bool testCubes()
 		float tnear = 1.0f;
 		float fov = 30;
 		
-		vmml::vector<3, int> startV = o.getStartCoord();
-		vmml::vector<3, int> endV = o.getEndCoord();
+		vmml::vector<3, int> startV = o->getStartCoord();
+		vmml::vector<3, int> endV = o->getEndCoord();
 		//vmml::vector<4, float> origin(36 , 38, 2, 1.0f);
-		vmml::vector<4, float> origin(startV.x() + ((endV.x()-startV.x())/3.0f), o.getMaxHeight(), 1.1f*endV.z(), 1.0f);
+		vmml::vector<4, float> origin(startV.x() + ((endV.x()-startV.x())/3.0f), o->getMaxHeight(), 1.1f*endV.z(), 1.0f);
 		vmml::vector<4, float> up(0.0f, 1.0f, 0.0f, 0.0f);
 		vmml::vector<4, float> right(1.0f, 0.0f, 0.0f, 0.0f);
 		float ft = tan(fov*M_PI/180);
@@ -104,20 +98,20 @@ bool testCubes()
 		vc.init();
 
 		/* LAUNG OCTREE */
-		eqMivt::getBoxIntersectedOctree(o.getOctree(), o.getSizes(), o.getnLevels(),
+		eqMivt::getBoxIntersectedOctree(o->getOctree(), o->getSizes(), o->getnLevels(),
 										VectorToFloat3(origin), VectorToFloat3(LB), VectorToFloat3(up), VectorToFloat3(right),
-										w, h, pvpW, pvpH, o.getmaxLevel(), vc.getSizeGPU(),
+										w, h, pvpW, pvpH, o->getmaxLevel(), vc.getSizeGPU(),
 										vc.getVisibleCubesGPU(), vc.getIndexVisibleCubesGPU(),
-										o.getxGrid(), o.getyGrid(), o.getzGrid(), VectorToInt3(o.getRealDim()), 0);
+										o->getxGrid(), o->getyGrid(), o->getzGrid(), VectorToInt3(o->getRealDim()), 0);
 
 		/* LAUNCH OCTREE */
 
 		/* Ray Casting */
 		eqMivt::rayCasterCubes(	VectorToFloat3(origin), VectorToFloat3(LB), VectorToFloat3(up), VectorToFloat3(right),
-								w, h, pvpW, pvpH, vc.getSizeGPU(), o.getmaxLevel(), o.getnLevels(),
+								w, h, pvpW, pvpH, vc.getSizeGPU(), o->getmaxLevel(), o->getnLevels(),
 								vc.getVisibleCubesGPU(), vc.getIndexVisibleCubesGPU(), 
-								o.getMaxHeight(), buffer, o.getxGrid(), o.getyGrid(), o.getzGrid(),
-								VectorToInt3(o.getRealDim()), r, g, b, 0);
+								o->getMaxHeight(), buffer, o->getxGrid(), o->getyGrid(), o->getzGrid(),
+								VectorToInt3(o->getRealDim()), r, g, b, 0);
 		/* Ray Casting */
 
 		if (cudaSuccess != cudaMemcpy((void*)bufferC, (void*)buffer, 3*numPixels*sizeof(float), cudaMemcpyDeviceToHost))
@@ -147,8 +141,8 @@ bool testCubes()
 		delete bitmap;
 		/* END CREATE PNG */
 
-		if (!oC.loadNextIsosurface())
-			oC.loadNextPosition();
+		if (!oM.loadNextIsosurface())
+			oM.loadNextPosition();
 
 		delete[] bufferC;
 		if (cudaSuccess != cudaFree(buffer))
@@ -163,7 +157,7 @@ bool testCubes()
 
 bool test()
 {
-	for(int f=0; f<oC.getNumOctrees(); f++)
+	for(int f=0; f<oM.getNumOctrees(); f++)
 	{
 		if (!cM.freeMemoryAndPause())
 		{
@@ -172,22 +166,18 @@ bool test()
 		}
 
 		// Load in gpu octree
-		if (!o.loadCurrentOctree())
-		{
-			std::cerr<<"Error loading octree in GPU"<<std::endl;
-			return false;
-		}
+		eqMivt::Octree * o = oM.getOctree(device);
 
 		// Resize cube cache and plane cache
 		vmml::vector<3, int> sP, eP;
-		sP[0] = o.getStartCoord().x() - CUBE_INC < 0 ? 0 : o.getStartCoord().x() - CUBE_INC; 
-		sP[1] = o.getStartCoord().y() - CUBE_INC < 0 ? 0 : o.getStartCoord().y() - CUBE_INC; 
-		sP[2] = o.getStartCoord().z() - CUBE_INC < 0 ? 0 : o.getStartCoord().z() - CUBE_INC; 
-		eP[0] = o.getEndCoord().x() + CUBE_INC >= realDimVolume.x() ? realDimVolume.x() : o.getEndCoord().x() + CUBE_INC;
-		eP[1] = o.getEndCoord().y() + CUBE_INC >= realDimVolume.y() ? realDimVolume.y() : o.getEndCoord().y() + CUBE_INC;
-		eP[2] = o.getEndCoord().z() + CUBE_INC >= realDimVolume.z() ? realDimVolume.z() : o.getEndCoord().z() + CUBE_INC;
+		sP[0] = o->getStartCoord().x() - CUBE_INC < 0 ? 0 : o->getStartCoord().x() - CUBE_INC; 
+		sP[1] = o->getStartCoord().y() - CUBE_INC < 0 ? 0 : o->getStartCoord().y() - CUBE_INC; 
+		sP[2] = o->getStartCoord().z() - CUBE_INC < 0 ? 0 : o->getStartCoord().z() - CUBE_INC; 
+		eP[0] = o->getEndCoord().x() + CUBE_INC >= realDimVolume.x() ? realDimVolume.x() : o->getEndCoord().x() + CUBE_INC;
+		eP[1] = o->getEndCoord().y() + CUBE_INC >= realDimVolume.y() ? realDimVolume.y() : o->getEndCoord().y() + CUBE_INC;
+		eP[2] = o->getEndCoord().z() + CUBE_INC >= realDimVolume.z() ? realDimVolume.z() : o->getEndCoord().z() + CUBE_INC;
 
-		if (!cM.reSizeAndContinue(sP, eP, o.getnLevels(), o.getCubeLevel(), o.getStartCoord()))
+		if (!cM.reSizeAndContinue(sP, eP, o->getnLevels(), o->getCubeLevel(), o->getStartCoord()))
 		{
 			std::cerr<<"Error, resizing plane cache"<<std::endl;
 			return false;
@@ -200,7 +190,7 @@ bool test()
 			return false;
 		}
 		
-		cache.setRayCastingLevel(o.getRayCastingLevel());
+		cache.setRayCastingLevel(o->getRayCastingLevel());
 
 		int pvpW = 1024;
 		int pvpH = 1024;
@@ -218,10 +208,10 @@ bool test()
 		float tnear = 1.0f;
 		float fov = 30;
 		
-		vmml::vector<3, int> startV = o.getStartCoord();
-		vmml::vector<3, int> endV = o.getEndCoord();
+		vmml::vector<3, int> startV = o->getStartCoord();
+		vmml::vector<3, int> endV = o->getEndCoord();
 		//vmml::vector<4, float> origin(36 , 38, 2, 1.0f);
-		vmml::vector<4, float> origin(startV.x() + ((endV.x()-startV.x())/3.0f), o.getMaxHeight(), 1.1f*endV.z(), 1.0f);
+		vmml::vector<4, float> origin(startV.x() + ((endV.x()-startV.x())/3.0f), o->getMaxHeight(), 1.1f*endV.z(), 1.0f);
 		//vmml::vector<4, float> origin( 0, 0, 1.1f*endV.z(), 1.0f);
 		vmml::vector<4, float> up(0.0f, 1.0f, 0.0f, 0.0f);
 		vmml::vector<4, float> right(1.0f, 0.0f, 0.0f, 0.0f);
@@ -270,11 +260,11 @@ bool test()
 			/* LAUNG OCTREE */
 			vc.updateGPU(NOCUBE, 0);
 
-			eqMivt::getBoxIntersectedOctree(o.getOctree(), o.getSizes(), o.getnLevels(),
+			eqMivt::getBoxIntersectedOctree(o->getOctree(), o->getSizes(), o->getnLevels(),
 											VectorToFloat3(origin), VectorToFloat3(LB), VectorToFloat3(up), VectorToFloat3(right),
-											w, h, pvpW, pvpH, o.getRayCastingLevel(), vc.getSizeGPU(),
+											w, h, pvpW, pvpH, o->getRayCastingLevel(), vc.getSizeGPU(),
 											vc.getVisibleCubesGPU(), vc.getIndexVisibleCubesGPU(),
-											o.getxGrid(), o.getyGrid(), o.getzGrid(), VectorToInt3(o.getRealDim()), 0);
+											o->getxGrid(), o->getyGrid(), o->getzGrid(), VectorToInt3(o->getRealDim()), 0);
 
 			vc.updateCPU();
 			#if 0
@@ -300,10 +290,10 @@ bool test()
 			/* Ray Casting */
 			vc.updateGPU(NOCUBE | CACHED, 0);
 			eqMivt::rayCaster(	VectorToFloat3(origin), VectorToFloat3(LB), VectorToFloat3(up), VectorToFloat3(right),
-									w, h, pvpW, pvpH, vc.getSizeGPU(), o.getRayCastingLevel(), o.getCubeLevel(), o.getnLevels(),
-									o.getIsosurface(), vc.getVisibleCubesGPU(), vc.getIndexVisibleCubesGPU(), 
-									o.getMaxHeight(), buffer, o.getxGrid(), o.getyGrid(), o.getzGrid(),
-									VectorToInt3(o.getRealDim()), r, g, b, 0);
+									w, h, pvpW, pvpH, vc.getSizeGPU(), o->getRayCastingLevel(), o->getCubeLevel(), o->getnLevels(),
+									o->getIsosurface(), vc.getVisibleCubesGPU(), vc.getIndexVisibleCubesGPU(), 
+									o->getMaxHeight(), buffer, o->getxGrid(), o->getyGrid(), o->getzGrid(),
+									VectorToInt3(o->getRealDim()), r, g, b, 0);
 			vc.updateCPU();
 			/* Ray Casting */
 			rT += clockOperation.getTimed()/1000.0;
@@ -351,8 +341,8 @@ bool test()
 		delete bitmap;
 		/* END CREATE PNG */
 
-		if (!oC.loadNextIsosurface())
-			oC.loadNextPosition();
+		if (!oM.loadNextIsosurface())
+			oM.loadNextPosition();
 
 		delete[] bufferC;
 		if (cudaSuccess != cudaFree(buffer))
@@ -379,14 +369,9 @@ int main(int argc, char ** argv)
 		return 0;
 	}
 
-	if (!oC.init(argv[3]))
+	if (!oM.init(argv[3]))
 	{
 		std::cerr<<"Error init octree container"<<std::endl;
-		return 0;
-	}
-	if (!o.init(&oC, device))
-	{
-		std::cerr<<"Error init octree"<<std::endl;
 		return 0;
 	}
 
@@ -439,17 +424,17 @@ int main(int argc, char ** argv)
 
 	delete[] _colorsC;
 
-	realDimVolume = oC.getRealDimVolume();
+	realDimVolume = oM.getRealDimVolume();
 
 	std::cout<<"============ Creating cube pictures ============"<<std::endl;
 	if (!testCubes())
 	{
 		std::cout<<"Test Fail"<<std::endl;
 	}
-	for(int f=0; f<oC.getNumOctrees(); f++)
+	for(int f=0; f<oM.getNumOctrees(); f++)
 	{
-		if (!oC.loadPreviusIsosurface())
-			oC.loadPreviusPosition();
+		if (!oM.loadPreviusIsosurface())
+			oM.loadPreviusPosition();
 	}
 
 	std::cout<<"============ Creating pictures ============"<<std::endl;
@@ -465,8 +450,7 @@ int main(int argc, char ** argv)
 
 	FreeImage_DeInitialise();
 
-	o.stop();
-	oC.stop();
+	oM.stop();
 	cM.stop();
 	vc.destroy();
 	cudaFree(colors);
