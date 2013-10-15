@@ -376,7 +376,13 @@ int main(int argc, char ** argv)
 		return 0;
 	}
 
-	if (!coM.init(""))
+	std::string color;
+	if (argc == 5)
+		color = argv[4];
+	else
+		color = "";
+	
+	if (!coM.init(color))
 	{
 		std::cerr<<"Error init color manager"<<std::endl;
 		return 0;
