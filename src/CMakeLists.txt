@@ -48,6 +48,10 @@ cuda_compile(CREATE_OCTREE_CUDA_OBJECTS ${CREATE_OCTREE_CUDA_SOURCE})
 add_executable(createOctree ${CREATE_OCTREE_SOURCE} ${CREATE_OCTREE_CUDA_OBJECTS} createOctree.cpp) 
 target_link_libraries(createOctree ${LIBS_NEEDED_CREATE_OCTREE} )
 
+# TRANSFER FUNCTION CREATOR
+add_executable(transferFunctionCreator transferFunctionCreator.cpp) 
+target_link_libraries(transferFunctionCreator GL glut) 
+
 # PRINT OCTREE
 add_executable(printOctree printOctree.cpp) 
 
@@ -143,6 +147,7 @@ target_link_libraries(testOctree ${LIBS_NEEDED_TEST_OCTREE} )
 
 # TEST RAYCASTING 
 set(TEST_RAYCASTING_SOURCE
+	colorManager.cpp
 	cuda_help.cpp
 	octreeManager.cpp
 	cacheManager.cpp

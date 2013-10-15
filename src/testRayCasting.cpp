@@ -6,6 +6,7 @@ Notes:
 
 */
 
+#include <colorManager.h>
 #include <octreeManager.h>
 #include <octree_cuda.h>
 #include <visibleCubes.h>
@@ -25,12 +26,8 @@ Notes:
 eqMivt::OctreeManager oM;
 eqMivt::VisibleCubes vc;
 eqMivt::CacheManager cM;
+eqMivt::ColorManager coM;
 	
-float * colors = 0;
-float * r = 0;
-float * g = 0;
-float * b = 0;
-
 int device = 0;
 
 vmml::vector<3, int> realDimVolume;
@@ -38,6 +35,8 @@ vmml::vector<3, int> realDimVolume;
 
 bool testCubes()
 {
+	eqMivt::color_t c = coM.getColors(device);
+
 	for(int f=0; f<oM.getNumOctrees(); f++)
 	{
 		eqMivt::Octree * o = oM.getOctree(device);
@@ -111,7 +110,7 @@ bool testCubes()
 								w, h, pvpW, pvpH, vc.getSizeGPU(), o->getmaxLevel(), o->getnLevels(),
 								vc.getVisibleCubesGPU(), vc.getIndexVisibleCubesGPU(), 
 								o->getMaxHeight(), buffer, o->getxGrid(), o->getyGrid(), o->getzGrid(),
-								VectorToInt3(o->getRealDim()), r, g, b, 0);
+								VectorToInt3(o->getRealDim()), c.r, c.g, c.b, 0);
 		/* Ray Casting */
 
 		if (cudaSuccess != cudaMemcpy((void*)bufferC, (void*)buffer, 3*numPixels*sizeof(float), cudaMemcpyDeviceToHost))
@@ -157,6 +156,8 @@ bool testCubes()
 
 bool test()
 {
+	eqMivt::color_t c = coM.getColors(device);
+
 	for(int f=0; f<oM.getNumOctrees(); f++)
 	{
 		if (!cM.freeMemoryAndPause())
@@ -293,7 +294,7 @@ bool test()
 									w, h, pvpW, pvpH, vc.getSizeGPU(), o->getRayCastingLevel(), o->getCubeLevel(), o->getnLevels(),
 									o->getIsosurface(), vc.getVisibleCubesGPU(), vc.getIndexVisibleCubesGPU(), 
 									o->getMaxHeight(), buffer, o->getxGrid(), o->getyGrid(), o->getzGrid(),
-									VectorToInt3(o->getRealDim()), r, g, b, 0);
+									VectorToInt3(o->getRealDim()), c.r, c.g, c.b, 0);
 			vc.updateCPU();
 			/* Ray Casting */
 			rT += clockOperation.getTimed()/1000.0;
@@ -365,64 +366,24 @@ int main(int argc, char ** argv)
 
 	if (!cM.init(parameters))
 	{
-		std::cerr<<"Error init control plane cache"<<std::endl;
+		std::cerr<<"Error init cache manager"<<std::endl;
 		return 0;
 	}
 
 	if (!oM.init(argv[3]))
 	{
-		std::cerr<<"Error init octree container"<<std::endl;
+		std::cerr<<"Error init octree manager"<<std::endl;
 		return 0;
 	}
+
+	if (!coM.init(""))
+	{
+		std::cerr<<"Error init color manager"<<std::endl;
+		return 0;
+	}
+
 
 	FreeImage_Initialise();
-
-	// Init colors
-	float * _colorsC = new float[3*NUM_COLORS + 3];
-
-		for(int p=0; p<NUM_COLORS; p++)
-			_colorsC[p] = 1.0f;
-
-		for(int p=0; p<64; p++)
-			_colorsC[(NUM_COLORS+1) + p] = 0.0f;
-
-		float dc = 1.0f/((float)NUM_COLORS - 60.0f);
-		int k = 1;
-		for(int p=64; p<NUM_COLORS; p++)
-		{
-			_colorsC[(NUM_COLORS+1) + p] = (float)k*dc; 
-			k++;
-		}
-
-		for(int p=0; p<192; p++)
-			_colorsC[2*(NUM_COLORS+1) + p] = 0.0f;
-
-		dc = 1.0f/100.0f;
-		k=1;
-		for(int p=192; p<NUM_COLORS; p++)
-		{
-			_colorsC[(2*(NUM_COLORS+1)) + p] = (float)k*dc; 
-			k++;
-		}
-		_colorsC[NUM_COLORS] = 1.0f;
-		_colorsC[2*NUM_COLORS+1] = 1.0f;
-		_colorsC[3*NUM_COLORS+2] = 1.0f;
-
-	if (cudaSuccess != cudaMalloc((void**)&colors, (3*NUM_COLORS + 3)*sizeof(float)))
-	{
-		std::cerr<<"Error creating colors"<<std::endl;
-		return 0;
-	}
-	if (cudaSuccess != cudaMemcpy((void*)colors, (void*)_colorsC, (3*NUM_COLORS + 3)*sizeof(float), cudaMemcpyHostToDevice))
-	{
-		std::cerr<<"Error creating colors"<<std::endl;
-		return 0;
-	}
-	r = colors;
-	g = colors + NUM_COLORS + 1;
-	b = colors + 2*(NUM_COLORS + 1);
-
-	delete[] _colorsC;
 
 	realDimVolume = oM.getRealDimVolume();
 
@@ -453,5 +414,5 @@ int main(int argc, char ** argv)
 	oM.stop();
 	cM.stop();
 	vc.destroy();
-	cudaFree(colors);
+	coM.destroy();
 }
