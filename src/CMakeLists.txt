@@ -147,6 +147,9 @@ target_link_libraries(testOctree ${LIBS_NEEDED_TEST_OCTREE} )
 
 # TEST RAYCASTING 
 set(TEST_RAYCASTING_SOURCE
+	render.cpp
+	renderPNG.cpp
+	resourcesManager.cpp
 	colorManager.cpp
 	cuda_help.cpp
 	octreeManager.cpp

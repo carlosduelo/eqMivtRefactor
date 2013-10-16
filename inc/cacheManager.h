@@ -31,6 +31,8 @@ class CacheManager
 
 		void stop();
 
+		bool existsDevice(device_t device);
+
 		ControlCubeCache * getCubeCache(device_t device);
 
 		bool freeMemoryAndPause();

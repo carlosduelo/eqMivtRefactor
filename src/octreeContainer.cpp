@@ -208,6 +208,26 @@ void OctreeContainer::_readCurrentOctree()
 	}
 }
 
+bool OctreeContainer::checkLoadNextPosition()
+{
+	return _currentPosition != _octrees.size() - 1; 
+}
+
+bool OctreeContainer::checkLoadPreviusPosition()
+{
+	return _currentPosition != 0;
+}
+
+bool OctreeContainer::checkLoadNextIsosurface()
+{
+	return _currentIsosurface != _octrees[_currentPosition].isos.size() - 1; 
+}
+
+bool OctreeContainer::checkLoadPreviusIsosurface()
+{
+	return _currentIsosurface != 0; 
+}
+
 bool OctreeContainer::loadNextPosition()
 {
 	if (_currentPosition == _octrees.size() - 1)

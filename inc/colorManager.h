@@ -15,13 +15,6 @@ Notes:
 namespace eqMivt
 {
 
-struct color_t
-{
-	float * r;
-	float * g;
-	float * b;
-};
-
 class ColorManager
 {
 	private:

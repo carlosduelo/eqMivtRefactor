@@ -364,6 +364,13 @@ int main(int argc, char ** argv)
 
 	device = eqMivt::getBestDevice();
 
+	cudaFuncCache cacheConfig = cudaFuncCachePreferL1;
+	if (cudaSuccess != cudaSetDevice(device) || cudaSuccess != cudaDeviceSetCacheConfig(cacheConfig))
+	{
+		std::cerr<<"Error setting up best device"<<std::endl;
+		return 0;
+	}
+
 	if (!cM.init(parameters))
 	{
 		std::cerr<<"Error init cache manager"<<std::endl;

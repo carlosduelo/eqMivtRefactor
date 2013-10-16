@@ -25,6 +25,8 @@ class Cache
 		std::vector<index_node_t> _updateCube;
 
 	public:
+		Cache();
+
 		bool init(ControlCubeCache * cubeCache);
 
 		void setRayCastingLevel(int rayCastingLevel) { _rayCastingLevel = rayCastingLevel; }
@@ -33,6 +35,7 @@ class Cache
 
 		void popCubes();
 
+		bool isInit() { return _cubeCache != 0; }
 };
 
 }

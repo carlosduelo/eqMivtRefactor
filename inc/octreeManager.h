@@ -30,8 +30,16 @@ class OctreeManager
 		int getNumOctrees(){ return _oc.getNumOctrees(); }
 		int getCurrentOctree();
 
+		bool existsDevice(device_t device);
+
 		Octree * getOctree(device_t device);
 
+		bool checkLoadNextPosition() {return _oc.checkLoadNextPosition();}
+		bool checkLoadPreviusPosition(){return _oc.checkLoadPreviusPosition();}
+
+		bool checkLoadNextIsosurface(){return _oc.checkLoadNextIsosurface();}
+		bool checkLoadPreviusIsosurface(){return _oc.checkLoadPreviusIsosurface();}
+	
 		bool loadNextPosition();
 		bool loadPreviusPosition();
 

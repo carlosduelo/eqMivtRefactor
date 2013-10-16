@@ -35,6 +35,12 @@ int OctreeManager::getCurrentOctree()
 	return _oc.getCurrentOctree();
 }
 
+bool OctreeManager::existsDevice(device_t device)
+{
+	boost::unordered_map<device_t, Octree *>::iterator it = _octrees.find(device);
+	return it != _octrees.end();
+}
+
 Octree * OctreeManager::getOctree(device_t device)
 {
 	boost::unordered_map<device_t, Octree *>::iterator it = _octrees.find(device);

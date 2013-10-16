@@ -78,6 +78,12 @@ class OctreeContainer
 
 		void stop();
 
+		bool checkLoadNextPosition();
+		bool checkLoadPreviusPosition();
+
+		bool checkLoadNextIsosurface();
+		bool checkLoadPreviusIsosurface();
+
 		bool loadNextPosition();
 		bool loadPreviusPosition();
 

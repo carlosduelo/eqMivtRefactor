@@ -31,6 +31,13 @@ typedef struct
 typedef visibleCube_t * visibleCubeGPU_t;
 typedef int *			indexVisibleCubeGPU_t;
 
+struct color_t
+{
+	float * r;
+	float * g;
+	float * b;
+};
+
 #define CUBE		(eqMivt::statusCube)0b00001000
 #define PAINTED		(eqMivt::statusCube)0b00000100
 #define CACHED		(eqMivt::statusCube)0b00000010

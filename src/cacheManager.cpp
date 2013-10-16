@@ -49,6 +49,12 @@ bool CacheManager::reSizeAndContinue(vmml::vector<3,int> min, vmml::vector<3,int
 	return cpc.reSizeCacheAndContinue(_min, _max);
 }
 
+bool CacheManager::existsDevice(device_t device)
+{
+	boost::unordered_map<device_t, ControlCubeCache *>::iterator it = _cubeCaches.find(device);
+	return it != _cubeCaches.end();
+}
+
 ControlCubeCache * CacheManager::getCubeCache(device_t device)
 {
 	boost::unordered_map<device_t, ControlCubeCache *>::iterator it = _cubeCaches.find(device);

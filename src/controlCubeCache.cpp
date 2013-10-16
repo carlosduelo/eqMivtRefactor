@@ -206,6 +206,11 @@ void ControlCubeCache::_threadStop()
 
 void ControlCubeCache::_freeCache()
 {
+	if (cudaSuccess != cudaSetDevice(_device))
+	{
+		std::cerr<<"Control Cube Cache, error setting device: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
 	if (_memoryCubes != 0)
 	{
 		if(cudaSuccess != cudaFree((void*)_memoryCubes))
@@ -235,6 +240,11 @@ void ControlCubeCache::_reSizeCache()
 
 	_sizeCubes = pow(_dimCube, 3); 
 
+	if (cudaSuccess != cudaSetDevice(_device))
+	{
+		std::cerr<<"Control Cube Cache, error setting device: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
 	if (_memoryCubes != 0)
 		if (cudaSuccess != cudaFree((void*)_memoryCubes))
 		{                                                                                               

@@ -11,6 +11,11 @@ Notes:
 namespace eqMivt
 {
 
+Cache::Cache()
+{
+	_cubeCache = 0;
+}
+
 bool Cache::init(ControlCubeCache * cubeCache)
 {
 	if (cubeCache == 0)
