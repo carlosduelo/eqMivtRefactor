@@ -8,6 +8,8 @@ project (mivt)
 
 SET( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${mivt_SOURCE_DIR}/bin )
 
+set (CMAKE_BUILD_TYPE "Debug")
+
 # CUDA
 find_package(CUDA 5.0 REQUIRED)
 if (CUDA_FOUND)

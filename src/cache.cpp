@@ -16,6 +16,20 @@ Cache::Cache()
 	_cubeCache = 0;
 }
 
+void Cache::startFrame()
+{
+	_cubes.clear();
+}
+
+void Cache::finishFrame()
+{
+	if (_cubes.size() != 0)
+	{
+		std::cerr<<"Error cache not working"<<std::endl;
+		throw;
+	}
+}
+
 bool Cache::init(ControlCubeCache * cubeCache)
 {
 	if (cubeCache == 0)
@@ -36,11 +50,6 @@ void Cache::pushCubes(VisibleCubes * vc)
 		std::cerr<<"Cache, error ray casting cube level has to be >= cache cube level"<<std::endl;
 		throw;
 	}
-	if (_updateCube.size() != 0)
-	{
-		std::cerr<<"Cache, please pop before push again"<<std::endl;
-		throw;
-	}
 	#endif
 
 	std::vector<int> cubes = vc->getListCubes(CUBE);
@@ -51,27 +60,47 @@ void Cache::pushCubes(VisibleCubes * vc)
 
 		index_node_t idCube = cube->id >> (3*(_rayCastingLevel - _cubeCache->getCubeLevel()));
 
-		float * d = _cubeCache->getAndBlockCube(idCube);
+		boost::unordered_map<index_node_t, cube_cached>::iterator itC = _cubes.find(idCube);
 
-		if (d != 0)
+		if (itC != _cubes.end())
 		{
 			cube->cubeID = idCube;
-			cube->state = CACHED;
-			cube->data = d;
-			_updateCube.push_back(idCube);
+			cube->state = itC->second.state;
+			cube->data = itC->second.cube;
 		}
+		else
+		{
+			float * d = _cubeCache->getAndBlockCube(idCube);
+
+			cube->cubeID = idCube;
+			cube->state = d == 0 ? CUBE : CACHED;
+			cube->data = d;
+
+			cube_cached c;
+			c.state = cube->state; 
+			c.cube = d;
+			
+			_cubes.insert(std::make_pair<index_node_t, cube_cached>(idCube, c));
+		}
+
 	}
 
 }
 
 void Cache::popCubes()
 {
-	for(std::vector<index_node_t>::iterator it=_updateCube.begin(); it!=_updateCube.end(); ++it)
-	{
-		_cubeCache->unlockCube(*it);
-	}
+	boost::unordered_map<index_node_t, cube_cached>::iterator it=_cubes.begin();
 
-	_updateCube.clear();
+	while(it!=_cubes.end())
+	{
+		if (it->second.state == CACHED)
+				_cubeCache->unlockCube(it->first);
+
+		_cubes.erase(it);
+
+		if (it != _cubes.end())
+			it++;
+	}
 }
 
 }

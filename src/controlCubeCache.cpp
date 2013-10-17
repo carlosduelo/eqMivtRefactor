@@ -80,7 +80,7 @@ void ControlCubeCache::_addNewCube(index_node_t cube)
 		#ifndef NDEBUG
 		if (c->refs != 0 || c->pendingPlanes.size() != 0)
 		{
-			std::cerr<<"Control Plane Cache, unistable state, free cube slot with references "<<c->id<<" refs "<<c->refs<<std::endl;
+			std::cerr<<"Control Cube Cache, unistable state, free cube slot with references "<<c->id<<" refs "<<c->refs<<std::endl;
 			throw;
 		}
 		#endif
@@ -348,7 +348,7 @@ void ControlCubeCache::unlockCube(index_node_t cube)
 		#ifndef NDEBUG
 		if (it->second->refs < 0)
 		{
-			std::cerr<<"Control Plane Cache, error unlocking cube"<<std::endl;
+			std::cerr<<"Control Cube Cache, error unlocking cube"<<std::endl;
 			throw;
 		}
 		#endif
@@ -356,7 +356,7 @@ void ControlCubeCache::unlockCube(index_node_t cube)
 	#ifndef NDEBUG
 	else
 	{
-		std::cerr<<"Control Plane Cache, error unlocking cube that not exists"<<std::endl;
+		std::cerr<<"Control Cube Cache, error unlocking cube that not exists"<<std::endl;
 		throw;
 	}
 	#endif

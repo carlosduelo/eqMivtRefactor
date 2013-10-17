@@ -157,11 +157,17 @@ bool Render::frameDraw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB
 				float w, float h)
 {
 	_vC.init();
+	_cache.startFrame();
 
+	bool result = true;
 	if (_drawCube)
-		return _drawCubes(origin, LB, up, right, w, h);
+		result =  _drawCubes(origin, LB, up, right, w, h);
 	else
-		return _draw(origin, LB, up, right, w, h);
+		result =  _draw(origin, LB, up, right, w, h);
+
+	_cache.finishFrame();
+
+	return result;
 }
 
 }
