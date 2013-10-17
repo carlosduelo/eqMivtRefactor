@@ -6,61 +6,42 @@ Notes:
 
 */
 
-#include <colorManager.h>
-#include <octreeManager.h>
-#include <octree_cuda.h>
-#include <visibleCubes.h>
 #include <cuda_help.h>
-#include <cache.h>
-#include <cacheManager.h>
-#include <rayCaster_cuda.h>
-
-#include <FreeImage.h>
-
-#include <cmath>
+#include <renderPNG.h>
+#include <resourcesManager.h>
 
 #include <vmmlib/matrix.hpp>
 
 #include <lunchbox/clock.h>
 
-eqMivt::OctreeManager oM;
-eqMivt::VisibleCubes vc;
-eqMivt::CacheManager cM;
-eqMivt::ColorManager coM;
+eqMivt::ResourcesManager rM;
+eqMivt::RenderPNG	render;
 	
 int device = 0;
 
-vmml::vector<3, int> realDimVolume;
-
-
-bool testCubes()
+bool test(bool cubes)
 {
-	eqMivt::color_t c = coM.getColors(device);
+	render.setDrawCubes(cubes);
 
-	for(int f=0; f<oM.getNumOctrees(); f++)
+	for(int f=0; f<1; f++)
+	//for(int f=0; f<rM.getNumOctrees(); f++)
 	{
-		eqMivt::Octree * o = oM.getOctree(device);
+		if (!rM.updateRender(&render))
+		{
+			std::cerr<<"Error updating render"<<std::endl;
+			return false;
+		}
 
 		int pvpW = 1024;
 		int pvpH = 1024;
-		int numPixels = pvpW*pvpH;
-
-		// SCREEN AND COLORS
-		float * bufferC = new float[3*numPixels];
-		float * buffer = 0;
-		if (cudaSuccess != cudaMalloc((void**)&buffer, 3*numPixels*sizeof(float)))
-		{
-			std::cerr<<"Error allocating pixel buffer"<<std::endl;
-			return 0;
-		}
 
 		float tnear = 1.0f;
 		float fov = 30;
 		
-		vmml::vector<3, int> startV = o->getStartCoord();
-		vmml::vector<3, int> endV = o->getEndCoord();
+		vmml::vector<3, int> startV = rM.getStartCoord();
+		vmml::vector<3, int> endV = rM.getEndCoord();
 		//vmml::vector<4, float> origin(36 , 38, 2, 1.0f);
-		vmml::vector<4, float> origin(startV.x() + ((endV.x()-startV.x())/3.0f), o->getMaxHeight(), 1.1f*endV.z(), 1.0f);
+		vmml::vector<4, float> origin(startV.x() + ((endV.x()-startV.x())/3.0f), rM.getMaxHeight(), 1.1f*endV.z(), 1.0f);
 		vmml::vector<4, float> up(0.0f, 1.0f, 0.0f, 0.0f);
 		vmml::vector<4, float> right(1.0f, 0.0f, 0.0f, 0.0f);
 		float ft = tan(fov*M_PI/180);
@@ -93,66 +74,28 @@ bool testCubes()
 		right.normalize();
 		up.normalize();
 
-		vc.reSize(numPixels);
-		vc.init();
-
-		/* LAUNG OCTREE */
-		eqMivt::getBoxIntersectedOctree(o->getOctree(), o->getSizes(), o->getnLevels(),
-										VectorToFloat3(origin), VectorToFloat3(LB), VectorToFloat3(up), VectorToFloat3(right),
-										w, h, pvpW, pvpH, o->getmaxLevel(), vc.getSizeGPU(),
-										vc.getVisibleCubesGPU(), vc.getIndexVisibleCubesGPU(),
-										o->getxGrid(), o->getyGrid(), o->getzGrid(), VectorToInt3(o->getRealDim()), 0);
-
-		/* LAUNCH OCTREE */
-
-		/* Ray Casting */
-		eqMivt::rayCasterCubes(	VectorToFloat3(origin), VectorToFloat3(LB), VectorToFloat3(up), VectorToFloat3(right),
-								w, h, pvpW, pvpH, vc.getSizeGPU(), o->getmaxLevel(), o->getnLevels(),
-								vc.getVisibleCubesGPU(), vc.getIndexVisibleCubesGPU(), 
-								o->getMaxHeight(), buffer, o->getxGrid(), o->getyGrid(), o->getzGrid(),
-								VectorToInt3(o->getRealDim()), c.r, c.g, c.b, 0);
-		/* Ray Casting */
-
-		if (cudaSuccess != cudaMemcpy((void*)bufferC, (void*)buffer, 3*numPixels*sizeof(float), cudaMemcpyDeviceToHost))
+		if (!render.setViewPort(pvpW, pvpH))
 		{
-			std::cerr<<"Error copying pixel buffer to cpu"<<std::endl;
-			return 0;
+			std::cerr<<"Error setting viewport"<<std::endl;
+			return false;
 		}
-		/* CREATE PNG */
-		FIBITMAP * bitmap = FreeImage_Allocate(pvpW, pvpH, 24);
-		RGBQUAD color;
-
-		for(int i=0; i<pvpH; i++)
+		
+		if (!render.frameDraw(origin, LB, up, right, w, h))
 		{
-			for(int j=0; j<pvpH; j++)
-			{
-				int id = i*pvpW+ j;
-				color.rgbRed	= bufferC[id*3]*255;
-				color.rgbGreen	= bufferC[id*3+1]*255;
-				color.rgbBlue	= bufferC[id*3+2]*255;
-				FreeImage_SetPixelColor(bitmap, j, i, &color);
-			}
-		}
-		std::stringstream name;
-		name<<"frameCubes"<<f<<".png";
-		FreeImage_Save(FIF_PNG, bitmap, name.str().c_str(), 0);
-
-		delete bitmap;
-		/* END CREATE PNG */
-
-		if (!oM.loadNextIsosurface())
-			oM.loadNextPosition();
-
-		delete[] bufferC;
-		if (cudaSuccess != cudaFree(buffer))
-		{
-			std::cerr<<"Error free pixel buffer"<<std::endl;
+			std::cerr<<"Error rendering"<<std::endl;
+			return false;
 		}
 
+		if (f < rM.getNumOctrees()-1 && !rM.loadNext())
+		{
+			std::cerr<<"Error loading next isosurface"<<std::endl;
+			return false;
+		}
 	}
 
 	return true;
 }
+#if 0
 
 bool test()
 {
@@ -355,6 +298,7 @@ bool test()
 
 	return true;
 }
+#endif
 
 int main(int argc, char ** argv)
 {
@@ -371,49 +315,42 @@ int main(int argc, char ** argv)
 		return 0;
 	}
 
-	if (!cM.init(parameters))
-	{
-		std::cerr<<"Error init cache manager"<<std::endl;
-		return 0;
-	}
-
-	if (!oM.init(argv[3]))
-	{
-		std::cerr<<"Error init octree manager"<<std::endl;
-		return 0;
-	}
-
-	std::string color;
 	if (argc == 5)
-		color = argv[4];
-	else
-		color = "";
-	
-	if (!coM.init(color))
 	{
-		std::cerr<<"Error init color manager"<<std::endl;
+		if (!rM.init(parameters, argv[3], argv[3]))
+		{
+			std::cerr<<"Error init resources manager"<<std::endl;
+			return 0;
+		}
+	}
+	else
+	{
+		if (!rM.init(parameters, argv[3], ""))
+		{
+			std::cerr<<"Error init resources manager"<<std::endl;
+			return 0;
+		}
+	}
+	if (!rM.start())
+	{
+		std::cerr<<"Error start resources manager"<<std::endl;
 		return 0;
 	}
-
-
-	FreeImage_Initialise();
-
-	realDimVolume = oM.getRealDimVolume();
-
+	
+	#if 0
 	std::cout<<"============ Creating cube pictures ============"<<std::endl;
-	if (!testCubes())
+	if (!test(true))
 	{
 		std::cout<<"Test Fail"<<std::endl;
 	}
-	for(int f=0; f<oM.getNumOctrees(); f++)
-	{
-		if (!oM.loadPreviusIsosurface())
-			oM.loadPreviusPosition();
-	}
+
+	while(rM.loadPreviusPosition()){};
+	while(rM.loadPreviusIsosurface()){};
+	#endif
 
 	std::cout<<"============ Creating pictures ============"<<std::endl;
 
-	if (test())
+	if (test(false))
 	{
 		std::cout<<"Test ok"<<std::endl;
 	}
@@ -422,10 +359,8 @@ int main(int argc, char ** argv)
 		std::cout<<"Test Fail"<<std::endl;
 	}
 
-	FreeImage_DeInitialise();
+	render.destroy();
+	rM.destroy();
 
-	oM.stop();
-	cM.stop();
-	vc.destroy();
-	coM.destroy();
+	std::cout<<"End test"<<std::endl;
 }

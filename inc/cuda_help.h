@@ -10,6 +10,7 @@ Notes:
 #define _EQ_MIVT_CUDA_HELP_H_
 
 #include <cuda_runtime.h>
+#include <cmath>
 
 #define BLOCK_SIZE 128
 

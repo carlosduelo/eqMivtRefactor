@@ -95,8 +95,9 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 		/* Ray Casting */
 		_vC.updateGPU(NOCUBE | CACHED, 0);
 
-		rayCasterCubes(	VectorToFloat3(origin), VectorToFloat3(LB), VectorToFloat3(up), VectorToFloat3(right),
-						w, h, _pvpW, _pvpH, _vC.getSizeGPU(), _octree->getRayCastingLevel(), _octree->getnLevels(),
+		rayCaster(	VectorToFloat3(origin), VectorToFloat3(LB), VectorToFloat3(up), VectorToFloat3(right),
+						w, h, _pvpW, _pvpH, _vC.getSizeGPU(), _octree->getRayCastingLevel(), 
+						_octree->getCubeLevel(), _octree->getnLevels(), _octree->getIsosurface(),
 						_vC.getVisibleCubesGPU(), _vC.getIndexVisibleCubesGPU(), 
 						_octree->getMaxHeight(), _pixelBuffer, _octree->getxGrid(), _octree->getyGrid(), _octree->getzGrid(),
 						VectorToInt3(_octree->getRealDim()), _colors.r, _colors.g, _colors.b, 0);
@@ -115,6 +116,7 @@ bool Render::frameDraw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB
 				float w, float h)
 {
 	_vC.init();
+
 	if (_drawCube)
 		return _drawCubes(origin, LB, up, right, w, h);
 	else

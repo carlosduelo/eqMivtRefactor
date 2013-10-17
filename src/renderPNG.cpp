@@ -24,8 +24,6 @@ bool RenderPNG::init(device_t device)
 
 bool RenderPNG::setViewPort(int pvpW, int pvpH)
 {
-	FreeImage_DeInitialise();
-
 	if (Render::setViewPort(pvpW, pvpH))
 	{
 		if (_bufferC != 0)
@@ -51,6 +49,8 @@ bool RenderPNG::setViewPort(int pvpW, int pvpH)
 
 void RenderPNG::destroy()
 {
+	FreeImage_DeInitialise();
+
 	if (_bufferC != 0)
 		delete[] _bufferC;
 	if (_pixelBuffer != 0)
@@ -103,6 +103,8 @@ bool RenderPNG::frameDraw(	vmml::vector<4, float> origin, vmml::vector<4, float>
 	/* END CREATE PNG */
 
 	_frame++;
+
+	return true;
 }
 
 }

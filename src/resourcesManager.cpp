@@ -17,6 +17,27 @@ bool ResourcesManager::init(std::vector<std::string> data_param, std::string oct
 	return _cM.init(data_param) &&  _oM.init(octree_file) && _coM.init(colors_file);
 }
 
+bool ResourcesManager::start()
+{
+		vmml::vector<3, int> realDimVolume = _oM.getRealDimVolume();
+		// Resize cube cache and plane cache
+		vmml::vector<3, int> sP, eP;
+		sP[0] = _oM.getStartCoord().x() - CUBE_INC < 0 ? 0 : _oM.getStartCoord().x() - CUBE_INC; 
+		sP[1] = _oM.getStartCoord().y() - CUBE_INC < 0 ? 0 : _oM.getStartCoord().y() - CUBE_INC; 
+		sP[2] = _oM.getStartCoord().z() - CUBE_INC < 0 ? 0 : _oM.getStartCoord().z() - CUBE_INC; 
+		eP[0] = _oM.getEndCoord().x() + CUBE_INC >= realDimVolume.x() ? realDimVolume.x() : _oM.getEndCoord().x() + CUBE_INC;
+		eP[1] = _oM.getEndCoord().y() + CUBE_INC >= realDimVolume.y() ? realDimVolume.y() : _oM.getEndCoord().y() + CUBE_INC;
+		eP[2] = _oM.getEndCoord().z() + CUBE_INC >= realDimVolume.z() ? realDimVolume.z() : _oM.getEndCoord().z() + CUBE_INC;
+
+		if (!_cM.freeMemoryAndPause() || !_cM.reSizeAndContinue(sP, eP, _oM.getnLevels(), _oM.getCubeLevel(), _oM.getStartCoord()))
+		{
+			std::cerr<<"Error, resizing plane cache"<<std::endl;
+			return false;
+		}
+
+	return true;
+}
+
 void ResourcesManager::destroy()
 {
 	_cM.stop();
@@ -24,11 +45,52 @@ void ResourcesManager::destroy()
 	_coM.destroy();
 }
 
+bool ResourcesManager::loadNext()
+{
+	if (_oM.checkLoadNextIsosurface())
+	{
+		loadNextIsosurface();
+		return true;
+	}
+	else
+	{
+		if (_oM.checkLoadNextPosition())
+		{
+			loadNextPosition();
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	return false;
+}
+
+bool ResourcesManager::loadPrevius()
+{
+	if (_oM.checkLoadPreviusIsosurface())
+	{
+		loadPreviusIsosurface();
+		return true;
+	}
+	else
+	{
+		if (_oM.checkLoadPreviusPosition())
+		{
+			loadPreviusPosition();
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+}
+
 bool ResourcesManager::loadNextPosition()
 {
-	if (!_oM.checkLoadNextPosition())
-		return true;
-
 	if (_cM.freeMemoryAndPause() && _oM.loadNextPosition())
 	{
 		vmml::vector<3, int> realDimVolume = _oM.getRealDimVolume();
@@ -55,9 +117,6 @@ bool ResourcesManager::loadNextPosition()
 
 bool ResourcesManager::loadPreviusPosition()
 {
-	if (!_oM.checkLoadPreviusPosition())
-		return true;
-
 	if (_cM.freeMemoryAndPause() && _oM.loadPreviusPosition())
 	{
 		vmml::vector<3, int> realDimVolume = _oM.getRealDimVolume();
@@ -84,18 +143,54 @@ bool ResourcesManager::loadPreviusPosition()
 
 bool ResourcesManager::loadNextIsosurface()
 {
-	if (!_oM.checkLoadNextIsosurface())
-		return true;
+	if (_cM.freeMemoryAndPause() && _oM.loadNextIsosurface())
+	{
+		vmml::vector<3, int> realDimVolume = _oM.getRealDimVolume();
+		// Resize cube cache and plane cache
+		vmml::vector<3, int> sP, eP;
+		sP[0] = _oM.getStartCoord().x() - CUBE_INC < 0 ? 0 : _oM.getStartCoord().x() - CUBE_INC; 
+		sP[1] = _oM.getStartCoord().y() - CUBE_INC < 0 ? 0 : _oM.getStartCoord().y() - CUBE_INC; 
+		sP[2] = _oM.getStartCoord().z() - CUBE_INC < 0 ? 0 : _oM.getStartCoord().z() - CUBE_INC; 
+		eP[0] = _oM.getEndCoord().x() + CUBE_INC >= realDimVolume.x() ? realDimVolume.x() : _oM.getEndCoord().x() + CUBE_INC;
+		eP[1] = _oM.getEndCoord().y() + CUBE_INC >= realDimVolume.y() ? realDimVolume.y() : _oM.getEndCoord().y() + CUBE_INC;
+		eP[2] = _oM.getEndCoord().z() + CUBE_INC >= realDimVolume.z() ? realDimVolume.z() : _oM.getEndCoord().z() + CUBE_INC;
 
-	return _oM.loadNextIsosurface(); 
+		if (!_cM.reSizeAndContinue(sP, eP, _oM.getnLevels(), _oM.getCubeLevel(), _oM.getStartCoord()))
+		{
+			std::cerr<<"Error, resizing plane cache"<<std::endl;
+			return false;
+		}
+	}
+	else
+		return false;
+
+	return true;
 }
 
 bool ResourcesManager::loadPreviusIsosurface()
 {
-	if (!_oM.checkLoadPreviusIsosurface())
-		return true;
+	if (_cM.freeMemoryAndPause() && _oM.loadPreviusIsosurface())
+	{
+		vmml::vector<3, int> realDimVolume = _oM.getRealDimVolume();
+		// Resize cube cache and plane cache
+		vmml::vector<3, int> sP, eP;
+		sP[0] = _oM.getStartCoord().x() - CUBE_INC < 0 ? 0 : _oM.getStartCoord().x() - CUBE_INC; 
+		sP[1] = _oM.getStartCoord().y() - CUBE_INC < 0 ? 0 : _oM.getStartCoord().y() - CUBE_INC; 
+		sP[2] = _oM.getStartCoord().z() - CUBE_INC < 0 ? 0 : _oM.getStartCoord().z() - CUBE_INC; 
+		eP[0] = _oM.getEndCoord().x() + CUBE_INC >= realDimVolume.x() ? realDimVolume.x() : _oM.getEndCoord().x() + CUBE_INC;
+		eP[1] = _oM.getEndCoord().y() + CUBE_INC >= realDimVolume.y() ? realDimVolume.y() : _oM.getEndCoord().y() + CUBE_INC;
+		eP[2] = _oM.getEndCoord().z() + CUBE_INC >= realDimVolume.z() ? realDimVolume.z() : _oM.getEndCoord().z() + CUBE_INC;
 
-	return _oM.loadPreviusIsosurface(); 
+		if (!_cM.reSizeAndContinue(sP, eP, _oM.getnLevels(), _oM.getCubeLevel(), _oM.getStartCoord()))
+		{
+			std::cerr<<"Error, resizing plane cache"<<std::endl;
+			return false;
+		}
+	}
+	else
+		return false;
+
+	return true;
 }
 
 bool ResourcesManager::_addNewDevice(Render * render)
@@ -109,8 +204,9 @@ bool ResourcesManager::_addNewDevice(Render * render)
 
 	render->setOctree(o);
 	render->setColors(co);
+	render->setCache(c);
 	render->setRayCastingLevel(_oM.getRayCastingLevel());
-	return render->setCache(c);
+	return true;
 }
 	
 bool ResourcesManager::updateRender(Render * render)

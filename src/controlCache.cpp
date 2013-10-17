@@ -35,6 +35,9 @@ bool ControlCache::stopWork()
 {
 	bool r = false;
 
+	if (Thread::isStopped())
+		return true;
+
 	_operationCond.lock();
 	if (_state != STOPPED)
 	{
@@ -215,7 +218,6 @@ void ControlCache::run()
 				else if (!_notEnd)
 				{
 					_state = STOPPED; 
-					_operationCond.unlock();
 				}
 				else
 				{
@@ -231,7 +233,6 @@ void ControlCache::run()
 				if (!_notEnd)
 				{
 					_state = STOPPED;
-					_operationCond.signal();
 				}
 				else if (_resize)
 				{
@@ -255,7 +256,6 @@ void ControlCache::run()
 				if (!_notEnd)
 				{
 					_state = STOPPED;
-					_operationCond.signal();
 				}
 				else if (_resize)
 				{
@@ -273,8 +273,6 @@ void ControlCache::run()
 			}
 			else if (_state == STOPPED)
 			{
-				_operationCond.lock();
-				_stateCond.unlock();
 				break;
 			}
 			else
@@ -288,6 +286,8 @@ void ControlCache::run()
 
 		_operationCond.signal();
 		_operationCond.unlock(); 
+		_stateCond.unlock();
+
 	}
 	else
 		_state = STOPPED;

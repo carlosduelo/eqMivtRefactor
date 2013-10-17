@@ -65,6 +65,8 @@ bool Octree::loadCurrentOctree()
 {
 	if (_currentOctree == _oc->getCurrentOctree())
 		return true;
+	
+	_currentOctree = _oc->getCurrentOctree();
 		
 	if (cudaSuccess != cudaSetDevice(_device))
 	{
