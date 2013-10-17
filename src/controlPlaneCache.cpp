@@ -71,7 +71,7 @@ void ControlPlaneCache::_threadWork()
 				prefetching = true;
 		}
 		if (prefetching)
-			plane = _lastPlane + 1 < _max.x() ? _lastPlane + 1 : _min.x();
+			plane = (_lastPlane + 1) < _max.x() ? _lastPlane + 1 : _min.x();
 		else
 			plane = _pendingPlanes.front();
 

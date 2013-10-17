@@ -414,7 +414,7 @@ void _checkCube_cuda(std::vector<eqMivt::octreeConstructor *> octrees, std::vect
 
 	for(eqMivt::index_node_t id=start; id<=finish; id+=inc)
 	{
-		for(int i=0; i<octrees.size(); i++)
+		for(unsigned int i=0; i<octrees.size(); i++)
 		{
 			int num = (id + inc) > finish ? finish - id  + 1: inc;
 			octreeConstructorComputeCube(resultGPU, num, id, isos[i], cube, nodeLevel, nLevels, dimNode, cubeDim, coorCubeStartV);
@@ -538,6 +538,8 @@ bool createOctree(octreeParameter_t p)
 
 	ccc.stopWork();
 	cpc.stopWork();
+
+	return true;
 }
 
 int main( const int argc, char ** argv)

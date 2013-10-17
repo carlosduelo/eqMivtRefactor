@@ -12,6 +12,10 @@ Notes:
 #include <octree_cuda.h>
 #include <rayCaster_cuda.h>
 
+#ifdef TIMING
+#include <lunchbox/clock.h>
+#endif
+
 namespace eqMivt
 {
 
@@ -23,6 +27,8 @@ bool Render::init(device_t device)
 	_colors.g = 0;
 	_colors.b = 0;
 	_pixelBuffer = 0;
+
+	return true;
 }
 
 void Render::destroy()
@@ -72,8 +78,20 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 				vmml::vector<4, float> up, vmml::vector<4, float> right,
 				float w, float h)
 {
+	#ifdef TIMING
+	lunchbox::Clock clockO;
+	lunchbox::Clock clockT;
+	clockT.reset();
+	double oT = 0.0;
+	double rT = 0.0;
+	double cT = 0.0;
+	#endif
+
 	while(_vC.getNumElements(PAINTED) != _vC.getSize())
 	{
+		#ifdef TIMING
+		clockO.reset();
+		#endif
 		/* LAUNG OCTREE */
 		_vC.updateGPU(NOCUBE, 0);
 
@@ -86,11 +104,19 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 
 		_vC.updateCPU();
 		/* LAUNCH OCTREE */
+		#ifdef TIMING
+		oT += clockO.getTimed()/1000.0;
+		clockO.reset();
+		#endif
 
 		/* Lock Cubes*/
 		_cache.pushCubes(&_vC);
 		_vC.updateIndexCPU();
 		/* Lock Cubes*/
+		#ifdef TIMING
+		cT += clockO.getTimed()/1000.0;
+		clockO.reset();
+		#endif
 
 		/* Ray Casting */
 		_vC.updateGPU(NOCUBE | CACHED, 0);
@@ -104,11 +130,26 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 
 		_vC.updateCPU();
 		/* Ray Casting */
+		#ifdef TIMING
+		rT += clockO.getTimed()/1000.0;
+		clockO.reset();
+		#endif
 
 		/* Unlock Cubes*/
 		_cache.popCubes();
 		/* Unlock Cubes*/
+		#ifdef TIMING
+		cT += clockO.getTimed()/1000.0;
+		#endif
 	}
+	#ifdef TIMING
+	std::cout<<"Time octree "<<oT<<" seconds"<<std::endl;
+	std::cout<<"Time cache "<<cT<<" seconds"<<std::endl;
+	std::cout<<"Time raycasting "<<rT<<" seconds"<<std::endl;
+	std::cout<<"Total time for frame "<<clockT.getTimed()/1000.0<<" seconds"<<std::endl;
+	#endif
+
+	return true;
 }
 
 bool Render::frameDraw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,

@@ -210,7 +210,7 @@ void OctreeContainer::_readCurrentOctree()
 
 bool OctreeContainer::checkLoadNextPosition()
 {
-	return _currentPosition != _octrees.size() - 1; 
+	return _currentPosition != (int)_octrees.size() - 1; 
 }
 
 bool OctreeContainer::checkLoadPreviusPosition()
@@ -220,7 +220,7 @@ bool OctreeContainer::checkLoadPreviusPosition()
 
 bool OctreeContainer::checkLoadNextIsosurface()
 {
-	return _currentIsosurface != _octrees[_currentPosition].isos.size() - 1; 
+	return _currentIsosurface != (int)_octrees[_currentPosition].isos.size() - 1; 
 }
 
 bool OctreeContainer::checkLoadPreviusIsosurface()
@@ -230,7 +230,7 @@ bool OctreeContainer::checkLoadPreviusIsosurface()
 
 bool OctreeContainer::loadNextPosition()
 {
-	if (_currentPosition == _octrees.size() - 1)
+	if (_currentPosition == (int)_octrees.size() - 1)
 		return false;
 	
 	_currentPosition++;
@@ -252,7 +252,7 @@ bool OctreeContainer::loadPreviusPosition()
 
 bool OctreeContainer::loadNextIsosurface()
 {
-	if (_currentIsosurface == _octrees[_currentPosition].isos.size() - 1)
+	if (_currentIsosurface == (int)_octrees[_currentPosition].isos.size() - 1)
 		return false;
 
 	_currentIsosurface++;

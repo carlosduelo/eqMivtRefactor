@@ -25,7 +25,7 @@ eqMivt::hdf5File hdf5File;
 vmml::vector<3,int> mD;
 eqMivt::VisibleCubes		vc;
 
-void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCastingLevel, int numPixels)
+void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCastingLevel, unsigned int numPixels)
 {
 	int dimV = exp2(nLevels);
 	vmml::vector<3,int> sP;
@@ -190,7 +190,7 @@ int main(int argc, char ** argv)
 
 		int levelCube = rand() % (nLevels - 1) + 1;
 		int rayLevel = rand() % (nLevels - levelCube) + levelCube;
-		int numPixels = (rand() % (MAX_RESOLUTION - MIN_RESOLUTION)) + MIN_RESOLUTION;
+		unsigned int numPixels = (rand() % (MAX_RESOLUTION - MIN_RESOLUTION)) + MIN_RESOLUTION;
 
 		std::cout<<"Test "<<i<<" pixels "<<numPixels<<" nLevels "<<nLevels<<" levelCube "<<levelCube<<" dimension "<<exp2(nLevels - levelCube)<<" offset "<<s<<" : "<<std::endl;
 

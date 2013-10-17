@@ -3,6 +3,8 @@
 # to the root binary directory of the project as ${mivt_BINARY_DIR}.
 
 #definitios
+	#add_definitions(-DDISK_TIMING)
+	add_definitions(-DTIMING)
 
 # SETTING CUDA PARAMETERS
 list(APPEND CUDA_NVCC_FLAGS -arch=sm_21)
@@ -11,11 +13,12 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 #	list(APPEND CUDA_NVCC_FLAGS -G)
 	list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-O0)
 	list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-Wall)
-	#add_definitions(-DDISK_TIMING)
+	set( CMAKE_CXX_FLAGS "-Wall -g -O0 " )
 else()
 	list(APPEND CUDA_NVCC_FLAGS -O3)
 	list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-Wall)
 	list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-O3)
+	set( CMAKE_CXX_FLAGS "-Wall -O3 " )
 endif()
 
 #MIVT

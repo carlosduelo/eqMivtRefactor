@@ -62,9 +62,6 @@ void Cache::pushCubes(VisibleCubes * vc)
 		}
 	}
 
-//	vc->updateVisibleCubes(_updateCube);
-	vc->updateIndexCPU();
-
 }
 
 void Cache::popCubes()

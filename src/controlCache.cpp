@@ -203,7 +203,7 @@ void ControlCache::run()
 				if (_pause)
 				{
 					_pause = false;
-					_state == PAUSED;
+					_state = PAUSED;
 					_operationCond.signal();
 					_operationCond.unlock();
 				}

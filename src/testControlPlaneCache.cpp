@@ -75,8 +75,6 @@ void testPerf(vmml::vector<3,int> start, vmml::vector<3,int> finish)
 		return;
 	}
 
-	int dim = (finish.y() - start.y())*(finish.z() - start.z());
-
 	#ifndef DISK_TIMING 
 		boost::progress_display show_progress(finish.x() - start.x());
 	#endif

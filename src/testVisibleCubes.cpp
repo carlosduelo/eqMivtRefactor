@@ -81,10 +81,10 @@ int test(eqMivt::statusCube fromState, eqMivt::statusCube toState)
 	ca = vC.getListCubes(CACHED);
 	p = vC.getListCubes(PAINTED);
 
-	if (c.size() != ec		||
-		nc.size() != enc	||
-		ca.size() != eca	||
-		p.size() != ep)
+	if ((int)c.size() != ec		||
+		(int)nc.size() != enc	||
+		(int)ca.size() != eca	||
+		(int)p.size() != ep)
 	{
 		std::cout<<"CUBE size "<<c.size()<<" should be "<<ec<<std::endl;
 		std::cout<<"NOCUBE size "<<nc.size()<<" should be "<<enc<<std::endl;
@@ -110,10 +110,10 @@ int main(int argc, char ** argv)
 	std::vector<int> ca = vC.getListCubes(CACHED);
 	std::vector<int> p = vC.getListCubes(PAINTED);
 
-	if (c.size() != 0		||
-		nc.size() != dim	||
-		ca.size() != 0		||
-		p.size() != 0)
+	if ((int)c.size() != 0		||
+		(int)nc.size() != dim	||
+		(int)ca.size() != 0		||
+		(int)p.size() != 0)
 	{
 		std::cout<<"CUBE size "<<c.size()<<std::endl;
 		std::cout<<"NOCUBE size "<<nc.size()<<std::endl;
@@ -146,10 +146,10 @@ int main(int argc, char ** argv)
 	ca = vC.getListCubes(CACHED);
 	p = vC.getListCubes(PAINTED);
 
-	if (nc.size() != start	||
-		ca.size() != start	||
-		c.size() != start	||
-		p.size() != start)
+	if ((int)nc.size() != start	||
+		(int)ca.size() != start	||
+		(int)c.size() != start	||
+		(int)p.size() != start)
 	{
 		std::cout<<"CUBE size "<<c.size()<<std::endl;
 		std::cout<<"NOCUBE size "<<nc.size()<<std::endl;

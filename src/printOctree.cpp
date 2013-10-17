@@ -64,7 +64,6 @@ int main( const int argc, char ** argv)
 
 	int nLevels[numOctrees];
 	int maxLevel[numOctrees]; 
-	int dimension[numOctrees]; 
 	int realDim[3*numOctrees];
 	int startC[3*numOctrees];
 	int finishC[3*numOctrees]; 
@@ -89,7 +88,6 @@ int main( const int argc, char ** argv)
 		{
 			nLevels[rest+j] = nL;
 			maxLevel[rest+j] = mL;
-			dimension[rest+j] = exp2(nL);
 			startC[3*(rest+j)] = s[0];
 			startC[3*(rest+j)+1] = s[1];
 			startC[3*(rest+j)+2] = s[2];

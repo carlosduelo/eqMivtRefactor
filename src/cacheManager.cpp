@@ -76,7 +76,6 @@ ControlCubeCache * CacheManager::getCubeCache(device_t device)
 	
 bool CacheManager::freeMemoryAndPause()
 {
-	bool result = true;
 	boost::unordered_map<device_t, ControlCubeCache *>::iterator it = _cubeCaches.begin();
 	while(it != _cubeCaches.end())
 	{

@@ -28,7 +28,7 @@ class  ControlPlaneCache : public ControlCache
 
 		boost::unordered_map<int, NodeLinkedList *>	_currentPlanes;
 		std::vector<int>							_pendingPlanes;
-		index_node_t								_lastPlane;
+		int											_lastPlane;
 		
 		double	_memoryAviable;
 		int		_freeSlots;

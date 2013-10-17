@@ -104,7 +104,7 @@ vmml::vector<3, int> hdf5File::getRealDimension()
 bool hdf5File::readGrid(int ngrid, float ** grid)
 {
 	std::string name;
-	int dim = 0;
+	hsize_t dim = 0;
 	if (ngrid == 0)
 	{
 		dim = _dims[0];
@@ -124,7 +124,7 @@ bool hdf5File::readGrid(int ngrid, float ** grid)
 	if (name == "")
 	{
 		(*grid) = new float[dim];
-		for(int i=0; i<dim; i++)
+		for(hsize_t i=0; i<dim; i++)
 			(*grid)[i] = (float)i;
 	}
 	else
@@ -210,7 +210,7 @@ bool hdf5File::readGrid(int ngrid, float ** grid)
 			return false;
 		}
 		(*grid) = new float[dim];
-		for(int i=0; i<dim; i++)
+		for(hsize_t i=0; i<dim; i++)
 			(*grid)[i] = (float)g[i];
 		delete[] g;
 	}
@@ -241,7 +241,7 @@ bool hdf5File::readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, i
 	timingC.reset();
 	#endif
 
-	hsize_t dim[3] = {1,abs(e.y()-s.y()),abs(e.z()-s.z())};
+	hsize_t dim[3] = {1, (hsize_t)abs(e.y()-s.y()), (hsize_t)abs(e.z()-s.z())};
 
 	#ifdef DISK_TIMING
 	lunchbox::Clock     timing; 
@@ -268,8 +268,8 @@ bool hdf5File::readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, i
 
 	herr_t	status;
 	hid_t	memspace; 
-	hsize_t offset_out[3] 	= {s.x() < 0 ? abs(s.x()) : 0, s.y() < 0 ? abs(s.y()) : 0, s.z() < 0 ? abs(s.z()) : 0};
-	hsize_t offset[3] 	= {s.x() < 0 ? 0 : s.x(), s.y() < 0 ? 0 : s.y(), s.z() < 0 ? 0 : s.z()};
+	hsize_t offset_out[3] 	= {(hsize_t)s.x() < 0 ? (hsize_t)abs(s.x()) : 0, s.y() < 0 ? (hsize_t)abs(s.y()) : 0, (hsize_t)s.z() < 0 ? (hsize_t)abs(s.z()) : 0};
+	hsize_t offset[3] 	= {s.x() < 0 ? 0 : (hsize_t)s.x(), s.y() < 0 ? 0 : (hsize_t)s.y(), s.z() < 0 ? 0 : (hsize_t)s.z()};
 	hsize_t dimR[3]		= {1,
 				   e.y() > (int)this->_dims[1] ? this->_dims[1] - offset[1] : e.y() - offset[1],
 				   e.z() > (int)this->_dims[2] ? this->_dims[2] - offset[2] : e.z() - offset[2]};
@@ -382,7 +382,7 @@ void hdf5File::readCube(index_node_t index, float * cube, int levelCube, int nLe
 	vmml::vector<3, int> s 		= coord - vmml::vector<3, int>(CUBE_INC, CUBE_INC, CUBE_INC);
 	vmml::vector<3, int> e 		= s + cubeDim;
 
-	hsize_t dim[3] = {abs(e.x()-s.x()),abs(e.y()-s.y()),abs(e.z()-s.z())};
+	hsize_t dim[3] = {(hsize_t)abs(e.x()-s.x()),(hsize_t)abs(e.y()-s.y()),(hsize_t)abs(e.z()-s.z())};
 
 	#ifdef DISK_TIMING
 	lunchbox::Clock     timing; 
@@ -412,8 +412,8 @@ void hdf5File::readCube(index_node_t index, float * cube, int levelCube, int nLe
 
 	herr_t	status;
 	hid_t	memspace; 
-	hsize_t offset_out[3] 	= {s.x() < 0 ? abs(s.x()) : 0, s.y() < 0 ? abs(s.y()) : 0, s.z() < 0 ? abs(s.z()) : 0};
-	hsize_t offset[3] 	= {s.x() < 0 ? 0 : s.x(), s.y() < 0 ? 0 : s.y(), s.z() < 0 ? 0 : s.z()};
+	hsize_t offset_out[3] 	= {s.x() < 0 ? (hsize_t)abs(s.x()) : 0, s.y() < 0 ? (hsize_t)abs(s.y()) : 0, s.z() < 0 ? (hsize_t)abs(s.z()) : 0};
+	hsize_t offset[3] 	= {s.x() < 0 ? 0 : (hsize_t)s.x(), s.y() < 0 ? 0 : (hsize_t)s.y(), s.z() < 0 ? 0 : (hsize_t)s.z()};
 	hsize_t dimR[3]		= {e.x() > (int)this->_dims[0] ? this->_dims[0] - offset[0] : e.x() - offset[0],
 				   e.y() > (int)this->_dims[1] ? this->_dims[1] - offset[1] : e.y() - offset[1],
 				   e.z() > (int)this->_dims[2] ? this->_dims[2] - offset[2] : e.z() - offset[2]};

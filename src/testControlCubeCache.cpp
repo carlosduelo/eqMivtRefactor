@@ -116,8 +116,6 @@ bool test(int nLevels, int levelCube, vmml::vector<3,int> offset)
 
 void testPerf(int nLevels, int levelCube, vmml::vector<3,int> offset)
 {
-	int dim = exp2(nLevels - levelCube); 
-	int dimC = dim + 2 * CUBE_INC;
 	int dimV = exp2(nLevels);
 
 	float * cubeG = 0;
@@ -289,7 +287,6 @@ int main(int argc, char ** argv)
 		float aux = logf(dimA)/logf(2.0);
 		float aux2 = aux - floorf(aux);
 		nLevels = aux2>0.0 ? aux+1 : aux;
-		int dimV = exp2(nLevels);
 
 		levelCube = rand() % (nLevels - 4) + 4;
 		std::cout<<"Test reading complete volume"<<std::endl;
