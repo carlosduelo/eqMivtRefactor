@@ -23,8 +23,7 @@ bool test(bool cubes)
 {
 	render.setDrawCubes(cubes);
 
-	for(int f=0; f<1; f++)
-	//for(int f=0; f<rM.getNumOctrees(); f++)
+	for(int f=0; f<rM.getNumOctrees(); f++)
 	{
 		if (!rM.updateRender(&render))
 		{
@@ -337,7 +336,6 @@ int main(int argc, char ** argv)
 		return 0;
 	}
 	
-	#if 0
 	std::cout<<"============ Creating cube pictures ============"<<std::endl;
 	if (!test(true))
 	{
@@ -346,7 +344,6 @@ int main(int argc, char ** argv)
 
 	while(rM.loadPreviusPosition()){};
 	while(rM.loadPreviusIsosurface()){};
-	#endif
 
 	std::cout<<"============ Creating pictures ============"<<std::endl;
 

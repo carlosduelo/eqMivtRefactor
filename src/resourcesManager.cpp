@@ -91,7 +91,7 @@ bool ResourcesManager::loadPrevius()
 
 bool ResourcesManager::loadNextPosition()
 {
-	if (_cM.freeMemoryAndPause() && _oM.loadNextPosition())
+	if (_oM.checkLoadNextPosition() && _cM.freeMemoryAndPause() && _oM.loadNextPosition())
 	{
 		vmml::vector<3, int> realDimVolume = _oM.getRealDimVolume();
 		// Resize cube cache and plane cache
@@ -117,7 +117,7 @@ bool ResourcesManager::loadNextPosition()
 
 bool ResourcesManager::loadPreviusPosition()
 {
-	if (_cM.freeMemoryAndPause() && _oM.loadPreviusPosition())
+	if (_oM.checkLoadPreviusPosition() && _cM.freeMemoryAndPause() && _oM.loadPreviusPosition())
 	{
 		vmml::vector<3, int> realDimVolume = _oM.getRealDimVolume();
 		// Resize cube cache and plane cache
@@ -143,7 +143,7 @@ bool ResourcesManager::loadPreviusPosition()
 
 bool ResourcesManager::loadNextIsosurface()
 {
-	if (_cM.freeMemoryAndPause() && _oM.loadNextIsosurface())
+	if (_oM.checkLoadNextIsosurface() && _cM.freeMemoryAndPause() && _oM.loadNextIsosurface())
 	{
 		vmml::vector<3, int> realDimVolume = _oM.getRealDimVolume();
 		// Resize cube cache and plane cache
@@ -169,7 +169,7 @@ bool ResourcesManager::loadNextIsosurface()
 
 bool ResourcesManager::loadPreviusIsosurface()
 {
-	if (_cM.freeMemoryAndPause() && _oM.loadPreviusIsosurface())
+	if (_oM.checkLoadPreviusIsosurface() && _cM.freeMemoryAndPause() && _oM.loadPreviusIsosurface())
 	{
 		vmml::vector<3, int> realDimVolume = _oM.getRealDimVolume();
 		// Resize cube cache and plane cache
