@@ -180,3 +180,36 @@ set(LIBS_NEEDED_TEST_RAYCASTING ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_L
 cuda_compile(TEST_RAYCASTING_CUDA_OBJECTS ${TEST_RAYCASTING_CUDA_SOURCE})
 add_executable(testRayCasting ${TEST_RAYCASTING_SOURCE} ${TEST_RAYCASTING_CUDA_OBJECTS} testRayCasting.cpp) 
 target_link_libraries(testRayCasting ${LIBS_NEEDED_TEST_RAYCASTING} )
+
+# TEST MULTITHREADING 
+set(TEST_MULTITHREADING_SOURCE
+	render.cpp
+	renderPNG.cpp
+	resourcesManager.cpp
+	colorManager.cpp
+	cuda_help.cpp
+	octreeManager.cpp
+	cacheManager.cpp
+	controlCache.cpp
+	visibleCubes.cpp
+	linkedList.cpp
+	cache.cpp
+	controlPlaneCache.cpp
+	controlCubeCache.cpp
+	hdf5File.cpp
+	memoryCheck.cpp
+	octree.cpp
+	octreeContainer.cpp
+   )
+
+set(TEST_MULTITHREADING_CUDA_SOURCE
+	rayCaster_cuda.cu
+	octree_cuda.cu
+	visibleCubes_cuda.cu
+)
+
+set(LIBS_NEEDED_TEST_MULTITHREADING ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES} freeimage) 
+
+cuda_compile(TEST_MULTITHREADING_CUDA_OBJECTS ${TEST_RAYCASTING_CUDA_SOURCE})
+add_executable(testMultithreading ${TEST_MULTITHREADING_SOURCE} ${TEST_RAYCASTING_CUDA_OBJECTS} testMultithreading.cpp) 
+target_link_libraries(testMultithreading ${LIBS_NEEDED_TEST_MULTITHREADING} )

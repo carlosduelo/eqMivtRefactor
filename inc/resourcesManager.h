@@ -14,6 +14,8 @@ Notes:
 #include <cacheManager.h>
 #include <render.h>
 
+#include <lunchbox/lock.h>
+
 namespace eqMivt
 {
 
@@ -23,6 +25,7 @@ class ResourcesManager
 		OctreeManager	_oM;
 		CacheManager	_cM;
 		ColorManager	_coM;
+		lunchbox::Lock  _lock;
 
 		bool _addNewDevice(Render * render);
 

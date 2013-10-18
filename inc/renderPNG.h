@@ -17,10 +17,11 @@ namespace eqMivt
 class RenderPNG : public Render
 {
 	private:
-		int	_frame;
-		float *	_bufferC;
+		std::string _name;
+		int			_frame;
+		float *		_bufferC;
 	public:
-		virtual bool init(device_t device);
+		virtual bool init(device_t device, std::string name);
 
 		virtual bool setViewPort(int pvpW, int pvpH);
 

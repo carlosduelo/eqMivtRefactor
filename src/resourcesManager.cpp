@@ -211,6 +211,8 @@ bool ResourcesManager::_addNewDevice(Render * render)
 	
 bool ResourcesManager::updateRender(Render * render)
 {
+	_lock.set();
+
 	#ifndef NDEBUG
 	if (_cM.existsDevice(render->getDevice()) != _oM.existsDevice(render->getDevice()))
 	{
@@ -222,11 +224,14 @@ bool ResourcesManager::updateRender(Render * render)
 	if (render->cacheIsInit() && render->octreeIsInit() && render->colorsIsInit())
 	{
 		render->setRayCastingLevel(_oM.getRayCastingLevel());
+		_lock.unset();
 		return true;
 	}
 	else
 	{
-		return _addNewDevice(render);
+		bool r = _addNewDevice(render);
+		_lock.unset();
+		return r;
 	}
 }
 

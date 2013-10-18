@@ -13,10 +13,11 @@ Notes:
 namespace eqMivt
 {
 
-bool RenderPNG::init(device_t device)
+bool RenderPNG::init(device_t device, std::string name)
 {
 	FreeImage_Initialise();
 
+	_name = name;
 	_frame = 0;
 	_bufferC = 0;
 	return Render::init(device);
@@ -96,7 +97,7 @@ bool RenderPNG::frameDraw(	vmml::vector<4, float> origin, vmml::vector<4, float>
 		}
 	}
 	std::stringstream name;
-	name<<"frame"<<_frame<<".png";
+	name<<"frame_"<<_name<<_frame<<".png";
 	FreeImage_Save(FIF_PNG, bitmap, name.str().c_str(), 0);
 
 	delete bitmap;
