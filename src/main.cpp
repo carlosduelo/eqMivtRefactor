@@ -11,10 +11,10 @@ Notes:
 #include "error.h"
 #include "config.h"
 #include "node.h"
-//#include "pipe.h"
-//#include "channel.h"
+#include "pipe.h"
+#include "channel.h"
 #include "view.h"
-//#include "window.h"
+#include "window.h"
 
 #include <stdlib.h>
 
@@ -23,21 +23,16 @@ class NodeFactory : public eq::NodeFactory
 public:
     virtual eq::Config*  createConfig( eq::ServerPtr parent )
         { return new eqMivt::Config( parent ); }
-#if 0
     virtual eq::Pipe*    createPipe( eq::Node* parent )
         { return new eqMivt::Pipe( parent ); }
     virtual eq::Channel* createChannel( eq::Window* parent )
         { return new eqMivt::Channel( parent ); }
-#endif
     virtual eq::Node*    createNode( eq::Config* parent ) 
         { return new eqMivt::Node( parent ); }
-
     virtual eq::View* createView( eq::Layout* parent )
         { return new eqMivt::View( parent ); }
-#if 0
     virtual eq::Window*  createWindow( eq::Pipe* parent )
         { return new eqMivt::Window( parent ); }
-#endif
 };
 
 int main( const int argc, char** argv )

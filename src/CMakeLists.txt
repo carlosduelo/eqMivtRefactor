@@ -39,10 +39,12 @@ set(MIVT_SOURCE
 	memoryCheck.cpp
 	octree.cpp
 	octreeContainer.cpp
+	channel.cpp
 	error.cpp
 	view.cpp
 	node.cpp
-#	window.cpp
+	pipe.cpp
+	window.cpp
 	surfaceInfo.cpp
 	frameData.cpp
 	initData.cpp

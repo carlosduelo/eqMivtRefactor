@@ -137,22 +137,22 @@ float SurfaceInfo::getIsosurface()
 }
 bool SurfaceInfo::checkLoadNextPosition()
 {
-	return _currentPosition != (int)_octrees.size() - 1; 
+	return _currentPosition != (int)_octrees.size() - 1 && (_currentPosition += 1) >= 0; 
 }
 
 bool SurfaceInfo::checkLoadPreviusPosition()
 {
-	return _currentPosition != 0;
+	return _currentPosition != 0 && (_currentPosition -= 1)>= 0;
 }
 
 bool SurfaceInfo::checkLoadNextIsosurface()
 {
-	return _currentIsosurface != (int)_octrees[_currentPosition].isos.size() - 1; 
+	return _currentIsosurface != (int)_octrees[_currentPosition].isos.size() - 1 && (_currentIsosurface +=1 ) >=0; 
 }
 
 bool SurfaceInfo::checkLoadPreviusIsosurface()
 {
-	return _currentIsosurface != 0; 
+	return _currentIsosurface != 0 && (_currentIsosurface -= 1) >= 0; 
 }
 
 }

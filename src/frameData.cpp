@@ -25,6 +25,9 @@ FrameData::FrameData()
 		, _previusPosition( false )
 		, _nextIsosurface( false )
 		, _previusIsosurface( false )
+        , _startCoord( eq::Vector4f::ZERO )
+        , _endCoord( eq::Vector4f::ZERO )
+        , _realDim( eq::Vector4f::ZERO )
 {
     reset();
 }
@@ -39,7 +42,7 @@ void FrameData::serialize( co::DataOStream& os, const uint64_t dirtyBits )
 	if( dirtyBits & DIRTY_VIEW )
 		os << _currentViewID;
 	if( dirtyBits & DIRTY_MODEL )
-		os << _nextPosition << _previusPosition << _nextIsosurface << _previusIsosurface; 
+		os << _nextPosition << _previusPosition << _nextIsosurface << _previusIsosurface << _startCoord << _endCoord << _realDim; 
 }
 
 void FrameData::deserialize( co::DataIStream& is, const uint64_t dirtyBits )
@@ -52,7 +55,25 @@ void FrameData::deserialize( co::DataIStream& is, const uint64_t dirtyBits )
 	if( dirtyBits & DIRTY_VIEW )
 		is >> _currentViewID;
 	if( dirtyBits & DIRTY_MODEL )
-		is >> _nextPosition >> _previusPosition >> _nextIsosurface >> _previusIsosurface; 
+		is >> _nextPosition >> _previusPosition >> _nextIsosurface >> _previusIsosurface >> _startCoord >> _endCoord >> _realDim; 
+}
+
+void FrameData::setRealDim(eq::Vector3f coord)
+{
+	_realDim = coord;
+	setDirty( DIRTY_MODEL);
+}
+
+void FrameData::setStartCoord(eq::Vector3f coord)
+{
+	_startCoord = coord;
+	setDirty( DIRTY_MODEL);
+}
+
+void FrameData::setEndCoord(eq::Vector3f coord)
+{
+	_endCoord = coord;
+	setDirty( DIRTY_MODEL);
 }
 
 void FrameData::setNone()
@@ -240,25 +261,20 @@ void FrameData::setCurrentViewID( const eq::uint128_t& id )
 void FrameData::reset()
 {
 	_position   = eq::Vector4f::ZERO;
-	_center		= eq::Vector4f::ZERO;
+	_center		= eq::Vector4f(0.0f, 0.0f, 0.0f, 1.0f);
 	_rotation   = eq::Matrix4f::IDENTITY;
-    setDirty( DIRTY_CAMERA );
 
-#if 0
-	if (octreeManager != 0)
-	{
-		eq::Vector3f start = octreeManager->getCurrentStartCoord(_currentOctree, _useGrid);
-		eq::Vector3f end = octreeManager->getCurrentFinishCoord(_currentOctree, _useGrid);
-		_center.x() = start.x() + ((end.x()-start.x())/2.0f);
-		_center.y() = start.y() + ((end.y()-start.y())/2.0f);
-		_center.z() = start.z() + ((end.z()-start.z())/2.0f);
-		_radio = 2.0f * fmax(end.x()-start.x(), fmaxf(end.y()-start.y(),end.z()-start.z()));
-		_angle = 0;
-		_position.x() = _center.x() + _radio * sin(_angle);
-		_position.y() = _center.y() + _radio * sin(_angle);
-		_position.z() = _center.z() + _radio * cos(_angle);
-	}
-#endif
+	_center.x() = _startCoord.x() + ((_endCoord.x()-_startCoord.x())/2.0f);
+	_center.y() = _startCoord.y() + ((_endCoord.y()-_startCoord.y())/2.0f);
+	_center.z() = _startCoord.z() + ((_endCoord.z()-_startCoord.z())/2.0f);
+
+	_radio = (_endCoord - _center).length();
+	_angle = 0;
+	_position.x() = _center.x() + _radio * sin(_angle);
+	_position.y() = _center.y() + _radio * sin(_angle);
+	_position.z() = _center.z() + _radio * cos(_angle);
+
+    setDirty( DIRTY_CAMERA );
 }
 
 }

@@ -71,8 +71,8 @@ namespace eqMivt
 
 	void Window::frameStart( const eq::uint128_t& frameID, const uint32_t frameNumber )
 	{
-		const Pipe*      pipe      = static_cast<Pipe*>( getPipe( ));
-		const FrameData& frameData = pipe->getFrameData();
+		//const Pipe*      pipe      = static_cast<Pipe*>( getPipe( ));
+		//const FrameData& frameData = pipe->getFrameData();
 
 		eq::Window::frameStart( frameID, frameNumber );
 	}

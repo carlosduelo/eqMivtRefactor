@@ -53,6 +53,13 @@ class FrameData : public co::Serializable
 		void setNextIsosurface();
 		void setPreviusIsosurface();
 
+		void setRealDim(eq::Vector3f coord);
+		void setStartCoord(eq::Vector3f coord);
+		void setEndCoord(eq::Vector3f coord);
+		eq::Vector3f setRealDim() const { return _realDim; }
+		eq::Vector3f setStartCoord() const { return _startCoord; }
+		eq::Vector3f setEndCoord()const { return _endCoord;}
+
 		bool checkNextPosition() const { return _nextPosition;}
 		bool checkPreviusPosition() const { return _previusPosition;}
 		bool checkNextIsosurface() const { return _nextIsosurface;}
@@ -87,6 +94,9 @@ class FrameData : public co::Serializable
 		bool			_previusPosition;
 		bool			_nextIsosurface;
 		bool			_previusIsosurface;
+		eq::Vector3f	_startCoord;
+		eq::Vector3f	_endCoord;
+		eq::Vector3f	_realDim;
 };
 }
 #endif // EQ_MIVT_FRAMEDATA_H

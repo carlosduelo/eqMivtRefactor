@@ -53,8 +53,6 @@ namespace eqMivt
 	{
 		_frameData.sync( frameID );
 
-		std::cout<<"NODE "<<_frameData.checkNextPosition()<<" "<<_frameData.checkPreviusPosition()<<std::endl;
-
 		if (_frameData.checkNextPosition())
 			_resourcesManager.loadNextPosition();
 		else if (_frameData.checkPreviusPosition())

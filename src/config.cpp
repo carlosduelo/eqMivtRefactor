@@ -41,7 +41,17 @@ bool Config::init()
         return false;
     }
 
-    return _surfaceInfo.init(_initData.getOctreeFilename());
+    if (_surfaceInfo.init(_initData.getOctreeFilename()))
+	{
+		_frameData.setRealDim(_surfaceInfo.getRealDimVolume());
+		_frameData.setStartCoord(_surfaceInfo.getStartCoord());
+		_frameData.setEndCoord(_surfaceInfo.getEndCoord());
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 void Config::_reset()
@@ -110,7 +120,6 @@ uint32_t Config::startFrame()
 	_numFramesAA = 0;
 
     const eq::uint128_t& version = _frameData.commit();
-std::cout<<"NEW FRAME"<<std::endl;
 
     _redraw = false;
     return eq::Config::startFrame( version );
@@ -357,50 +366,82 @@ bool Config::_handleKeyEvent( const eq::KeyEvent& event )
 		}
 		case 'n':
 		{
-			_frameData.setNextPosition();
-			_reset();
+			if (_surfaceInfo.checkLoadNextPosition())
+			{
+				_frameData.setStartCoord(_surfaceInfo.getStartCoord());
+				_frameData.setEndCoord(_surfaceInfo.getEndCoord());
+				_frameData.setNextPosition();
+				_reset();
+			}
 			return true;
 		}
 		case 'N':
 		{
-			_frameData.setNextPosition();
-			_reset();
+			if (_surfaceInfo.checkLoadNextPosition())
+			{
+				_frameData.setStartCoord(_surfaceInfo.getStartCoord());
+				_frameData.setEndCoord(_surfaceInfo.getEndCoord());
+				_frameData.setNextPosition();
+				_reset();
+			}
 			return true;
 		}
 		case 'p':
 		{
-			_frameData.setPreviusPosition();
-			_reset();
+			if (_surfaceInfo.checkLoadPreviusPosition())
+			{
+				_frameData.setStartCoord(_surfaceInfo.getStartCoord());
+				_frameData.setEndCoord(_surfaceInfo.getEndCoord());
+				_frameData.setPreviusPosition();
+				_reset();
+			}
 			return true;
 		}
 		case 'P':
 		{
-			_frameData.setPreviusPosition();
-			_reset();
+			if (_surfaceInfo.checkLoadPreviusPosition())
+			{
+				_frameData.setStartCoord(_surfaceInfo.getStartCoord());
+				_frameData.setEndCoord(_surfaceInfo.getEndCoord());
+				_frameData.setPreviusPosition();
+				_reset();
+			}
 			return true;
 		}
 		case 'o':
 		{
-			_frameData.setNextIsosurface();
-			_reset();
+			if (_surfaceInfo.checkLoadNextIsosurface())
+			{
+				_frameData.setNextIsosurface();
+				_reset();
+			}
 			return true;
 		}
 		case 'O':
 		{
-			_frameData.setNextIsosurface();
-			_reset();
+			if (_surfaceInfo.checkLoadNextIsosurface())
+			{
+				_frameData.setNextIsosurface();
+				_reset();
+			}
 			return true;
 		}
 		case 'l':
 		{
-			_frameData.setPreviusIsosurface();
-			_reset();
+			if (_surfaceInfo.checkLoadPreviusIsosurface())
+			{
+				_frameData.setPreviusIsosurface();
+				_reset();
+			}
 			return true;
 		}
 		case 'L':
 		{
-			_frameData.setPreviusIsosurface();
-			_reset();
+			if (_surfaceInfo.checkLoadPreviusIsosurface())
+			{
+				_frameData.setPreviusIsosurface();
+				_reset();
+			}
 			return true;
 		}
         default:
