@@ -33,8 +33,8 @@ namespace eqMivt
 		std::vector<std::string>	getDataFilename() const { return _dataFilename; }
 		void	setDataFilename(std::vector<std::string> dataFilename) { _dataFilename = dataFilename; }
 
-		int			getMemoryOccupancy() { return _memoryOccupancy; }
-		int			getMemoryOccupancy() const { return _memoryOccupancy; }
+		float		getMemoryOccupancy() { return _memoryOccupancy; }
+		float		getMemoryOccupancy() const { return _memoryOccupancy; }
 		void		setMemoryOccupancy(float memoryOccupancy){ _memoryOccupancy = memoryOccupancy; }
 
 		std::string	getTransferFunctionFile() { return _transferFunctionFile; }

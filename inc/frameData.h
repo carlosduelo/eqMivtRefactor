@@ -47,6 +47,7 @@ class FrameData : public co::Serializable
 		void setStatistics();
 		bool getStatistics() const { return _statistics; }
 
+		void setNone();
 		void setNextPosition();
 		void setPreviusPosition();
 		void setNextIsosurface();

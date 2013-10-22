@@ -55,6 +55,19 @@ void FrameData::deserialize( co::DataIStream& is, const uint64_t dirtyBits )
 		is >> _nextPosition >> _previusPosition >> _nextIsosurface >> _previusIsosurface; 
 }
 
+void FrameData::setNone()
+{
+	bool c = _nextPosition || _previusPosition || _nextIsosurface || _previusIsosurface;
+
+	_nextPosition = false;
+	_previusPosition = false;
+	_nextIsosurface = false;
+	_previusIsosurface = false;
+
+	if (c)
+	    setDirty( DIRTY_MODEL);
+}
+
 void FrameData::setNextPosition()
 {
 	if (_previusPosition || _nextIsosurface || _previusIsosurface)

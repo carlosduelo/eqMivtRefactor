@@ -22,7 +22,7 @@ bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters, 
 {
 	if (memoryOccupancy <= 0.0f || memoryOccupancy > 1.0f)
 	{
-		std::cerr<<"Control Plane Cache, Memory occupancy may be > 0.0 and <= 1.0f"<<std::endl;
+		std::cerr<<"Control Plane Cache, Memory occupancy may be > 0.0 and <= 1.0f "<<memoryOccupancy<<std::endl;
 		return false;
 	}
 

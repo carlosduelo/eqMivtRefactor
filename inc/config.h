@@ -26,6 +26,8 @@ namespace eqMivt
 
         virtual uint32_t startFrame();
 
+        virtual uint32_t finishFrame();
+
         void setInitData( const LocalInitData& data ) { _initData = data; }
         const InitData& getInitData() const { return _initData; }
 

@@ -110,11 +110,18 @@ uint32_t Config::startFrame()
 	_numFramesAA = 0;
 
     const eq::uint128_t& version = _frameData.commit();
+std::cout<<"NEW FRAME"<<std::endl;
 
     _redraw = false;
     return eq::Config::startFrame( version );
 }
 
+uint32_t Config::finishFrame()
+{
+	_frameData.setNone();
+	return eq::Config::finishFrame();
+}
+	
 bool Config::handleEvent( const eq::ConfigEvent* event )
 {
     switch( event->data.type)
@@ -360,20 +367,42 @@ bool Config::_handleKeyEvent( const eq::KeyEvent& event )
 			_reset();
 			return true;
 		}
-		#if 0
 		case 'p':
 		{
-			_frameData.setPreviusOctree();
+			_frameData.setPreviusPosition();
 			_reset();
 			return true;
 		}
 		case 'P':
 		{
-			_frameData.setPreviusOctree();
+			_frameData.setPreviusPosition();
 			_reset();
 			return true;
 		}
-		#endif
+		case 'o':
+		{
+			_frameData.setNextIsosurface();
+			_reset();
+			return true;
+		}
+		case 'O':
+		{
+			_frameData.setNextIsosurface();
+			_reset();
+			return true;
+		}
+		case 'l':
+		{
+			_frameData.setPreviusIsosurface();
+			_reset();
+			return true;
+		}
+		case 'L':
+		{
+			_frameData.setPreviusIsosurface();
+			_reset();
+			return true;
+		}
         default:
             return false;
     }

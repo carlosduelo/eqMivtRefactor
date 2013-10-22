@@ -32,6 +32,7 @@ namespace eqMivt
 		// Init cpu Cache
 		const InitData& initData = config->getInitData();
 		_status = true;
+
 		if (!_resourcesManager.isInit())
 		{
 
