@@ -35,6 +35,7 @@ class  ControlPlaneCache : public ControlCache
 		int		_maxNumPlanes;
 		float *	_memoryPlane;
 		int		_sizePlane;
+		float	_memoryOccupancy;
 
 		lunchbox::Condition	_emptyPendingPlanes;
 		lunchbox::Condition	_fullSlots;
@@ -63,7 +64,7 @@ class  ControlPlaneCache : public ControlCache
 		virtual ~ControlPlaneCache() {};
 
 		/* Read planes from [min,max) */
-		bool initParameter(std::vector<std::string> file_parameters);
+		bool initParameter(std::vector<std::string> file_parameters, float memoryOccupancy);
 
 		bool freeCacheAndPause();
 

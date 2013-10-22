@@ -47,7 +47,8 @@ void OctreeContainer::stop()
 
 	if(_sizes!= 0)
 		delete[] _sizes;
-
+	
+	_file.close();
 }
 
 bool OctreeContainer::init(std::string file_name)

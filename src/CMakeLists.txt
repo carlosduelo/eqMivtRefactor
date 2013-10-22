@@ -7,24 +7,61 @@
 	add_definitions(-DTIMING)
 
 # SETTING CUDA PARAMETERS
-list(APPEND CUDA_NVCC_FLAGS -arch=sm_21)
+list(APPEND CUDA_NVCC_FLAGS -arch=sm_13)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 #	list(APPEND CUDA_NVCC_FLAGS -G)
 	list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-O0)
 	list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-Wall)
-	set( CMAKE_CXX_FLAGS "-Wall -g -O0 " )
+	set( CMAKE_CXX_FLAGS "-Wall -g -O0 -Wno-unknown-pragmas" )
 else()
 	list(APPEND CUDA_NVCC_FLAGS -O3)
 	list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-Wall)
 	list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-O3)
-	set( CMAKE_CXX_FLAGS "-Wall -O3 " )
+	set( CMAKE_CXX_FLAGS "-Wall -O3 -Wno-unknown-pragmas" )
 endif()
 
 #MIVT
 set(MIVT_SOURCE 
-		visibleCubes.cpp
+	render.cpp
+	resourcesManager.cpp
+	colorManager.cpp
+	cuda_help.cpp
+	octreeManager.cpp
+	cacheManager.cpp
+	controlCache.cpp
+	visibleCubes.cpp
+	linkedList.cpp
+	cache.cpp
+	controlPlaneCache.cpp
+	controlCubeCache.cpp
+	hdf5File.cpp
+	memoryCheck.cpp
+	octree.cpp
+	octreeContainer.cpp
+	error.cpp
+	view.cpp
+	node.cpp
+#	window.cpp
+	surfaceInfo.cpp
+	frameData.cpp
+	initData.cpp
+	localInitData.cpp
+	config.cpp
+	eqMivt.cpp
 	)
+
+set(MIVT_CUDA_SOURCE
+	rayCaster_cuda.cu
+	octree_cuda.cu
+	visibleCubes_cuda.cu
+)
+
+set(LIBS_NEEDED_MIVT ${EQUALIZER_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES} ${Boost_LIBRARIES} ) 
+
+cuda_compile(MIVT_CUDA_OBJECTS ${MIVT_CUDA_SOURCE})
+add_executable(mivt ${MIVT_SOURCE} ${MIVT_CUDA_OBJECTS} main.cpp) 
+target_link_libraries(mivt ${LIBS_NEEDED_MIVT} )
 
 # CREATE OCTREE 
 set(CREATE_OCTREE_SOURCE

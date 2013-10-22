@@ -27,10 +27,15 @@ class ResourcesManager
 		ColorManager	_coM;
 		lunchbox::Lock  _lock;
 
+		bool _isInit;
+
 		bool _addNewDevice(Render * render);
 
 	public:
-		bool init(std::vector<std::string> data_param, std::string octree_file, std::string colors_file);
+		ResourcesManager():_isInit(false){};
+		bool isInit(){ return _isInit; }
+
+		bool init(std::vector<std::string> data_param, std::string octree_file, std::string colors_file, float memoryOccupancy);
 
 		bool start();
 

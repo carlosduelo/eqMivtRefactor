@@ -11,8 +11,6 @@ Notes:
 
 #include <typedef.h>
 
-#include <vmmlib/vector.hpp>
-
 #include <fstream>
 #include <iostream>
 
@@ -20,33 +18,6 @@ Notes:
 namespace eqMivt
 {
 
-struct octreePosition_t
-{
-	vmml::vector<3, int>	start;
-	vmml::vector<3, int>	end;
-	std::vector<float>		isos;
-	std::vector<int>		index;
-	std::vector<int>		maxHeight;
-	int						cubeLevel;
-	int						rayCastingLevel;
-	int						nLevels;
-	int						maxLevel;
-
-	friend std::ostream& operator<<(std::ostream& os, const octreePosition_t& o)
-	{
-		os<<"Octree:"<<std::endl;
-		os<<o.start<<" "<<o.end<<std::endl;
-		os<<"Isosurfaces ";
-		for(std::vector<float>::const_iterator it=o.isos.begin(); it!=o.isos.end(); it++)
-			os<<*it<<" ";
-		os<<std::endl;
-		os<<"nLevels "<<o.nLevels<<std::endl;
-		os<<"maxLevel "<<o.maxLevel<<std::endl;
-		os<<"Cube Level "<<o.cubeLevel<<std::endl;
-		os<<"Ray casting level "<<o.rayCastingLevel<<std::endl;
-		return os;
-	}
-};
 
 class OctreeContainer
 {

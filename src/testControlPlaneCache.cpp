@@ -102,7 +102,7 @@ int main(int argc, char ** argv)
 	std::vector<std::string> parameters;
 	parameters.push_back(std::string(argv[1]));
 	parameters.push_back(std::string(argv[2]));
-	if (!cpc.initParameter(parameters))
+	if (!cpc.initParameter(parameters, 1.0f))
 	{
 		std::cerr<<"Error init control plane cache"<<std::endl;
 		return 0;

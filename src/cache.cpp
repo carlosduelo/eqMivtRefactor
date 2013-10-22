@@ -96,11 +96,10 @@ void Cache::popCubes()
 		if (it->second.state == CACHED)
 				_cubeCache->unlockCube(it->first);
 
-		_cubes.erase(it);
-
-		if (it != _cubes.end())
-			it++;
+		it++;
 	}
+
+	_cubes.clear();
 }
 
 }

@@ -12,9 +12,9 @@ Notes:
 namespace eqMivt
 {
 
-bool ResourcesManager::init(std::vector<std::string> data_param, std::string octree_file, std::string colors_file)
+bool ResourcesManager::init(std::vector<std::string> data_param, std::string octree_file, std::string colors_file, float memoryOccupancy)
 {
-	return _cM.init(data_param) &&  _oM.init(octree_file) && _coM.init(colors_file);
+	return _cM.init(data_param, memoryOccupancy) &&  _oM.init(octree_file) && _coM.init(colors_file);
 }
 
 bool ResourcesManager::start()

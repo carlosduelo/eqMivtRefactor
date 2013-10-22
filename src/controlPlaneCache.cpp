@@ -18,8 +18,15 @@ Notes:
 namespace eqMivt
 {
 
-bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters)
+bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters, float memoryOccupancy)
 {
+	if (memoryOccupancy <= 0.0f || memoryOccupancy > 1.0f)
+	{
+		std::cerr<<"Control Plane Cache, Memory occupancy may be > 0.0 and <= 1.0f"<<std::endl;
+		return false;
+	}
+
+	_memoryOccupancy = memoryOccupancy;
 	_file_parameters = file_parameters;
 
 	return  ControlCache::_initControlCache();
@@ -178,7 +185,7 @@ void ControlPlaneCache::_reSizeCache()
 		}
 		else
 		{
-			_memoryAviable *=0.7;
+			_memoryAviable *=0.7*_memoryOccupancy;
 		}
 		while (cudaSuccess != cudaHostAlloc((void**)&_memoryPlane, _memoryAviable, cudaHostAllocDefault))
 		{                                                                                               

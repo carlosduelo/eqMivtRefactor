@@ -43,6 +43,7 @@ std::string					config_file_name;
 std::string					octree_file_name;
 std::vector<octreeParameter_t> octreeList;
 int	numOctrees;
+float memoryOccupancy;
 
 std::vector<eqMivt::octreeConstructor *> octreesT;
 
@@ -225,7 +226,7 @@ bool parseConfigFile(std::string file_name)
 			float i = toFloat(*tok_iter);
 			if (i <= 0.0f)
 			{
-				std::cerr<<"Isosurface should be > 0.0"<<std::endl;
+				std::cerr<<"Isosurface should be > 0.0, "<<i<<std::endl;
 				return false;
 			}
 			param.isos.push_back(i);
@@ -285,6 +286,7 @@ bool checkParameters(const int argc, char ** argv)
     ("help,h", "produce help message")
     ("data-file,d", boost::program_options::value< std::vector<std::string> >()->multitoken(), "hdf5_file-path data-set-name [x_grid y_grid z_grid]")
 	("output-file-name,o", boost::program_options::value< std::vector<std::string> >()->multitoken(), "set name of output file, optional, by default same name as data with extension octree")
+	("memory-occupancy,m", boost::program_options::value<float>(), "set memory occupancy value (0.0 , 1.0] optional")
 	("config-file,f", boost::program_options::value< std::vector<std::string> >()->multitoken(), "config file")
 	("use-disk,k", "use it when a limited memory machine")
     ;
@@ -311,6 +313,20 @@ bool checkParameters(const int argc, char ** argv)
 		disk = true;
 	else
 		disk = false;
+	if (vm.count("memory-occupancy"))
+	{
+		float mO = vm["memory-occupancy"].as<float>();
+		if (mO <= 0.0f || mO > 1.0f)
+		{
+			std::cerr<<"Memory occupancy may be > 0.0 and <= 1.0f"<<std::endl;
+			return false;
+		}
+		 memoryOccupancy = mO;
+	}
+	else 
+	{
+		memoryOccupancy = 1.0f;
+	}
 
 	if (vm.count("data-file"))
 	{
@@ -482,7 +498,7 @@ bool createOctree(octreeParameter_t p)
 	#endif
 
 	eqMivt::ControlPlaneCache cpc;
-	if (!cpc.initParameter(file_params))
+	if (!cpc.initParameter(file_params, memoryOccupancy))
 	{
 		std::cerr<<"Error init control plane cache"<<std::endl;
 		return 0;

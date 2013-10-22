@@ -27,7 +27,7 @@ class CacheManager
 		vmml::vector<3,int> _max;
 
 	public:
-		bool init(std::vector<std::string> parameters);
+		bool init(std::vector<std::string> parameters, float memoryOccupancy);
 
 		void stop();
 

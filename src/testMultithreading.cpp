@@ -249,7 +249,7 @@ int main(int argc, char ** argv)
 
 	if (argc == 5)
 	{
-		if (!rM.init(parameters, argv[3], argv[3]))
+		if (!rM.init(parameters, argv[3], argv[3], 1.0f))
 		{
 			std::cerr<<"Error init resources manager"<<std::endl;
 			return 0;
@@ -257,7 +257,7 @@ int main(int argc, char ** argv)
 	}
 	else
 	{
-		if (!rM.init(parameters, argv[3], ""))
+		if (!rM.init(parameters, argv[3], "", 1.0f))
 		{
 			std::cerr<<"Error init resources manager"<<std::endl;
 			return 0;

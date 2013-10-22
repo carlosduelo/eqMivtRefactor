@@ -11,9 +11,9 @@ Notes:
 namespace eqMivt
 {
 
-bool CacheManager::init(std::vector<std::string> parameters)
+bool CacheManager::init(std::vector<std::string> parameters, float memoryOccupancy)
 {
-	return cpc.initParameter(parameters);
+	return cpc.initParameter(parameters, memoryOccupancy);
 }
 
 void CacheManager::stop()
