@@ -7,6 +7,7 @@ Notes:
 */
 
 #include "frameData.h"
+#include <typedef.h>
 
 namespace eqMivt
 {
@@ -15,8 +16,11 @@ FrameData::FrameData()
         : _center( eq::Vector4f::ZERO )
 		, _radio( 0.0f )
 		, _angle( 0.0f )
-        , _rotation( eq::Matrix4f::ZERO )
         , _position( eq::Vector4f::ZERO )
+        , _up( eq::Vector4f::ZERO )
+        , _rotation( eq::Matrix4f::IDENTITY )
+        , _viewM( eq::Matrix4f::IDENTITY )
+        , _invViewM( eq::Matrix4f::IDENTITY )
 		, _idle( false )
 		, _drawBox( true )
 		, _renderCubes( false )
@@ -36,7 +40,7 @@ void FrameData::serialize( co::DataOStream& os, const uint64_t dirtyBits )
 {
     co::Serializable::serialize( os, dirtyBits );
     if( dirtyBits & DIRTY_CAMERA )
-        os << _position << _rotation << _center << _radio << _angle;
+        os << _position << _center << _radio << _angle << _up << _viewM << _invViewM << _rotation;
 	if( dirtyBits & DIRTY_FLAGS )
 		os << _idle << _statistics << _drawBox <<  _renderCubes;
 	if( dirtyBits & DIRTY_VIEW )
@@ -49,7 +53,7 @@ void FrameData::deserialize( co::DataIStream& is, const uint64_t dirtyBits )
 {
     co::Serializable::deserialize( is, dirtyBits );
     if( dirtyBits & DIRTY_CAMERA )
-        is >> _position >> _rotation >> _center >> _radio >> _angle;
+        is >> _position >> _center >> _radio >> _angle >> _up >> _viewM >> _invViewM >> _rotation;
 	if( dirtyBits & DIRTY_FLAGS )
 		is >> _idle >> _statistics >> _drawBox >> _renderCubes;
 	if( dirtyBits & DIRTY_VIEW )
@@ -124,104 +128,47 @@ void FrameData::setPreviusIsosurface()
 
 void FrameData::spinCamera( const float x, const float y )
 {
+#if 0
     if( x == 0.f && y == 0.f )
         return;
 
-    _rotation.rotate_x( x );
-    _rotation.rotate_y( y );
     setDirty( DIRTY_CAMERA );
+#endif
 }
 
 void FrameData::zoom( const float x)
 {
+#if 0
 	vmml::vector<4, int> l = _center - _position;
 
-	float d = l.length()*0.1f*x;
+	float d = fminf(l.length()*0.1f*x, 500.0f);
 	d = d == 0 ? x : d;
 
-	if (d > 0)
-	{
-		if (_radio < 10000)
-			_radio += d;
-	}
-	else
-	{
-		if (_radio > -10000)
-			_radio += d;
-	}
+	eq::Matrix4f t =  eq::Matrix4f::IDENTITY;
+	t.set_translation(0.0f, 0.0f, d);
+	_viewM = _viewM * t;
+	compute_inverse(_viewM, _invViewM);
 
-	_position.x() = _center.x() + _radio * sin(_angle);
-	_position.z() = _center.z() + _radio * cos(_angle);
     setDirty( DIRTY_CAMERA );
+#endif
 }
 
 void FrameData::moveCamera( const float x, const float y, const float z )
 {
 	vmml::vector<4, int> l = _center - _position;
-	float d = l.length();
+	float d = fminf(l.length(), 20.0f);
 
-	_angle += x*d*0.00005f;
-	if (d > 0)
-	{
-		if (_position.y() < 5000)
-			_position.y() +=  d == 0 ? y : y*d*0.05f;
-	}
-	else
-	{
-		if (_position.y() > -5000)
-			_position.y() +=  d == 0 ? y : y*d*0.05f;
-	}
+	float angleX = d*x*0.0005f;
 
-	_position.x() = _center.x() + _radio * sin(_angle);
-	_position.z() = _center.z() + _radio * cos(_angle);
+	eq::Matrix4f T = eq::Matrix4f::IDENTITY;
+	eq::Matrix4f rot = eq::Matrix4f::IDENTITY;
+	rot.rotate(angleX, TO3V(_up));
 
-	#if 0
-	std::cout<<"----------------------------------------------"<<std::endl;
-	std::cout<<_rotation<<std::endl;
+	T = rot;
 
-	_rotation      = eq::Matrix4f::IDENTITY;
-	eq::Vector3f look =  _position - _center; 
-	look.normalize();
-	eq::Vector3f up(0.0f, 1.0f, 0.0f);
-	eq::Vector3f right = up.cross(look); 	
-	right.normalize();
-	up = look.cross(right);
-	up.normalize();
-	
-	std::cout<<look<<std::endl;
-	std::cout<<up<<std::endl;
-	std::cout<<right<<std::endl;
-	
-	_rotation[0][0] =  right[0];
-	_rotation[0][1] =  right[1];
-	_rotation[0][2] =  right[2];
-	_rotation[1][0] =  up[0];
-	_rotation[1][1] =  up[1];
-	_rotation[1][2] =  up[2];
-	_rotation[2][0] =  -look[0];
-	_rotation[2][1] =  -look[1];
-	_rotation[2][2] =  -look[2];
+	_viewM = _viewM * T;
+	compute_inverse(_viewM, _invViewM);
 
-	std::cout<<_rotation<<std::endl;
-	std::cout<<_position<<std::endl;
-	std::cout<<"----------------------------------------------"<<std::endl;
-	#endif
-
-    setDirty( DIRTY_CAMERA );
-}
-
-void FrameData::setCameraPosition( const eq::Vector4f& position )
-{
-    _position = position;
-    setDirty( DIRTY_CAMERA );
-}
-
-void FrameData::setRotation( const eq::Vector4f& rotation )
-{
-    _rotation = eq::Matrix4f::IDENTITY;
-    _rotation.rotate_x( rotation.x() );
-    _rotation.rotate_y( rotation.y() );
-    _rotation.rotate_z( rotation.z() );
     setDirty( DIRTY_CAMERA );
 }
 
@@ -260,9 +207,10 @@ void FrameData::setCurrentViewID( const eq::uint128_t& id )
 
 void FrameData::reset()
 {
+	_rotation = eq::Matrix4f::IDENTITY;
 	_position   = eq::Vector4f::ZERO;
 	_center		= eq::Vector4f(0.0f, 0.0f, 0.0f, 1.0f);
-	_rotation   = eq::Matrix4f::IDENTITY;
+	_up			= eq::Vector4f(0.0f, 1.0f, 0.0f, 0.0f);
 
 	_center.x() = _startCoord.x() + ((_endCoord.x()-_startCoord.x())/2.0f);
 	_center.y() = _startCoord.y() + ((_endCoord.y()-_startCoord.y())/2.0f);
@@ -274,8 +222,32 @@ void FrameData::reset()
 	_position.y() = _center.y() + _radio * sin(_angle);
 	_position.z() = _center.z() + _radio * cos(_angle);
 
+	_createViewMatrix();
+
     setDirty( DIRTY_CAMERA );
 }
 
+void FrameData::_createViewMatrix()
+{
+	#if 0
+	vmml::vector<3,float> wAux = TO3V((_position - _center)); wAux.normalize();
+	vmml::vector<3,float> uAux = TO3V(_up); uAux = uAux.cross(wAux); uAux.normalize(); 
+	vmml::vector<3,float> vAux = wAux.cross(uAux); 
+	vmml::vector<4,float> u = uAux; u[3] = 0.0f;
+	vmml::vector<4,float> v = vAux; v[3] = 0.0f;
+	vmml::vector<4,float> w = wAux; w[3] = 0.0f; 
+
+	_viewM[0][0] = u.x(); _viewM[1][0] = v.x(); _viewM[2][0] = w.x(); _viewM[3][0] = 0.0f;
+	_viewM[0][1] = u.y(); _viewM[1][1] = v.y(); _viewM[2][1] = w.y(); _viewM[3][1] = 0.0f;
+	_viewM[0][2] = u.z(); _viewM[1][2] = v.z(); _viewM[2][2] = w.z(); _viewM[3][2] = 0.0f;
+	_viewM[0][3] = u.w(); _viewM[1][3] = v.w(); _viewM[2][3] = w.w(); _viewM[3][3] = 1.0f;
+	#endif
+	_viewM = eq::Matrix4f::IDENTITY;
+	_viewM = _viewM * _rotation;
+	_viewM.set_translation(TO3V(_position));
+	compute_inverse(_viewM, _invViewM);
+
+    setDirty( DIRTY_CAMERA );
+}
 }
 

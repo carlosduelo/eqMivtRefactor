@@ -21,17 +21,12 @@ class FrameData : public co::Serializable
 
 		void reset();
 
-		void setCameraPosition( const eq::Vector4f& position );
-		void setRotation( const eq::Vector4f& rotation);
 		void spinCamera( const float x, const float y );
 		void moveCamera( const float x, const float y, const float z );
 		void zoom( const float x);
 
-		const eq::Matrix4f& getCameraRotation() const
-		{ return _rotation; }
-
-		const eq::Vector4f& getCameraPosition() const
-		{ return _position; }
+		const eq::Matrix4f& getViewMatrix() const { return _viewM; }
+		const eq::Matrix4f& getInvViewMatrix() const {return _invViewM; }
 
 		void setIdle( const bool idleMode );
 		bool isIdle() const { return _idle; }
@@ -56,9 +51,9 @@ class FrameData : public co::Serializable
 		void setRealDim(eq::Vector3f coord);
 		void setStartCoord(eq::Vector3f coord);
 		void setEndCoord(eq::Vector3f coord);
-		eq::Vector3f setRealDim() const { return _realDim; }
-		eq::Vector3f setStartCoord() const { return _startCoord; }
-		eq::Vector3f setEndCoord()const { return _endCoord;}
+		eq::Vector3f getRealDim() const { return _realDim; }
+		eq::Vector3f getStartCoord() const { return _startCoord; }
+		eq::Vector3f getEndCoord()const { return _endCoord;}
 
 		bool checkNextPosition() const { return _nextPosition;}
 		bool checkPreviusPosition() const { return _previusPosition;}
@@ -81,8 +76,11 @@ class FrameData : public co::Serializable
 		eq::Vector4f	_center;
 		float			_radio;
 		float			_angle;
-		eq::Matrix4f	_rotation;
 		eq::Vector4f	_position;
+		eq::Vector4f	_up;
+		eq::Matrix4f	_rotation;
+		eq::Matrix4f	_viewM;
+		eq::Matrix4f	_invViewM;
 		bool            _idle;
 		bool			_drawBox;
 		bool			_renderCubes;
@@ -97,6 +95,7 @@ class FrameData : public co::Serializable
 		eq::Vector3f	_startCoord;
 		eq::Vector3f	_endCoord;
 		eq::Vector3f	_realDim;
+		void			_createViewMatrix();
 };
 }
 #endif // EQ_MIVT_FRAMEDATA_H

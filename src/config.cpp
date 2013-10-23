@@ -46,6 +46,7 @@ bool Config::init()
 		_frameData.setRealDim(_surfaceInfo.getRealDimVolume());
 		_frameData.setStartCoord(_surfaceInfo.getStartCoord());
 		_frameData.setEndCoord(_surfaceInfo.getEndCoord());
+		_frameData.reset();
 		return true;
 	}
 	else

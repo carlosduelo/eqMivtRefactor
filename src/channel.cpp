@@ -22,8 +22,6 @@ Notes:
 #undef	BOOL
 #endif
 
-#define TO3V(v) (vmml::vector<3,float>((v.x()),(v.y()),(v.z())))
-
 namespace eqMivt
 {
 
@@ -653,6 +651,7 @@ void Channel::_saveFrameBuffer(const eq::uint128_t& frameID)
 
 void Channel::_drawAxis()
 {
+#if 0
 	const FrameData& frameData = _getFrameData();
     eq::Matrix4f model; compute_inverse(frameData.getCameraRotation(), model);
 	eq::Vector4f right; right.set(model[0][0], model[0][1], model[0][2], 1.0f);
@@ -681,13 +680,11 @@ void Channel::_drawAxis()
 		glVertex3f(right.x(), right.y(), right.z());
 	glEnd();
 	glEnable(GL_DEPTH_TEST);
-
+#endif
 }
 
 void Channel::_drawCube()
 {
-	//const FrameData& frameData = _getFrameData();
-
 	Node* node = static_cast<Node*>( getNode( ));
 	_drawBox(node->getStartCoord(), node->getFinishCoord());
 	_drawBox(vmml::vector<3, float>(0,0,0), node->getVolumeCoord());
@@ -706,10 +703,9 @@ void Channel::_drawBox(vmml::vector<3, float> startC, vmml::vector<3, float> fin
 	glPushMatrix();
 	glLoadIdentity( );
 	applyHeadTransform();
-	const eq::Vector3f& position = frameData.getCameraPosition();
-	eq::Matrix4f invRot; compute_inverse(frameData.getCameraRotation(), invRot);
-	glMultMatrixf( invRot);
-	glTranslatef( -position.x(), -position.y(), -position.z() );
+
+	eq::Matrix4f viewM = frameData.getInvViewMatrix(); 
+	glMultMatrixf( viewM );
 
 	eq::Vector4f p1; p1.set(startC.x(), startC.y(), startC.z(), 1.0f);
 	eq::Vector4f p2; p2.set(finishC.x(), startC.y(), startC.z(), 1.0f);

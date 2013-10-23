@@ -84,5 +84,7 @@ struct octreePosition_t
 #define COLOR_INC 0.00390625f
 
 #define CUBE_INC 2
+
+#define TO3V(v) (vmml::vector<3,float>((v.x()),(v.y()),(v.z())))
 }
 #endif /* EQ_MIVT_TYPEDEF_H */
