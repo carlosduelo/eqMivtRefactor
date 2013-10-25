@@ -109,29 +109,22 @@ void Channel::frameDraw( const eq::uint128_t& frameID )
 	}
 	else
 	{
-		#if 0
+		Pipe* pipe = static_cast<Pipe*>( getPipe( ));
+		RenderOGL * render = pipe->getRender();
 		if (render == 0)
 		{
 			_drawError();
 			return;
 		}
+		render->setDrawCubes(frameData.isRenderCubes());
 
-		const eq::Matrix4f& rotation = frameData.getCameraRotation();
-		eq::Matrix4f positionM = eq::Matrix4f::IDENTITY;
-		positionM.set_translation( TO3V(frameData.getCameraPosition()));
-
-		const eq::Matrix4f model = getHeadTransform() * (positionM * rotation);
+		const eq::Matrix4f model = getHeadTransform() * frameData.getViewMatrix();
 
 		eq::Frustumf frustum = getFrustum();
 		const eq::Vector2f jitter = getJitter();
 		frustum.apply_jitter(jitter);
 
 		//_updateNearFar(model);
-
-		Pipe* pipe = static_cast<Pipe*>( getPipe( ));
-		Render * render = pipe->getRender();
-
-		render->setStatistics(frameData.getStatistics());
 
 		// Check viewport
 		const eq::PixelViewport& pvp = getPixelViewport();
@@ -145,7 +138,12 @@ void Channel::frameDraw( const eq::uint128_t& frameID )
 			_createPBO();
 			_createTexture();
 
-			render->resizeViewport(_lastViewport.w, _lastViewport.h, _pbo);
+			if (!render->setViewPort(_lastViewport.w, _lastViewport.h, _pbo))
+			{
+				std::cerr<<"Error resizing viewport"<<std::endl;
+				_drawError();;
+				return;
+			}
 		}
 
 		eq::Vector4f pos; 
@@ -172,13 +170,9 @@ void Channel::frameDraw( const eq::uint128_t& frameID )
 		float w = frustum.get_width()/(float)pvp.w;
 		float h = frustum.get_height()/(float)pvp.h;
 
-		//render_sphere(_pbo, pvp.w, pvp.h, pos.x(), pos.y(), pos.z(), p4.x(), p4.y(), p4.z(), up.x(), up.y(), up.z(), right.x(), right.y(), right.z(), w, h);
-		if (frameData.isRenderCubes())
-			render->frameDrawCubes(pos, p4, up, right, w, h, pvp.w, pvp.h);
-		else
-			render->frameDraw(pos, p4, up, right, w, h, pvp.w, pvp.h);
+		render->frameDraw(pos, p4, up, right, w, h);
+
 		_draw();
-		#endif
 	}
 
 	Accum& accum = _accum[ lunchbox::getIndexOfLastBit( getEye()) ];
@@ -653,7 +647,49 @@ void Channel::_drawAxis()
 {
 #if 0
 	const FrameData& frameData = _getFrameData();
-    eq::Matrix4f model; compute_inverse(frameData.getCameraRotation(), model);
+	Node* node = static_cast<Node*>( getNode( ));
+
+	glMatrixMode( GL_PROJECTION );
+	glPushMatrix();
+	glLoadIdentity( );
+
+	glMatrixMode( GL_MODELVIEW );
+	glPushMatrix();
+	glLoadIdentity( );
+	eq::Matrix4f viewM = frameData.getViewMatrix(); 
+	//eq::Matrix4f viewM = frameData.getInvViewMatrix(); 
+
+	eq::Vector4f x = eq::Vector3f(1.0f, 0.0f, 0.0f, 0.0f); x = viewM*x; 
+	eq::Vector4f y = eq::Vector3f(0.0f, 1.0f, 0.0f, 0.0f); y = viewM*y; 
+	eq::Vector4f z = eq::Vector3f(0.0f, 0.0f, 1.0f, 0.0f); z = viewM*z;
+	eq::Vector3f o = eq::Vector3f(0.0f, 0.0f, 0.0f);
+
+	glTranslatef(0.8f, 0.8f, 0.1f);
+	glScalef(0.1f, 0.1f, 0.1f);
+
+	glDisable(GL_DEPTH_TEST);
+	glLineWidth(2.25f);
+	glBegin(GL_LINES);
+		glColor3f(0.0f,0.0f,1.0f);    
+		glVertex3f(o.x(), o.y(), o.z());
+		glVertex3f(x.x(), x.y(), x.z());
+		glColor3f(1.0f,0.0f,0.0f);    
+		glVertex3f(o.x(), o.y(), o.z());
+		glVertex3f(y.x(), y.y(), y.z());
+		glColor3f(0.0f,1.0f,0.0f);    
+		glVertex3f(o.x(), o.y(), o.z());
+		glVertex3f(z.x(), z.y(), z.z());
+	glEnd();
+	glEnable(GL_DEPTH_TEST);
+
+	glMatrixMode( GL_PROJECTION );
+	glPopMatrix();
+
+	glMatrixMode( GL_MODELVIEW );
+	glPopMatrix();
+#else
+	const FrameData& frameData = _getFrameData();
+    eq::Matrix4f model  = frameData.getInvViewMatrix();
 	eq::Vector4f right; right.set(model[0][0], model[0][1], model[0][2], 1.0f);
 	eq::Vector4f up;	up.set(model[1][0], model[1][1], model[1][2], 1.0f);
 	eq::Vector4f look;	look.set(model[2][0], model[2][1], model[2][2], 1.0f);
@@ -685,14 +721,8 @@ void Channel::_drawAxis()
 
 void Channel::_drawCube()
 {
-	Node* node = static_cast<Node*>( getNode( ));
-	_drawBox(node->getStartCoord(), node->getFinishCoord());
-	_drawBox(vmml::vector<3, float>(0,0,0), node->getVolumeCoord());
-}
-
-void Channel::_drawBox(vmml::vector<3, float> startC, vmml::vector<3, float> finishC)
-{
 	const FrameData& frameData = _getFrameData();
+	Node* node = static_cast<Node*>( getNode( ));
 
 	glMatrixMode( GL_PROJECTION );
 	glPushMatrix();
@@ -707,6 +737,18 @@ void Channel::_drawBox(vmml::vector<3, float> startC, vmml::vector<3, float> fin
 	eq::Matrix4f viewM = frameData.getInvViewMatrix(); 
 	glMultMatrixf( viewM );
 
+	_drawBox(node->getStartCoord(), node->getFinishCoord());
+	_drawBox(vmml::vector<3, float>(0,0,0), node->getVolumeCoord());
+
+	glMatrixMode( GL_PROJECTION );
+	glPopMatrix();
+
+	glMatrixMode( GL_MODELVIEW );
+	glPopMatrix();
+}
+
+void Channel::_drawBox(vmml::vector<3, float> startC, vmml::vector<3, float> finishC)
+{
 	eq::Vector4f p1; p1.set(startC.x(), startC.y(), startC.z(), 1.0f);
 	eq::Vector4f p2; p2.set(finishC.x(), startC.y(), startC.z(), 1.0f);
 	eq::Vector4f p3; p3.set(finishC.x(), finishC.y(), startC.z(), 1.0f);
@@ -748,12 +790,6 @@ void Channel::_drawBox(vmml::vector<3, float> startC, vmml::vector<3, float> fin
 	glVertex3f( p7.x(), p7.y(), p7.z());    
 	glVertex3f( p3.x(), p3.y(), p3.z());    
     glEnd();
-
-	glMatrixMode( GL_PROJECTION );
-	glPopMatrix();
-
-	glMatrixMode( GL_MODELVIEW );
-	glPopMatrix();
 }
 
 void Channel::_updateNearFar(eq::Matrix4f model)

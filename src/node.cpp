@@ -36,7 +36,7 @@ namespace eqMivt
 		if (!_resourcesManager.isInit())
 		{
 
-			_status =	_resourcesManager.init(initData.getDataFilename(), initData.getOctreeFilename(), initData.getTransferFunctionFile(), initData.getMemoryOccupancy());
+			_status =	_resourcesManager.init(initData.getDataFilename(), initData.getOctreeFilename(), initData.getTransferFunctionFile(), initData.getMemoryOccupancy()) && _resourcesManager.start();
 		}
 
 		if (!_status)

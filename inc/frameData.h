@@ -78,7 +78,6 @@ class FrameData : public co::Serializable
 		float			_angle;
 		eq::Vector4f	_position;
 		eq::Vector4f	_up;
-		eq::Matrix4f	_rotation;
 		eq::Matrix4f	_viewM;
 		eq::Matrix4f	_invViewM;
 		bool            _idle;

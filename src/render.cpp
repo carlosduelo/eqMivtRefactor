@@ -85,7 +85,10 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 	double oT = 0.0;
 	double rT = 0.0;
 	double cT = 0.0;
+	double cT2 = 0.0;
 	#endif
+
+	int iterations = 0;
 
 	while(_vC.getNumElements(PAINTED) != _vC.getSize())
 	{
@@ -139,14 +142,20 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 		_cache.popCubes();
 		/* Unlock Cubes*/
 		#ifdef TIMING
-		cT += clockO.getTimed()/1000.0;
+		cT2 += clockO.getTimed()/1000.0;
 		#endif
+		
+		//std::cout<<iterations<<" "<<((_vC.getSize() - _vC.getNumElements(PAINTED))*100.0f)/_vC.getSize()<<std::endl;
+		iterations++;
 	}
 	#ifdef TIMING
+	std::cout<<"===== Render Statistics ======"<<std::endl;
 	std::cout<<"Time octree "<<oT<<" seconds"<<std::endl;
-	std::cout<<"Time cache "<<cT<<" seconds"<<std::endl;
+	std::cout<<"Time cache push "<<cT<<" seconds"<<std::endl;
+	std::cout<<"Time cache pop "<<cT2<<" seconds"<<std::endl;
 	std::cout<<"Time raycasting "<<rT<<" seconds"<<std::endl;
 	std::cout<<"Total time for frame "<<clockT.getTimed()/1000.0<<" seconds"<<std::endl;
+	std::cout<<"=============================="<<std::endl;
 	#endif
 
 	return true;
@@ -157,15 +166,19 @@ bool Render::frameDraw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB
 				float w, float h)
 {
 	_vC.init();
-	_cache.startFrame();
 
 	bool result = true;
 	if (_drawCube)
+	{
 		result =  _drawCubes(origin, LB, up, right, w, h);
+	}
 	else
+	{
+		_cache.startFrame();
 		result =  _draw(origin, LB, up, right, w, h);
+		_cache.finishFrame();
+	}
 
-	_cache.finishFrame();
 
 	return result;
 }

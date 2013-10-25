@@ -36,10 +36,8 @@ bool Pipe::configInit( const eq::uint128_t& initID )
 			LBERROR<<"Pipe: Error setting cuda device capable"<<std::endl;
 			return false;
 		}
-		
-	_lastState = true;
-	// _lastState = _render.init(getDevice());
-	
+
+	_lastState =  _render.init(ds, getName());
 
     return _lastState && config->mapObject( &_frameData, frameDataID );
 }
@@ -49,7 +47,7 @@ bool Pipe::configExit()
     eq::Config* config = getConfig();
     config->unmapObject( &_frameData );
 
-	//_render.destroy();
+	_render.destroy();
 
     return eq::Pipe::configExit();
 }
@@ -60,19 +58,17 @@ void Pipe::frameStart( const eq::uint128_t& frameID, const uint32_t frameNumber)
     _frameData.sync( frameID );
 }
 
-#if 0
-Render * Pipe::getRender()
+RenderOGL * Pipe::getRender()
 {
     Node*       node = static_cast<Node*>( getNode( ));
 
-	//_lastState = node->updateRender(&_render); 	
+	_lastState = node->updateRender(&_render); 	
 
 	if (_lastState)
 		return &_render;	
 	else
 		return 0;
 }
-#endif
 
 }
 

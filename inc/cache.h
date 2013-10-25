@@ -30,6 +30,17 @@ class Cache
 		boost::unordered_map<index_node_t, cube_cached> _cubes;
 
 		int	_rayCastingLevel;
+		#ifdef TIMING
+		double _cOPushN;
+		double _searchOPushN;
+		double _getCubePushN;
+		double _PopN;
+		double _cOPush;
+		double _searchOPush;
+		double _getCubePush;
+		double _Pop;
+		#endif
+
 
 	public:
 		Cache();

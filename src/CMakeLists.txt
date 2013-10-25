@@ -23,6 +23,7 @@ endif()
 
 #MIVT
 set(MIVT_SOURCE 
+	renderOGL.cpp
 	render.cpp
 	resourcesManager.cpp
 	colorManager.cpp

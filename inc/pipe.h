@@ -12,7 +12,7 @@ Notes:
 #include <eq/eq.h>
 
 #include "frameData.h"
-//#include "render.h"
+#include "renderOGL.h"
 
 namespace eqMivt
 {
@@ -23,7 +23,7 @@ namespace eqMivt
 
         const FrameData& getFrameData() const { return _frameData; }
 		
-		//Render * getRender();
+		RenderOGL * getRender();
 
     protected:
         virtual ~Pipe() {}
@@ -37,7 +37,7 @@ namespace eqMivt
         FrameData	_frameData;
 
 		bool		_lastState;
-		//Render		_render;
+		RenderOGL	_render;
     };
 }
 

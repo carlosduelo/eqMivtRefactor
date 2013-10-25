@@ -18,7 +18,6 @@ FrameData::FrameData()
 		, _angle( 0.0f )
         , _position( eq::Vector4f::ZERO )
         , _up( eq::Vector4f::ZERO )
-        , _rotation( eq::Matrix4f::IDENTITY )
         , _viewM( eq::Matrix4f::IDENTITY )
         , _invViewM( eq::Matrix4f::IDENTITY )
 		, _idle( false )
@@ -40,7 +39,7 @@ void FrameData::serialize( co::DataOStream& os, const uint64_t dirtyBits )
 {
     co::Serializable::serialize( os, dirtyBits );
     if( dirtyBits & DIRTY_CAMERA )
-        os << _position << _center << _radio << _angle << _up << _viewM << _invViewM << _rotation;
+        os << _position << _center << _radio << _angle << _up << _viewM << _invViewM;
 	if( dirtyBits & DIRTY_FLAGS )
 		os << _idle << _statistics << _drawBox <<  _renderCubes;
 	if( dirtyBits & DIRTY_VIEW )
@@ -53,7 +52,7 @@ void FrameData::deserialize( co::DataIStream& is, const uint64_t dirtyBits )
 {
     co::Serializable::deserialize( is, dirtyBits );
     if( dirtyBits & DIRTY_CAMERA )
-        is >> _position >> _center >> _radio >> _angle >> _up >> _viewM >> _invViewM >> _rotation;
+        is >> _position >> _center >> _radio >> _angle >> _up >> _viewM >> _invViewM;
 	if( dirtyBits & DIRTY_FLAGS )
 		is >> _idle >> _statistics >> _drawBox >> _renderCubes;
 	if( dirtyBits & DIRTY_VIEW )
@@ -128,17 +127,18 @@ void FrameData::setPreviusIsosurface()
 
 void FrameData::spinCamera( const float x, const float y )
 {
-#if 0
     if( x == 0.f && y == 0.f )
         return;
+	
+	_viewM.rotate_y(y);
+	_viewM.rotate_x(x);
 
+	compute_inverse(_viewM, _invViewM);
     setDirty( DIRTY_CAMERA );
-#endif
 }
 
 void FrameData::zoom( const float x)
 {
-#if 0
 	vmml::vector<4, int> l = _center - _position;
 
 	float d = fminf(l.length()*0.1f*x, 500.0f);
@@ -150,7 +150,6 @@ void FrameData::zoom( const float x)
 	compute_inverse(_viewM, _invViewM);
 
     setDirty( DIRTY_CAMERA );
-#endif
 }
 
 void FrameData::moveCamera( const float x, const float y, const float z )
@@ -158,15 +157,25 @@ void FrameData::moveCamera( const float x, const float y, const float z )
 	vmml::vector<4, int> l = _center - _position;
 	float d = fminf(l.length(), 20.0f);
 
-	float angleX = d*x*0.0005f;
+	if ( x != 0)
+	{
+		float angleX = d*x*0.0005f;
+		eq::Matrix4f rotX = eq::Matrix4f::IDENTITY;
+		eq::Matrix4f t1 = eq::Matrix4f::IDENTITY;
+		eq::Matrix4f t2 = eq::Matrix4f::IDENTITY;
+		t1.set_translation(TO3V(-_center));
+		t2.set_translation(TO3V(_center));
+		rotX.rotate(angleX, TO3V(_up));
+		_viewM = t2 * (rotX * (t1 * _viewM));
+	}
 
-	eq::Matrix4f T = eq::Matrix4f::IDENTITY;
-	eq::Matrix4f rot = eq::Matrix4f::IDENTITY;
-	rot.rotate(angleX, TO3V(_up));
+	if (y != 0)
+	{
+		eq::Matrix4f t = eq::Matrix4f::IDENTITY;
+		t.set_translation(vmml::vector<3,float>(0.0f, y*d*0.05f, 0.0f));
+		_viewM = t * _viewM;
+	}
 
-	T = rot;
-
-	_viewM = _viewM * T;
 	compute_inverse(_viewM, _invViewM);
 
     setDirty( DIRTY_CAMERA );
@@ -207,7 +216,6 @@ void FrameData::setCurrentViewID( const eq::uint128_t& id )
 
 void FrameData::reset()
 {
-	_rotation = eq::Matrix4f::IDENTITY;
 	_position   = eq::Vector4f::ZERO;
 	_center		= eq::Vector4f(0.0f, 0.0f, 0.0f, 1.0f);
 	_up			= eq::Vector4f(0.0f, 1.0f, 0.0f, 0.0f);
@@ -243,7 +251,6 @@ void FrameData::_createViewMatrix()
 	_viewM[0][3] = u.w(); _viewM[1][3] = v.w(); _viewM[2][3] = w.w(); _viewM[3][3] = 1.0f;
 	#endif
 	_viewM = eq::Matrix4f::IDENTITY;
-	_viewM = _viewM * _rotation;
 	_viewM.set_translation(TO3V(_position));
 	compute_inverse(_viewM, _invViewM);
 
