@@ -14,7 +14,7 @@ Notes:
 #include <linkedList.h>
 
 //STL
-#include <vector>
+#include <set>
 #include <boost/unordered_map.hpp>
 #include<ctime>
 
@@ -27,7 +27,7 @@ class  ControlPlaneCache : public ControlCache
 		LinkedList									_lruPlanes;
 
 		boost::unordered_map<int, NodeLinkedList *>	_currentPlanes;
-		std::vector<int>							_pendingPlanes;
+		std::set<int>								_pendingPlanes;
 		int											_lastPlane;
 		
 		double	_memoryAviable;

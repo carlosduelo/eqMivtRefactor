@@ -14,8 +14,11 @@ Notes:
 
 #include <lunchbox/clock.h>
 
+#include <boost/lexical_cast.hpp>
+
 eqMivt::ResourcesManager rM;
 eqMivt::RenderPNG	render;
+float mO = 1.0f;
 	
 int device = 0;
 
@@ -110,22 +113,39 @@ int main(int argc, char ** argv)
 		return 0;
 	}
 
+	std::string colorF = "";
+
 	if (argc == 5)
 	{
-		if (!rM.init(parameters, argv[3], argv[3], 1.0f))
+		try
 		{
-			std::cerr<<"Error init resources manager"<<std::endl;
-			return 0;
+			std::string n(argv[4]);
+			mO = boost::lexical_cast<double>(n);
+		}
+		catch(...)
+		{
+			colorF = argv[4];
 		}
 	}
-	else
+	else if (argc == 6)
 	{
-		if (!rM.init(parameters, argv[3], "", 1.0f))
+		try
 		{
-			std::cerr<<"Error init resources manager"<<std::endl;
-			return 0;
+			std::string n(argv[5]);
+			mO = boost::lexical_cast<double>(n);
+		}
+		catch(...)
+		{
+			colorF = argv[4];
 		}
 	}
+
+	if (!rM.init(parameters, argv[3], colorF, mO))
+	{
+		std::cerr<<"Error init resources manager"<<std::endl;
+		return 0;
+	}
+
 	if (!rM.start())
 	{
 		std::cerr<<"Error start resources manager"<<std::endl;

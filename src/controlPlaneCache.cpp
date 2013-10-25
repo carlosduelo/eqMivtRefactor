@@ -80,24 +80,25 @@ void ControlPlaneCache::_threadWork()
 		if (prefetching)
 			plane = (_lastPlane + 1) < _max.x() ? _lastPlane + 1 : _min.x();
 		else
-			plane = _pendingPlanes.front();
+			plane = *_pendingPlanes.begin();
 
 	_emptyPendingPlanes.unlock();
 
 	_fullSlots.lock();
 
-		if (_freeSlots == 0)
-		{
-			if (!_fullSlots.timedWait(WAITING))
-			{
-				_fullSlots.unlock();
-				return;
-			}
-		}
 		boost::unordered_map<int, NodeLinkedList *>::iterator it;
 		it = _currentPlanes.find(plane);
 		if (it == _currentPlanes.end())
 		{
+			if (_freeSlots == 0)
+			{
+				if (!_fullSlots.timedWait(WAITING))
+				{
+					_fullSlots.unlock();
+					return;
+				}
+			}
+
 			NodeLinkedList * c = 0;
 			c = _lruPlanes.getFirstFreePosition();
 
@@ -130,6 +131,10 @@ void ControlPlaneCache::_threadWork()
 					_emptyPendingPlanes.unlock();
 				}
 			}
+		}
+		else
+		{
+			_lruPlanes.moveToLastPosition(it->second);
 		}
 
 	_fullSlots.unlock();
@@ -270,8 +275,7 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 	else
 	{
 		_emptyPendingPlanes.lock();
-			if (std::find(_pendingPlanes.begin(), _pendingPlanes.end(), plane) == _pendingPlanes.end())
-				_pendingPlanes.push_back(plane);
+			_pendingPlanes.insert(_pendingPlanes.end(), plane);
 			if (_pendingPlanes.size() == 1)
 				_emptyPendingPlanes.signal();
 		_emptyPendingPlanes.unlock();

@@ -11,10 +11,12 @@ Notes:
 #include <lunchbox/sleep.h>
 #include <lunchbox/clock.h>
 
+#include <boost/lexical_cast.hpp>
 #include <boost/progress.hpp>
 
 eqMivt::hdf5File hdf5File;
 eqMivt::ControlPlaneCache cpc;
+float mO = 1.0f;
 
 
 bool test(vmml::vector<3,int> start, vmml::vector<3,int> finish)
@@ -102,7 +104,14 @@ int main(int argc, char ** argv)
 	std::vector<std::string> parameters;
 	parameters.push_back(std::string(argv[1]));
 	parameters.push_back(std::string(argv[2]));
-	if (!cpc.initParameter(parameters, 1.0f))
+	
+	if (argc == 4)
+	{
+		std::string n(argv[3]);
+		mO = boost::lexical_cast<double>(n);
+	}
+
+	if (!cpc.initParameter(parameters, mO))
 	{
 		std::cerr<<"Error init control plane cache"<<std::endl;
 		return 0;
@@ -170,6 +179,10 @@ int main(int argc, char ** argv)
 		double bw = ((dim.x()*dim.y()*dim.z()*sizeof(float))/1204.0/1024.0)/time;
 
 		std::cout<<"Read complete volume "<<dim<<" : "<<time<<" seconds ~ "<<bw<<" MB/s"<<std::endl; 
+		if (test(vmml::vector<3,int>(0,0,0), dim))
+		{
+			std::cout<<"Test Fail!"<<std::endl;
+		}
 	}
 
 	cpc.stopWork();

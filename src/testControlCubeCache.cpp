@@ -15,12 +15,14 @@ Notes:
 #include <lunchbox/sleep.h>
 #include <lunchbox/clock.h>
 
+#include <boost/lexical_cast.hpp>
 #include <boost/progress.hpp>
 
 
 eqMivt::ControlPlaneCache cpc;
 eqMivt::hdf5File hdf5File;
 eqMivt::ControlCubeCache ccc;
+float mO = 1.0f;
 
 bool test(int nLevels, int levelCube, vmml::vector<3,int> offset)
 {
@@ -180,12 +182,17 @@ int main(int argc, char ** argv)
 
 	lunchbox::Clock clock;
 
-
 	std::vector<std::string> parameters;
 	parameters.push_back(std::string(argv[1]));
 	parameters.push_back(std::string(argv[2]));
 
-	if (!cpc.initParameter(parameters, 1.0f))
+	if (argc == 4)
+	{
+		std::string n(argv[3]);
+		mO = boost::lexical_cast<double>(n);
+	}
+
+	if (!cpc.initParameter(parameters, mO))
 	{
 		std::cerr<<"Error init control plane cache"<<std::endl;
 		return 0;
