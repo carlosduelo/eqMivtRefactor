@@ -37,7 +37,7 @@ void LinkedList::reSize(int size)
 			memoryList[i].after 	= &memoryList[i+1];
 			memoryList[i].before 	= 0;
 			memoryList[i].element 	= i;
-			memoryList[i].id		= -1;
+			memoryList[i].id		= 0;
 			memoryList[i].refs		= 0;
 		}
 		else if (i==size-1)
@@ -45,7 +45,7 @@ void LinkedList::reSize(int size)
 			memoryList[i].after 	= 0;
 			memoryList[i].before 	= &memoryList[i-1];
 			memoryList[i].element 	= i;
-			memoryList[i].id		= -1;
+			memoryList[i].id		= 0;
 			memoryList[i].refs		= 0;
 		}
 		else
@@ -53,7 +53,7 @@ void LinkedList::reSize(int size)
 			memoryList[i].after 	= &memoryList[i+1];
 			memoryList[i].before 	= &memoryList[i-1];
 			memoryList[i].element 	= i;
-			memoryList[i].id		= -1;
+			memoryList[i].id		= 0;
 			memoryList[i].refs		= 0;
 		}
 	}
@@ -70,17 +70,33 @@ NodeLinkedList * LinkedList::getFirstFreePosition()
 {
 	NodeLinkedList * first = list;
 
-	// Search first free position
-	while(list->refs != 0)
+	if (freePositions == 0)
 	{
-		moveToLastPosition(list);
-		if (first == list)
+		// Search first free position
+		while(list->refs != 0)
 		{
-			std::cerr<<"Error cache is unistable"<<std::endl;
-			throw;
+			moveToLastPosition(list);
+			if (first == list)
+			{
+				return 0;
+			}
 		}
 	}
+	else
+	{
+		// Search first free position
+		while(list->refs != 0 && list->id > 0)
+		{
+			moveToLastPosition(list);
+			if (first == list)
+			{
+				std::cerr<<"Error cache is unistable"<<std::endl;
+				throw;
+			}
+		}
 
+		freePositions--;
+	}
 	return list;
 }
 

@@ -12,6 +12,10 @@ Notes:
 
 #include <cuda_runtime.h>
 
+#ifdef TIMING
+#include <lunchbox/clock.h>
+#endif
+
 #define READING -1
 #define WAITING 200
 
@@ -28,6 +32,15 @@ bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters, 
 
 	_memoryOccupancy = memoryOccupancy;
 	_file_parameters = file_parameters;
+
+	#ifdef TIMING
+	_searchPlaneN = 0.0;
+	_insertPlaneN = 0.0;
+	_readingPlaneN = 0.0;
+	_readingPlane = 0.0;
+	_searchPlane = 0.0;
+	_insertPlane = 0.0;
+	#endif
 
 	return  ControlCache::_initControlCache();
 }
@@ -145,6 +158,27 @@ void ControlPlaneCache::_threadWork()
 void ControlPlaneCache::_freeCache()
 {
 	// DO NOT FREE, FREE AT THE END 
+
+	#ifdef TIMING
+	if (_searchPlaneN != 0.0 && _insertPlaneN != 0.0 && _readingPlaneN != 0.0)
+	{
+		std::cout<<"==== CONTROL PLANE CACHE ====="<<std::endl;
+		std::cout<<"Max num planes "<< _maxNumPlanes<<" planes form "<<_min.x()<<" to "<<_max.x()<<" total "<<_max.x()-_min.x()<<std::endl;
+		std::cout<<"Time searching planes "<<_searchPlane<<" seconds"<<std::endl;
+		std::cout<<"Time inserting planes "<<_insertPlane<<" seconds"<<std::endl;
+		std::cout<<"Time reading planes "<<_readingPlane<<" seconds"<<std::endl;
+		std::cout<<"Average searching planes "<<_searchPlane/_searchPlaneN<<" seconds, operations "<<_searchPlaneN<<std::endl;
+		std::cout<<"Average inserting planes "<<_insertPlane/_insertPlaneN<<" seconds, operations "<<_insertPlaneN<<std::endl;
+		std::cout<<"Average reading planes "<<_readingPlane/_readingPlaneN<<" seconds, operations "<<_readingPlaneN<<std::endl;
+		std::cout<<"=============================="<<std::endl;
+		_searchPlaneN = 0.0;
+		_insertPlaneN = 0.0;
+		_readingPlaneN = 0.0;
+		_readingPlane = 0.0;
+		_searchPlane = 0.0;
+		_insertPlane = 0.0;
+	}
+	#endif
 }
 
 
@@ -225,7 +259,18 @@ void ControlPlaneCache::_reSizeCache()
 
 bool ControlPlaneCache::readPlane(float * data, int plane)
 {
+#ifdef TIMING
+	lunchbox::Clock clock;
+	clock.reset();
+
+    bool r = _file.readPlane(data, vmml::vector<3, int>(plane, _min.y(), _min.z()), vmml::vector<3, int>(plane, _max.y(), _max.z()));
+	_readingPlane += clock.getTimed()/1000.0;
+	_readingPlaneN += 1.0;
+
+	return r; 
+#else
     return _file.readPlane(data, vmml::vector<3, int>(plane, _min.y(), _min.z()), vmml::vector<3, int>(plane, _max.y(), _max.z()));
+#endif
 }
 
 bool ControlPlaneCache::freeCacheAndPause()
@@ -257,9 +302,17 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 	float * dplane = 0;
 	boost::unordered_map<int, NodeLinkedList * >::iterator it;
 
+	#ifdef TIMING
+	lunchbox::Clock clock;
+	clock.reset();
+	#endif
 	_fullSlots.lock();
 
 	it = _currentPlanes.find(plane);
+	#ifdef TIMING
+	_searchPlane += clock.getTimed()/1000.0;
+	_searchPlaneN += 1.0;
+	#endif
 	if (it != _currentPlanes.end())
 	{
 		if (it->second->refs == 0)
@@ -274,8 +327,15 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 	}
 	else
 	{
+	#ifdef TIMING
+	clock.reset();
+	#endif
 		_emptyPendingPlanes.lock();
 			_pendingPlanes.insert(_pendingPlanes.end(), plane);
+	#ifdef TIMING
+	_insertPlane += clock.getTimed()/1000.0;
+	_insertPlaneN += 1.0;
+	#endif
 			if (_pendingPlanes.size() == 1)
 				_emptyPendingPlanes.signal();
 		_emptyPendingPlanes.unlock();

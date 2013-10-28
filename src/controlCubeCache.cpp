@@ -12,6 +12,10 @@ Notes:
 
 #include <lunchbox/sleep.h>
 
+#ifdef TIMING
+#include <lunchbox/clock.h>
+#endif
+
 #define PROCESSING -1
 #define PROCESSED -2
 #define WAITING 200
@@ -30,6 +34,15 @@ bool ControlCubeCache::initParameter(ControlPlaneCache * planeCache, device_t de
 {
 	_planeCache = planeCache;
 	_device = device;
+
+	#ifdef TIMING
+	_searchCubeN = 0.0;
+	_insertCubeN = 0.0;
+	_readingCubeN = 0.0;
+	_readingCube = 0.0;
+	_searchCube = 0.0;
+	_insertCube = 0.0;
+	#endif
 
 	return  ControlCache::_initControlCache();
 }
@@ -226,6 +239,30 @@ void ControlCubeCache::_freeCache()
 	_pendingCubes.clear();
 	std::queue<index_node_t> emptyQ;
 	std::swap(_readingCubes, emptyQ);
+
+	#ifdef TIMING
+	if (_searchCubeN != 0.0 && _insertCubeN != 0.0 && _readingCubeN != 0.0)
+	{
+		int dim = exp2(_nLevels);
+		index_node_t s = coordinateToIndex(vmml::vector<3, int>(0,0,0), _levelCube, _nLevels);
+		index_node_t e = coordinateToIndex(vmml::vector<3, int>(dim-1, dim-1, dim-1), _levelCube, _nLevels);
+		std::cout<<"==== CONTROL CUBE CACHE ====="<<std::endl;
+		std::cout<<"Max num cubes "<< _maxNumCubes<<" cubes form "<<s<<" to "<<e<<" total "<<e-s+1<<std::endl;
+		std::cout<<"Time searching cubes "<<_searchCube<<" seconds"<<std::endl;
+		std::cout<<"Time inserting cubes "<<_insertCube<<" seconds"<<std::endl;
+		std::cout<<"Time reading cubes "<<_readingCube<<" seconds"<<std::endl;
+		std::cout<<"Average searching cubes "<<_searchCube/_searchCubeN<<" seconds, operations "<<_searchCubeN<<std::endl;
+		std::cout<<"Average inserting cubes "<<_insertCube/_insertCubeN<<" seconds, operations "<<_insertCubeN<<std::endl;
+		std::cout<<"Average reading cubes "<<_readingCube/_readingCubeN<<" seconds, operations "<<_readingCubeN<<std::endl;
+		std::cout<<"=============================="<<std::endl;
+		_searchCubeN = 0.0;
+		_insertCubeN = 0.0;
+		_readingCubeN = 0.0;
+		_readingCube = 0.0;
+		_searchCube = 0.0;
+		_insertCube = 0.0;
+	}
+	#endif
 }
 
 void ControlCubeCache::_reSizeCache()
@@ -290,9 +327,17 @@ float * ControlCubeCache::getAndBlockCube(index_node_t cube)
 	float * dcube = 0;
 	boost::unordered_map<index_node_t, NodeLinkedList * >::iterator it;
 
+	#ifdef TIMING
+	lunchbox::Clock clock;
+	clock.reset();
+	#endif
 	_fullSlots.lock();
 
 	it = _currentCubes.find(cube);
+	#ifdef TIMING
+	_searchCube += clock.getTimed()/1000.0;
+	_searchCubeN += 1.0;
+	#endif
 	if (it != _currentCubes.end())
 	{
 		if (it->second->refs != PROCESSING)
@@ -312,6 +357,9 @@ float * ControlCubeCache::getAndBlockCube(index_node_t cube)
 	{
 		_fullSlots.unlock();
 
+	#ifdef TIMING
+	clock.reset();
+	#endif
 		_emptyPendingCubes.lock();
 			if (std::find_if(_pendingCubes.begin(), _pendingCubes.end(), find_pending_cube(cube)) == _pendingCubes.end())
 			{
@@ -321,6 +369,10 @@ float * ControlCubeCache::getAndBlockCube(index_node_t cube)
 				_pendingCubes.push_back(pcube);
 				//std::sort(_pendingCubes.begin(), _pendingCubes.end(), ComparePendingCubes);
 			}
+	#ifdef TIMING
+	_insertCube += clock.getTimed()/1000.0;
+	_insertCubeN += 1.0;
+	#endif
 			if (_pendingCubes.size() == 1)
 				_emptyPendingCubes.signal();
 		_emptyPendingCubes.unlock();
@@ -385,6 +437,11 @@ bool ControlCubeCache::reSizeCacheAndContinue(int nLevels, int levelCube, vmml::
 
 bool ControlCubeCache::readCube(NodeLinkedList * c)
 {
+#ifdef TIMING
+	lunchbox::Clock clock;
+	clock.reset();
+#endif
+
 	vmml::vector<3, int> coordS = getMinBoxIndex2(c->id, _levelCube, _nLevels) + _offset - vmml::vector<3, int>(CUBE_INC, CUBE_INC, CUBE_INC);
 	vmml::vector<3, int> coordE = coordS + vmml::vector<3, int>(_dimCube, _dimCube, _dimCube);
 
@@ -439,6 +496,10 @@ bool ControlCubeCache::readCube(NodeLinkedList * c)
 			it++;
 	}
 
+#ifdef TIMING
+	_readingCube += clock.getTimed()/1000.0;
+	_readingCubeN += 1.0;
+#endif
 
 	return c->pendingPlanes.empty();
 }

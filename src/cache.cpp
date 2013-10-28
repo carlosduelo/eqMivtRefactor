@@ -49,10 +49,10 @@ void Cache::finishFrame()
 	std::cout<<"Complete time search operation "<<_searchOPush<<" seconds"<<std::endl;
 	std::cout<<"Complete time geting operation "<<_getCubePush<<" seconds"<<std::endl;
 	std::cout<<"Complete time pop operation "<<_Pop<<" seconds"<<std::endl;
-	std::cout<<"Average time push operation "<<_cOPush/_cOPushN<<" seconds"<<std::endl;
-	std::cout<<"Average time search operation "<<_searchOPush/_searchOPushN<<" seconds"<<std::endl;
-	std::cout<<"Average time geting operation "<<_getCubePush/_getCubePushN<<" seconds"<<std::endl;
-	std::cout<<"Average time pop operation "<<_Pop/_PopN<<" seconds"<<std::endl;
+	std::cout<<"Average time push operation "<<_cOPush/_cOPushN<<" seconds, operations "<<_cOPushN<<std::endl;
+	std::cout<<"Average time search operation "<<_searchOPush/_searchOPushN<<" seconds, operations "<<_searchOPushN<<std::endl;
+	std::cout<<"Average time geting operation "<<_getCubePush/_getCubePushN<<" seconds, operations "<<_getCubePushN<<std::endl;
+	std::cout<<"Average time pop operation "<<_Pop/_PopN<<" seconds, operations "<<_PopN<<std::endl;
 	std::cout<<"=============================="<<std::endl;
 	#endif
 }

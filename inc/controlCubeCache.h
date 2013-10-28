@@ -62,6 +62,16 @@ class  ControlCubeCache : public ControlCache
 		int		_nextnLevels;
 		int		_nextLevelCube;
 
+		#ifdef TIMING
+		double _searchCubeN;
+		double _insertCubeN;
+		double _readingCubeN;
+		double _readingCube;
+		double _searchCube;
+		double _insertCube;
+		#endif
+
+
 		device_t _device;
 
 		ControlPlaneCache * _planeCache;

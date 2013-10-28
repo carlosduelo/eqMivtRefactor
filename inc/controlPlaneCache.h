@@ -16,7 +16,6 @@ Notes:
 //STL
 #include <set>
 #include <boost/unordered_map.hpp>
-#include<ctime>
 
 namespace eqMivt
 {
@@ -44,6 +43,15 @@ class  ControlPlaneCache : public ControlCache
 		vmml::vector<3, int> _max;
 		vmml::vector<3, int> _minFuture;
 		vmml::vector<3, int> _maxFuture;
+
+		#ifdef TIMING
+		double _searchPlaneN;
+		double _insertPlaneN;
+		double _readingPlaneN;
+		double _readingPlane;
+		double _searchPlane;
+		double _insertPlane;
+		#endif
 
 		std::vector<std::string> _file_parameters;
 		hdf5File	_file;
