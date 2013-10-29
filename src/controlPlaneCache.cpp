@@ -33,16 +33,7 @@ bool ControlPlaneCache::initParameter(std::vector<std::string> file_parameters, 
 	_memoryOccupancy = memoryOccupancy;
 	_file_parameters = file_parameters;
 
-	#ifdef TIMING
-	_searchPlaneN = 0.0;
-	_insertPlaneN = 0.0;
-	_readingPlaneN = 0.0;
-	_readingPlane = 0.0;
-	_searchPlane = 0.0;
-	_insertPlane = 0.0;
-	#endif
-
-	return  ControlCache::_initControlCache();
+	return  ControlElementCache::_init();
 }
 
 bool ControlPlaneCache::_threadInit()
@@ -53,131 +44,36 @@ bool ControlPlaneCache::_threadInit()
 	_maxFuture = vmml::vector<3,int>(-1,-1,1);
 
 	_memoryAviable = 0;
-	_memoryPlane = 0;
-	_currentPlanes.clear();
-	_pendingPlanes.clear();
 
-	_freeSlots = 0;
 	_maxNumPlanes = 0;
-	_sizePlane = 0;
 
-	_lastPlane = 0;
-
-	return _file.init(_file_parameters);
+	return _file.init(_file_parameters) &&  ControlElementCache::_threadInit();
 }
 
 void ControlPlaneCache::_threadStop()
 {
-	if (_memoryPlane != 0)
-		if(cudaSuccess != cudaFreeHost((void*)_memoryPlane))
+	if (_memory != 0)
+		if(cudaSuccess != cudaFreeHost((void*)_memory))
 		{
 			std::cerr<<"Control Plane Cache, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;	
 			throw;
 		}
-	_memoryPlane = 0;
 	_file.close();
-}
 
-void ControlPlaneCache::_threadWork()
-{
-	bool prefetching = false;
-	int plane = -1;
-
-	_emptyPendingPlanes.lock();
-
-		if (_pendingPlanes.size() == 0)
-		{
-			if (!_emptyPendingPlanes.timedWait(WAITING))
-				prefetching = true;
-		}
-		if (prefetching)
-			plane = (_lastPlane + 1) < _max.x() ? _lastPlane + 1 : _min.x();
-		else
-			plane = *_pendingPlanes.begin();
-
-	_emptyPendingPlanes.unlock();
-
-	_fullSlots.lock();
-
-		boost::unordered_map<int, NodePlane_t *>::iterator it;
-		it = _currentPlanes.find(plane);
-		if (it == _currentPlanes.end())
-		{
-			if (_freeSlots == 0)
-			{
-				if (!_fullSlots.timedWait(WAITING))
-				{
-					_fullSlots.unlock();
-					return;
-				}
-			}
-
-			NodePlane_t * c = 0;
-			c = _lruPlanes.getFirstFreePosition();
-
-			it = _currentPlanes.find(c->id);
-			if (it != _currentPlanes.end())
-				_currentPlanes.erase(it);	
-
-			#ifndef NDEBUG
-			if (c->refs != 0)
-			{
-				std::cerr<<"Control Plane Cache, unistable state, free plane slot with references "<<c->id<<" refs "<<c->refs<<std::endl;
-				throw;
-			}
-			#endif
-
-			if (readPlane(_memoryPlane + (c->element * _sizePlane), plane))
-			{
-				_freeSlots--;
-				
-				c->id = plane;
-				c->refs = READING;
-				_currentPlanes.insert(std::make_pair<int, NodePlane_t *>(c->id, c));
-				_lruPlanes.moveToLastPosition(c);
-				_lastPlane = c->id;
-
-				if (!prefetching)
-				{
-					_emptyPendingPlanes.lock();
-						_pendingPlanes.erase(_pendingPlanes.begin());
-					_emptyPendingPlanes.unlock();
-				}
-			}
-		}
-		else
-		{
-			_lruPlanes.moveToLastPosition(it->second);
-		}
-
-	_fullSlots.unlock();
-
-	return;
+	ControlElementCache::_threadStop();
 }
 
 void ControlPlaneCache::_freeCache()
 {
-	// DO NOT FREE, FREE AT THE END 
+	#ifdef TIMING
+	std::cout<<"==== CONTROL PLANE CACHE ====="<<std::endl;
+	std::cout<<"Max num planes "<< _maxNumPlanes<<" planes form "<<_min.x()<<" to "<<_max.x()<<" total "<<_max.x()-_min.x()<<std::endl;
+	#endif
+
+	ControlElementCache::_freeCache();
 
 	#ifdef TIMING
-	if (_searchPlaneN != 0.0 && _insertPlaneN != 0.0 && _readingPlaneN != 0.0)
-	{
-		std::cout<<"==== CONTROL PLANE CACHE ====="<<std::endl;
-		std::cout<<"Max num planes "<< _maxNumPlanes<<" planes form "<<_min.x()<<" to "<<_max.x()<<" total "<<_max.x()-_min.x()<<std::endl;
-		std::cout<<"Time searching planes "<<_searchPlane<<" seconds"<<std::endl;
-		std::cout<<"Time inserting planes "<<_insertPlane<<" seconds"<<std::endl;
-		std::cout<<"Time reading planes "<<_readingPlane<<" seconds"<<std::endl;
-		std::cout<<"Average searching planes "<<_searchPlane/_searchPlaneN<<" seconds, operations "<<_searchPlaneN<<std::endl;
-		std::cout<<"Average inserting planes "<<_insertPlane/_insertPlaneN<<" seconds, operations "<<_insertPlaneN<<std::endl;
-		std::cout<<"Average reading planes "<<_readingPlane/_readingPlaneN<<" seconds, operations "<<_readingPlaneN<<std::endl;
-		std::cout<<"=============================="<<std::endl;
-		_searchPlaneN = 0.0;
-		_insertPlaneN = 0.0;
-		_readingPlaneN = 0.0;
-		_readingPlane = 0.0;
-		_searchPlane = 0.0;
-		_insertPlane = 0.0;
-	}
+	std::cout<<"=============================="<<std::endl;
 	#endif
 }
 
@@ -210,11 +106,10 @@ void ControlPlaneCache::_reSizeCache()
 	_max = _maxFuture;
 	_minFuture = vmml::vector<3,int>(0,0,0);
 	_maxFuture = vmml::vector<3,int>(0,0,0);
-	_lastPlane = _min.x();
 
-	_sizePlane = (_max.y()-_min.y())*(_max.z()-_min.z());	
+	_sizeElement = (_max.y()-_min.y())*(_max.z()-_min.z());	
 
-	if (_memoryPlane == 0)
+	if (_memory == 0)
 	{
 		_memoryAviable = getMemorySize();
 		if (_memoryAviable == 0)
@@ -226,7 +121,7 @@ void ControlPlaneCache::_reSizeCache()
 		{
 			_memoryAviable *=0.7*_memoryOccupancy;
 		}
-		while (cudaSuccess != cudaHostAlloc((void**)&_memoryPlane, _memoryAviable, cudaHostAllocDefault))
+		while (cudaSuccess != cudaHostAlloc((void**)&_memory, _memoryAviable, cudaHostAllocDefault))
 		{                                                                                               
 			std::cerr<<"Control Plane Cache, error allocating memory "<<_memoryAviable/1024.0f/1024.0f<<" : "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 			if (_memoryAviable <= 0)
@@ -237,14 +132,14 @@ void ControlPlaneCache::_reSizeCache()
 
 	}
 
-	_maxNumPlanes = _memoryAviable / (_sizePlane * sizeof(float));
+	_maxNumPlanes = _memoryAviable / (_sizeElement * sizeof(float));
 	if (_max.x()-_min.x() + 1 < _maxNumPlanes)
 	{
 		_maxNumPlanes = _max.x()-_min.x() + 1;
 	}
 	else
 	{
-		while((_maxNumPlanes*_sizePlane*sizeof(float) + _maxNumPlanes*sizeof(NodePlane_t)) > _memoryAviable)
+		while((_maxNumPlanes*_sizeElement*sizeof(float) + _maxNumPlanes*sizeof(NodePlane_t)) > _memoryAviable)
 		{
 			_maxNumPlanes -= 10;
 		}
@@ -252,136 +147,28 @@ void ControlPlaneCache::_reSizeCache()
 
 	_freeSlots = _maxNumPlanes;
 
-	_lruPlanes.reSize(_maxNumPlanes);
-	_currentPlanes.clear();
-	_pendingPlanes.clear();
+	ControlElementCache::_reSizeCache();
 }
 
-bool ControlPlaneCache::readPlane(float * data, int plane)
+bool ControlPlaneCache::_readElement(NodeLinkedList<int> * element)
 {
-#ifdef TIMING
-	lunchbox::Clock clock;
-	clock.reset();
+	float * data = _memory + element->element * _sizeElement;
+	int plane = element->id;
 
-    bool r = _file.readPlane(data, vmml::vector<3, int>(plane, _min.y(), _min.z()), vmml::vector<3, int>(plane, _max.y(), _max.z()));
-	_readingPlane += clock.getTimed()/1000.0;
-	_readingPlaneN += 1.0;
-
-	return r; 
-#else
     return _file.readPlane(data, vmml::vector<3, int>(plane, _min.y(), _min.z()), vmml::vector<3, int>(plane, _max.y(), _max.z()));
-#endif
 }
 
 bool ControlPlaneCache::freeCacheAndPause()
 {
-	return _pauseWorkAndFreeCache();
+	return ControlElementCache::_freeCacheAndPause();
 }
 
 bool ControlPlaneCache::reSizeCacheAndContinue(vmml::vector<3,int> min, vmml::vector<3,int> max)
 {
-	if (_checkRunning())
-		return false;
-
 	_minFuture = min;
 	_maxFuture = max;
 
-	return _continueWorkAndReSize();
+	return ControlElementCache::_reSizeCacheAndContinue();
 }
-
-float * ControlPlaneCache::getAndBlockPlane(int plane)
-{
-	#ifndef NDEBUG
-	if (plane >= _max.x() || plane < _min.x())
-	{
-		std::cerr<<"Control Plane Cache, error adding plane that not exists "<<_min<<" "<<_max<<" "<<plane<<std::endl;
-		return 0;
-	}
-	#endif
-
-	float * dplane = 0;
-	boost::unordered_map<int, NodePlane_t * >::iterator it;
-
-	#ifdef TIMING
-	lunchbox::Clock clock;
-	clock.reset();
-	#endif
-	_fullSlots.lock();
-
-	it = _currentPlanes.find(plane);
-	#ifdef TIMING
-	_searchPlane += clock.getTimed()/1000.0;
-	_searchPlaneN += 1.0;
-	#endif
-	if (it != _currentPlanes.end())
-	{
-		if (it->second->refs == 0)
-			_freeSlots--;
-		else if (it->second->refs == READING)
-			it->second->refs = 0;
-
-		it->second->refs += 1;
-		dplane = _memoryPlane + (it->second->element * _sizePlane);
-
-		_lruPlanes.moveToLastPosition(it->second);
-	}
-	else
-	{
-	#ifdef TIMING
-	clock.reset();
-	#endif
-		_emptyPendingPlanes.lock();
-			_pendingPlanes.insert(_pendingPlanes.end(), plane);
-	#ifdef TIMING
-	_insertPlane += clock.getTimed()/1000.0;
-	_insertPlaneN += 1.0;
-	#endif
-			if (_pendingPlanes.size() == 1)
-				_emptyPendingPlanes.signal();
-		_emptyPendingPlanes.unlock();
-	}
-
-	_fullSlots.unlock();
-
-	return dplane;
-}
-
-void	ControlPlaneCache::unlockPlane(int plane)
-{
-	boost::unordered_map<int, NodePlane_t *>::iterator it;
-
-	_fullSlots.lock();
-
-	it = _currentPlanes.find(plane);
-	if (it != _currentPlanes.end())
-	{
-		it->second->refs -= 1;
-
-		#ifndef NDEBUG
-		if (it->second->refs < 0)
-		{
-			std::cerr<<"Control Plane Cache, error unlocking plane"<<std::endl;
-			throw;
-		}
-		#endif
-
-		if (it->second->refs == 0)
-		{
-			_freeSlots++;
-			_fullSlots.signal();
-		}
-
-	}
-	#ifndef NDEBUG
-	else
-	{
-		std::cerr<<"Control Plane Cache, error unlocking plane that not exists "<<plane<<std::endl;
-		throw;
-	}
-	#endif
-
-	_fullSlots.unlock();
-}
-
 
 }

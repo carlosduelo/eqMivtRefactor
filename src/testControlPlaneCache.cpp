@@ -42,7 +42,7 @@ bool test(vmml::vector<3,int> start, vmml::vector<3,int> finish)
 
 		do
 		{
-			planeC = cpc.getAndBlockPlane(i);
+			planeC = cpc.getAndBlockElement(i);
 		}
 		while(planeC == 0);
 
@@ -57,7 +57,7 @@ bool test(vmml::vector<3,int> start, vmml::vector<3,int> finish)
 			}
 		}
 		
-		cpc.unlockPlane(i);	
+		cpc.unlockElement(i);	
 
 		#ifndef DISK_TIMING 
 			++show_progress;
@@ -87,11 +87,11 @@ void testPerf(vmml::vector<3,int> start, vmml::vector<3,int> finish)
 
 		do
 		{
-			planeC = cpc.getAndBlockPlane(i);
+			planeC = cpc.getAndBlockElement(i);
 		}
 		while(planeC == 0);
 
-		cpc.unlockPlane(i);	
+		cpc.unlockElement(i);	
 
 		#ifndef DISK_TIMING 
 			++show_progress;

@@ -62,9 +62,9 @@ set(MIVT_CUDA_SOURCE
 
 set(LIBS_NEEDED_MIVT ${EQUALIZER_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES} ${Boost_LIBRARIES} ) 
 
-cuda_compile(MIVT_CUDA_OBJECTS ${MIVT_CUDA_SOURCE})
-add_executable(mivt ${MIVT_SOURCE} ${MIVT_CUDA_OBJECTS} main.cpp) 
-target_link_libraries(mivt ${LIBS_NEEDED_MIVT} )
+#cuda_compile(MIVT_CUDA_OBJECTS ${MIVT_CUDA_SOURCE})
+#add_executable(mivt ${MIVT_SOURCE} ${MIVT_CUDA_OBJECTS} main.cpp) 
+#target_link_libraries(mivt ${LIBS_NEEDED_MIVT} )
 
 # CREATE OCTREE 
 set(CREATE_OCTREE_SOURCE
@@ -87,9 +87,9 @@ set(CREATE_OCTREE_CUDA_SOURCE
 
 set(LIBS_NEEDED_CREATE_OCTREE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES} ${Boost_LIBRARIES} ) 
 
-cuda_compile(CREATE_OCTREE_CUDA_OBJECTS ${CREATE_OCTREE_CUDA_SOURCE})
-add_executable(createOctree ${CREATE_OCTREE_SOURCE} ${CREATE_OCTREE_CUDA_OBJECTS} createOctree.cpp) 
-target_link_libraries(createOctree ${LIBS_NEEDED_CREATE_OCTREE} )
+#cuda_compile(CREATE_OCTREE_CUDA_OBJECTS ${CREATE_OCTREE_CUDA_SOURCE})
+#add_executable(createOctree ${CREATE_OCTREE_SOURCE} ${CREATE_OCTREE_CUDA_OBJECTS} createOctree.cpp) 
+#target_link_libraries(createOctree ${LIBS_NEEDED_CREATE_OCTREE} )
 
 # TRANSFER FUNCTION CREATOR
 add_executable(transferFunctionCreator transferFunctionCreator.cpp) 
@@ -149,9 +149,9 @@ set(TEST_CACHE_CUDA_SOURCE
 
 set(LIBS_NEEDED_TEST_CACHE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES}) 
 
-cuda_compile(TEST_CACHE_CUDA_OBJECTS ${TEST_CACHE_CUDA_SOURCE})
-add_executable(testCache ${TEST_CACHE_SOURCE} ${TEST_CACHE_CUDA_OBJECTS} testCache.cpp) 
-target_link_libraries(testCache ${LIBS_NEEDED_TEST_CACHE} )
+#cuda_compile(TEST_CACHE_CUDA_OBJECTS ${TEST_CACHE_CUDA_SOURCE})
+#add_executable(testCache ${TEST_CACHE_SOURCE} ${TEST_CACHE_CUDA_OBJECTS} testCache.cpp) 
+#target_link_libraries(testCache ${LIBS_NEEDED_TEST_CACHE} )
 
 # TEST CONTROL CUBE CACHE 
 set(TEST_CONTROL_CUBE_CACHE_SOURCE
@@ -166,8 +166,8 @@ set(TEST_CONTROL_CUBE_CACHE_SOURCE
 
 set(LIBS_NEEDED_TEST_CONTROL_CUBE_CACHE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES}) 
 
-add_executable(testControlCubeCache ${TEST_CONTROL_CUBE_CACHE_SOURCE} testControlCubeCache.cpp) 
-target_link_libraries(testControlCubeCache ${LIBS_NEEDED_TEST_CONTROL_CUBE_CACHE} )
+#add_executable(testControlCubeCache ${TEST_CONTROL_CUBE_CACHE_SOURCE} testControlCubeCache.cpp) 
+#target_link_libraries(testControlCubeCache ${LIBS_NEEDED_TEST_CONTROL_CUBE_CACHE} )
 
 # TEST OCTREE 
 set(TEST_OCTREE_SOURCE
@@ -217,9 +217,9 @@ set(TEST_RAYCASTING_CUDA_SOURCE
 
 set(LIBS_NEEDED_TEST_RAYCASTING ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES} freeimage) 
 
-cuda_compile(TEST_RAYCASTING_CUDA_OBJECTS ${TEST_RAYCASTING_CUDA_SOURCE})
-add_executable(testRayCasting ${TEST_RAYCASTING_SOURCE} ${TEST_RAYCASTING_CUDA_OBJECTS} testRayCasting.cpp) 
-target_link_libraries(testRayCasting ${LIBS_NEEDED_TEST_RAYCASTING} )
+#cuda_compile(TEST_RAYCASTING_CUDA_OBJECTS ${TEST_RAYCASTING_CUDA_SOURCE})
+#add_executable(testRayCasting ${TEST_RAYCASTING_SOURCE} ${TEST_RAYCASTING_CUDA_OBJECTS} testRayCasting.cpp) 
+#target_link_libraries(testRayCasting ${LIBS_NEEDED_TEST_RAYCASTING} )
 
 # TEST MULTITHREADING 
 set(TEST_MULTITHREADING_SOURCE
@@ -250,6 +250,6 @@ set(TEST_MULTITHREADING_CUDA_SOURCE
 
 set(LIBS_NEEDED_TEST_MULTITHREADING ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES} freeimage) 
 
-cuda_compile(TEST_MULTITHREADING_CUDA_OBJECTS ${TEST_RAYCASTING_CUDA_SOURCE})
-add_executable(testMultithreading ${TEST_MULTITHREADING_SOURCE} ${TEST_RAYCASTING_CUDA_OBJECTS} testMultithreading.cpp) 
-target_link_libraries(testMultithreading ${LIBS_NEEDED_TEST_MULTITHREADING} )
+#cuda_compile(TEST_MULTITHREADING_CUDA_OBJECTS ${TEST_RAYCASTING_CUDA_SOURCE})
+#add_executable(testMultithreading ${TEST_MULTITHREADING_SOURCE} ${TEST_RAYCASTING_CUDA_OBJECTS} testMultithreading.cpp) 
+#target_link_libraries(testMultithreading ${LIBS_NEEDED_TEST_MULTITHREADING} )

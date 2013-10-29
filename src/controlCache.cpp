@@ -26,6 +26,8 @@ bool ControlCache::_initControlCache()
 	if (r)
 	{
 		_operationCond.wait();
+		if (_state == STOPPED)
+			r = false;
 	}
 	_operationCond.unlock();
 	return r;
@@ -188,12 +190,12 @@ void ControlCache::run()
 		_state = STARTED;
 		_stateCond.lock();
 
-	_operationCond.signal();
-	_operationCond.unlock();
 
 
 	if (_threadInit())
 	{
+		_operationCond.signal();
+		_operationCond.unlock();
 
 		while(_notEnd)
 		{
@@ -290,7 +292,11 @@ void ControlCache::run()
 
 	}
 	else
+	{
 		_state = STOPPED;
+		_operationCond.signal();
+		_operationCond.unlock();
+	}
 
 	lunchbox::Thread::exit();
 

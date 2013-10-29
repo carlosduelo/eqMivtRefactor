@@ -9,56 +9,28 @@ Notes:
 #ifndef EQ_MIVT_CONTROL_PLANE_CACHE_H
 #define EQ_MIVT_CONTROL_PLANE_CACHE_H
 
-#include <controlCache.h>
+#include <controlElementCache.h>
 #include <hdf5File.h>
-#include <linkedList.h>
-
-//STL
-#include <set>
-#include <boost/unordered_map.hpp>
 
 namespace eqMivt
 {
 
-class  ControlPlaneCache : public ControlCache 
+class  ControlPlaneCache : public ControlElementCache<int> 
 {
 	private:
-		LinkedList<int>									_lruPlanes;
-
-		boost::unordered_map<int, NodePlane_t *>	_currentPlanes;
-		std::set<int>								_pendingPlanes;
-		int											_lastPlane;
-		
 		double	_memoryAviable;
-		int		_freeSlots;
 		int		_maxNumPlanes;
-		float *	_memoryPlane;
-		int		_sizePlane;
 		float	_memoryOccupancy;
-
-		lunchbox::Condition	_emptyPendingPlanes;
-		lunchbox::Condition	_fullSlots;
 
 		vmml::vector<3, int> _min;
 		vmml::vector<3, int> _max;
 		vmml::vector<3, int> _minFuture;
 		vmml::vector<3, int> _maxFuture;
 
-		#ifdef TIMING
-		double _searchPlaneN;
-		double _insertPlaneN;
-		double _readingPlaneN;
-		double _readingPlane;
-		double _searchPlane;
-		double _insertPlane;
-		#endif
-
 		std::vector<std::string> _file_parameters;
 		hdf5File	_file;
 
-		bool readPlane(float * data, int plane);
-
-		virtual void _threadWork();
+		virtual bool _readElement(NodeLinkedList<int> * element);
 
 		virtual bool _threadInit();
 
@@ -77,10 +49,6 @@ class  ControlPlaneCache : public ControlCache
 		bool freeCacheAndPause();
 
 		bool reSizeCacheAndContinue(vmml::vector<3,int> min, vmml::vector<3,int> max);
-
-		float * getAndBlockPlane(int plane);
-
-		void	unlockPlane(int plane);
 
 		// NO SAFE CALLS
 		/* (x,y) = (y_dim, z_dim) */
