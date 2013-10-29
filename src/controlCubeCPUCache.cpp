@@ -117,12 +117,27 @@ void ControlCubeCPUCache::_reSizeCache()
 
 bool ControlCubeCPUCache::_readElement(NodeLinkedList<index_node_t> * element)
 {
+
 	vmml::vector<3, int> coordS = getMinBoxIndex2(element->id, _levelCube, _nLevels) + _offset - vmml::vector<3, int>(CUBE_INC, CUBE_INC, CUBE_INC);
 	vmml::vector<3, int> coordE = coordS + vmml::vector<3, int>(_dimCube, _dimCube, _dimCube);
 
 	vmml::vector<2, int> planeDim = _planeCache.getPlaneDim();
 	vmml::vector<3, int> minC = _planeCache.getMinCoord();
 	vmml::vector<3, int> maxC = _planeCache.getMaxCoord();
+
+	if (element->pendingPlanes.size() == 0)
+	{
+		if (coordS[1] < maxC[1] && coordS[2] < maxC[2] && 
+			minC[1] < coordE[1] && minC[2] < coordE[2])
+		{
+			int minPlane = coordS.x();
+			int maxPlane = coordE.x();
+			for(int i=minPlane; i<maxPlane; i++)
+				if (i>=_planeCache.getMinPlane() && i< _planeCache.getMaxPlane())
+					element->pendingPlanes.push_back(i);
+		}
+		memset((void*)(_memory + element->element*_sizeElement), 0, _sizeElement*sizeof(float));
+	}
 
 	std::vector<int>::iterator it = element->pendingPlanes.begin(); 
 	while (it != element->pendingPlanes.end())

@@ -29,9 +29,8 @@ bool test(int nLevels, int levelCube, vmml::vector<3,int> offset)
 	int dimC = dim + 2 * CUBE_INC;
 	int dimV = exp2(nLevels);
 
-	float * cube = new float[dimC*dimC*dimC];
 	float * cubeC = new float[dimC*dimC*dimC];
-	float * cubeG = 0;
+	float * cube = 0;
 	vmml::vector<3,int> sP;
 	vmml::vector<3,int> eP;
 	vmml::vector<3,int> mD = hdf5File.getRealDimension();
@@ -66,10 +65,10 @@ bool test(int nLevels, int levelCube, vmml::vector<3,int> offset)
 		vmml::vector<3,int> coord = eqMivt::getMinBoxIndex2(id, levelCube, nLevels) + offset - vmml::vector<3,int>(CUBE_INC, CUBE_INC, CUBE_INC);
 		do
 		{
-			cubeG = ccc.getAndBlockElement(id);
+			cube = ccc.getAndBlockElement(id);
 			lunchbox::sleep(50);	
 		}
-		while(cubeG == 0);
+		while(cube == 0);
 
 		hdf5File.readCube(id, cubeC, levelCube, nLevels, vmml::vector<3,int>(dimC,dimC,dimC), offset); 
 
@@ -96,8 +95,6 @@ bool test(int nLevels, int levelCube, vmml::vector<3,int> offset)
 			++show_progress;
 		#endif
 	}
-
-	delete[] cube;
 	delete[] cubeC;
 
 	return error;
