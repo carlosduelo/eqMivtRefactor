@@ -39,12 +39,12 @@ struct find_pending_cube
 class  ControlCubeCache : public ControlCache 
 {
 	private:
-		LinkedList			_lruCubes;
+		LinkedList<index_node_t>			_lruCubes;
 
-		boost::unordered_map<index_node_t, NodeLinkedList *>	_currentCubes;
-		std::vector< pending_cube_t >							_pendingCubes;
+		boost::unordered_map<index_node_t, NodeCube_t *>	_currentCubes;
+		std::vector< pending_cube_t >						_pendingCubes;
 
-		std::queue<index_node_t>								_readingCubes;
+		std::queue<index_node_t>							_readingCubes;
 
 		cudaStream_t	_stream;
 		
@@ -79,7 +79,7 @@ class  ControlCubeCache : public ControlCache
 		lunchbox::Condition	_emptyPendingCubes;
 		lunchbox::Condition	_fullSlots;
 
-		bool readCube(NodeLinkedList * c);
+		bool readCube(NodeCube_t * c);
 
 		void _addNewCube(index_node_t cube);
 

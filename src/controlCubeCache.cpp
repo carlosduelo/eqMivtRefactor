@@ -80,11 +80,11 @@ bool ControlCubeCache::_threadInit()
 
 void ControlCubeCache::_addNewCube(index_node_t cube)
 {
-	boost::unordered_map<index_node_t, NodeLinkedList *>::iterator it;
+	boost::unordered_map<index_node_t, NodeCube_t *>::iterator it;
 	it = _currentCubes.find(cube);
 	if (it == _currentCubes.end())
 	{
-		NodeLinkedList * c = _lruCubes.getFirstFreePosition();
+		NodeCube_t * c = _lruCubes.getFirstFreePosition();
 
 		it = _currentCubes.find(c->id);
 		if (it != _currentCubes.end())
@@ -135,7 +135,7 @@ void ControlCubeCache::_addNewCube(index_node_t cube)
 		else
 			c->refs = PROCESSED;
 
-		_currentCubes.insert(std::make_pair<index_node_t, NodeLinkedList *>(c->id, c));
+		_currentCubes.insert(std::make_pair<index_node_t, NodeCube_t *>(c->id, c));
 		_lruCubes.moveToLastPosition(c);
 	}
 	return;
@@ -151,7 +151,7 @@ void ControlCubeCache::_threadWork()
 
 		_fullSlots.lock();
 
-			boost::unordered_map<index_node_t, NodeLinkedList *>::iterator it;
+			boost::unordered_map<index_node_t, NodeCube_t *>::iterator it;
 			it = _currentCubes.find(cube);
 			if (it != _currentCubes.end())
 			{
@@ -325,7 +325,7 @@ void ControlCubeCache::_reSizeCache()
 float * ControlCubeCache::getAndBlockCube(index_node_t cube)
 {
 	float * dcube = 0;
-	boost::unordered_map<index_node_t, NodeLinkedList * >::iterator it;
+	boost::unordered_map<index_node_t, NodeCube_t * >::iterator it;
 
 	#ifdef TIMING
 	lunchbox::Clock clock;
@@ -383,7 +383,7 @@ float * ControlCubeCache::getAndBlockCube(index_node_t cube)
 
 void ControlCubeCache::unlockCube(index_node_t cube)
 {
-	boost::unordered_map<index_node_t, NodeLinkedList *>::iterator it;
+	boost::unordered_map<index_node_t, NodeCube_t *>::iterator it;
 
 	_fullSlots.lock();
 
@@ -435,7 +435,7 @@ bool ControlCubeCache::reSizeCacheAndContinue(int nLevels, int levelCube, vmml::
 	return _continueWorkAndReSize();
 }
 
-bool ControlCubeCache::readCube(NodeLinkedList * c)
+bool ControlCubeCache::readCube(NodeCube_t * c)
 {
 #ifdef TIMING
 	lunchbox::Clock clock;

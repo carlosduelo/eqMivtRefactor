@@ -12,21 +12,56 @@ Notes:
 
 namespace eqMivt
 {
-LinkedList::LinkedList()
-{
-	list = 0;
-	last = 0;
-	memoryList = 0;
-	freePositions = 0;
-}
 
-void LinkedList::reSize(int size)
+template<>
+void LinkedList<int>::reSize(int size)
 {
 	if (memoryList != 0)
 		delete[] memoryList;
 
 	freePositions 	= size;
-	memoryList 	= new NodeLinkedList[size];
+	memoryList 	= new NodeLinkedList<int>[size];
+	list 		= memoryList;
+	last 		= &memoryList[size-1];
+
+	for(int i=0; i<size; i++)
+	{
+		if (i==0)
+		{
+			memoryList[i].after 	= &memoryList[i+1];
+			memoryList[i].before 	= 0;
+			memoryList[i].element 	= i;
+			memoryList[i].id		= -1;
+			memoryList[i].refs		= 0;
+		}
+		else if (i==size-1)
+		{
+			memoryList[i].after 	= 0;
+			memoryList[i].before 	= &memoryList[i-1];
+			memoryList[i].element 	= i;
+			memoryList[i].id		= -1;
+			memoryList[i].refs		= 0;
+		}
+		else
+		{
+			memoryList[i].after 	= &memoryList[i+1];
+			memoryList[i].before 	= &memoryList[i-1];
+			memoryList[i].element 	= i;
+			memoryList[i].id		= -1;
+			memoryList[i].refs		= 0;
+		}
+	}
+}
+
+template<>
+void LinkedList<index_node_t>::reSize(int size)
+{
+	if (memoryList != 0)
+		delete[] memoryList;
+
+	freePositions 	= size;
+	std::cout<< (size*sizeof(NodeLinkedList<index_node_t>))/1024.0/1024.0 <<std::endl;
+	memoryList 	= new NodeLinkedList<index_node_t>[size];
 	list 		= memoryList;
 	last 		= &memoryList[size-1];
 
@@ -59,16 +94,45 @@ void LinkedList::reSize(int size)
 	}
 }
 
-LinkedList::~LinkedList()
+template<>
+NodeLinkedList<int> * LinkedList<int>::getFirstFreePosition()
 {
-	if (memoryList != 0)
-		delete[] memoryList;
+	NodeLinkedList<int> * first = list;
+
+	if (freePositions == 0)
+	{
+		// Search first free position
+		while(list->refs != 0)
+		{
+			moveToLastPosition(list);
+			if (first == list)
+			{
+				return 0;
+			}
+		}
+	}
+	else
+	{
+		// Search first free position
+		while(list->refs != 0 && list->id >= 0)
+		{
+			moveToLastPosition(list);
+			if (first == list)
+			{
+				std::cerr<<"Error cache is unistable"<<std::endl;
+				throw;
+			}
+		}
+
+		freePositions--;
+	}
+	return list;
 }
 
-
-NodeLinkedList * LinkedList::getFirstFreePosition()
+template<>
+NodeLinkedList<index_node_t> * LinkedList<index_node_t>::getFirstFreePosition()
 {
-	NodeLinkedList * first = list;
+	NodeLinkedList<index_node_t> * first = list;
 
 	if (freePositions == 0)
 	{
@@ -100,11 +164,12 @@ NodeLinkedList * LinkedList::getFirstFreePosition()
 	return list;
 }
 
-NodeLinkedList * LinkedList::moveToLastPosition(NodeLinkedList * node)
+template<class T>
+NodeLinkedList<T> * LinkedList<T>::moveToLastPosition(NodeLinkedList<T> * node)
 {
 	if (node == list)
 	{
-		NodeLinkedList * first = list;
+		NodeLinkedList<T> * first = list;
 
 		list = first->after;
 		list->before = 0;

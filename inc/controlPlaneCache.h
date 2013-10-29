@@ -23,9 +23,9 @@ namespace eqMivt
 class  ControlPlaneCache : public ControlCache 
 {
 	private:
-		LinkedList									_lruPlanes;
+		LinkedList<int>									_lruPlanes;
 
-		boost::unordered_map<int, NodeLinkedList *>	_currentPlanes;
+		boost::unordered_map<int, NodePlane_t *>	_currentPlanes;
 		std::set<int>								_pendingPlanes;
 		int											_lastPlane;
 		

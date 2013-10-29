@@ -99,7 +99,7 @@ void ControlPlaneCache::_threadWork()
 
 	_fullSlots.lock();
 
-		boost::unordered_map<int, NodeLinkedList *>::iterator it;
+		boost::unordered_map<int, NodePlane_t *>::iterator it;
 		it = _currentPlanes.find(plane);
 		if (it == _currentPlanes.end())
 		{
@@ -112,7 +112,7 @@ void ControlPlaneCache::_threadWork()
 				}
 			}
 
-			NodeLinkedList * c = 0;
+			NodePlane_t * c = 0;
 			c = _lruPlanes.getFirstFreePosition();
 
 			it = _currentPlanes.find(c->id);
@@ -133,7 +133,7 @@ void ControlPlaneCache::_threadWork()
 				
 				c->id = plane;
 				c->refs = READING;
-				_currentPlanes.insert(std::make_pair<int, NodeLinkedList *>(c->id, c));
+				_currentPlanes.insert(std::make_pair<int, NodePlane_t *>(c->id, c));
 				_lruPlanes.moveToLastPosition(c);
 				_lastPlane = c->id;
 
@@ -244,7 +244,7 @@ void ControlPlaneCache::_reSizeCache()
 	}
 	else
 	{
-		while((_maxNumPlanes*_sizePlane*sizeof(float) + _maxNumPlanes*sizeof(NodeLinkedList)) > _memoryAviable)
+		while((_maxNumPlanes*_sizePlane*sizeof(float) + _maxNumPlanes*sizeof(NodePlane_t)) > _memoryAviable)
 		{
 			_maxNumPlanes -= 10;
 		}
@@ -300,7 +300,7 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 	#endif
 
 	float * dplane = 0;
-	boost::unordered_map<int, NodeLinkedList * >::iterator it;
+	boost::unordered_map<int, NodePlane_t * >::iterator it;
 
 	#ifdef TIMING
 	lunchbox::Clock clock;
@@ -348,7 +348,7 @@ float * ControlPlaneCache::getAndBlockPlane(int plane)
 
 void	ControlPlaneCache::unlockPlane(int plane)
 {
-	boost::unordered_map<int, NodeLinkedList *>::iterator it;
+	boost::unordered_map<int, NodePlane_t *>::iterator it;
 
 	_fullSlots.lock();
 
