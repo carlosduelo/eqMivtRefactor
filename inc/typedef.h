@@ -85,6 +85,9 @@ struct octreePosition_t
 
 #define CUBE_INC 2
 
+#define MEMORY_OCCUPANCY_PLANE_CACHE 0.2*0.8
+#define MEMORY_OCCUPANCY_CUBE_CACHE 0.2*0.8
+
 #define TO3V(v) (vmml::vector<3,float>((v.x()),(v.y()),(v.z())))
 }
 #endif /* EQ_MIVT_TYPEDEF_H */

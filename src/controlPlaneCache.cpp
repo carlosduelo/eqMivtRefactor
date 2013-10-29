@@ -12,13 +12,6 @@ Notes:
 
 #include <cuda_runtime.h>
 
-#ifdef TIMING
-#include <lunchbox/clock.h>
-#endif
-
-#define READING -1
-#define WAITING 200
-
 namespace eqMivt
 {
 
@@ -119,7 +112,7 @@ void ControlPlaneCache::_reSizeCache()
 		}
 		else
 		{
-			_memoryAviable *=0.7*_memoryOccupancy;
+			_memoryAviable *=MEMORY_OCCUPANCY_PLANE_CACHE*_memoryOccupancy;
 		}
 		while (cudaSuccess != cudaHostAlloc((void**)&_memory, _memoryAviable, cudaHostAllocDefault))
 		{                                                                                               
