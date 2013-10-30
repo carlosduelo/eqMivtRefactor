@@ -202,7 +202,10 @@ class  ControlElementCache : public ControlCache
 
 		virtual void _reSizeCache()
 		{
-			_lruElement.reSize(_freeSlots);
+			if (!_lruElement.reSize(_freeSlots))
+			{
+				std::cerr<<"Error resizing control element cache "<<_freeSlots <<" elements"<<std::endl;
+			}
 			_currentElement.clear();
 			std::queue<TYPE> emptyQ;
 			std::queue<NodeLinkedList<TYPE>*> emptyQN;

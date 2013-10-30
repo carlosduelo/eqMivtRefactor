@@ -14,18 +14,21 @@ Notes:
 
 #include <lunchbox/sleep.h>
 #include <lunchbox/clock.h>
+
+#include <boost/lexical_cast.hpp>
 #include <boost/progress.hpp>
 
 #define MIN_RESOLUTION 800*600
 #define MAX_RESOLUTION 1920*1080
 
-eqMivt::ControlPlaneCache	cpc;
+eqMivt::ControlCubeCPUCache	cccCPU;
 eqMivt::ControlCubeCache	ccc;
 eqMivt::hdf5File hdf5File;
 vmml::vector<3,int> mD;
 eqMivt::VisibleCubes		vc;
+float mO = 1.0f;
 
-void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCastingLevel, unsigned int numPixels)
+void test(int nLevels, int levelCube, int levelCubeCPU, vmml::vector<3,int> offset, int rayCastingLevel, unsigned int numPixels)
 {
 	int dimV = exp2(nLevels);
 	vmml::vector<3,int> sP;
@@ -48,7 +51,7 @@ void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCasting
 	cache.init(&ccc);
 	cache.setRayCastingLevel(rayCastingLevel);
 
-	if (!cpc.freeCacheAndPause() || !cpc.reSizeCacheAndContinue(sP, eP))
+	if (!cccCPU.freeCacheAndPause() || !cccCPU.reSizeCacheAndContinue(offset, eP, levelCubeCPU, nLevels))
 	{
 		std::cerr<<"Error, resizing plane cache"<<std::endl;
 		return;
@@ -75,6 +78,7 @@ void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCasting
 	double tgetlistCubes = 0.0;
 	int iterations = 0;
 
+	cache.startFrame();
 	while(vc.getListCubes(PAINTED).size() != numPixels)
 	{
 		// RANDOM FROM NOCUBE TO CUBE OR NOCUBE AND SET RANADM ID
@@ -83,22 +87,26 @@ void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCasting
 		clock.reset();
 		vc.updateGPU(NOCUBE, 0);
 		tUpdateGPU += clock.getTimed()/1000.0;
+		//std::cout<<"1 "<<clock.getTimed()/1000.0<<std::endl;
 
 		test_randomNOCUBE_To_NOCUBEorCUBE(vc.getVisibleCubesGPU(), vc.getIndexVisibleCubesGPU(), vc.getSizeGPU(), vc.getSize(), idS, idE);
 
 		clock.reset();
 		vc.updateCPU();
 		tUdateCPU += clock.getTimed()/1000.0;
+		//std::cout<<"2 "<<clock.getTimed()/1000.0<<std::endl;
 
 		// CACHED PUSH
 		clock.reset();
 		cache.pushCubes(&vc);
 		tPush += clock.getTimed()/1000.0;
+		//std::cout<<"3 "<<clock.getTimed()/1000.0<<std::endl;
 
 		// (RANDOM FROM CACHED TO NOCUBE OR PAINTED) AND (FROM NOCUBE TO PAINTED) 
 		clock.reset();
 		l = vc.getListCubes(CACHED);
 		tgetlistCubes += clock.getTimed()/1000.0;
+		//std::cout<<"4 "<<clock.getTimed()/1000.0<<std::endl;
 
 		for(std::vector<int>::iterator it = l.begin(); it!=l.end(); it++)
 		{
@@ -109,6 +117,7 @@ void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCasting
 		clock.reset();
 		l = vc.getListCubes(NOCUBE);
 		tgetlistCubes += clock.getTimed()/1000.0;
+		//std::cout<<"5 "<<clock.getTimed()/1000.0<<std::endl;
 
 		for(std::vector<int>::iterator it = l.begin(); it!=l.end(); it++)
 		{
@@ -119,16 +128,19 @@ void test(int nLevels, int levelCube, vmml::vector<3,int> offset, int rayCasting
 		clock.reset();
 		vc.updateIndexCPU();
 		tUpdateVisibleCubes += clock.getTimed()/1000.0;
+		//std::cout<<"6 "<<clock.getTimed()/1000.0<<std::endl;
 
 		//CACHED POP
 		clock.reset();
 		cache.popCubes();
 		tPop += clock.getTimed()/1000.0;
+		//std::cout<<"7 "<<clock.getTimed()/1000.0<<std::endl;
 
 		show_progress += vc.getNumElements(PAINTED) - rest;
 		rest += vc.getNumElements(PAINTED) - rest;
 		iterations++;
 	}
+	cache.finishFrame();
 
 	std::cout<<"Iterations "<<iterations<<std::endl;
 	std::cout<<"Time updating visible cubes gpu "<<tUpdateGPU<<" seconds"<<std::endl;
@@ -145,12 +157,18 @@ int main(int argc, char ** argv)
 	parameters.push_back(std::string(argv[1]));
 	parameters.push_back(std::string(argv[2]));
 
-	if (!cpc.initParameter(parameters, 1.0f))
+	if (argc == 4)
+	{
+		std::string n(argv[3]);
+		mO = boost::lexical_cast<double>(n);
+	}
+
+	if (!cccCPU.initParameter(parameters, mO))
 	{
 		std::cerr<<"Error init control plane cache"<<std::endl;
 		return 0;
 	}
-	if (!ccc.initParameter(&cpc, eqMivt::getBestDevice()))
+	if (!ccc.initParameter(&cccCPU, eqMivt::getBestDevice()))
 	{
 		std::cerr<<"Error init control cube cache"<<std::endl;
 	}
@@ -188,22 +206,28 @@ int main(int argc, char ** argv)
 		}
 		while(nLevels <= 1 ||  s.x()+dimV >= mD.x() || s.y()+dimV >= mD.y() || s.z()+dimV >= mD.z());
 
-		int levelCube = rand() % (nLevels - 1) + 1;
+		int levelCubeCPU = 0;
+		do
+		{
+			levelCubeCPU = rand() % (nLevels + 1);
+		}
+		while(levelCubeCPU == nLevels);
+		int levelCube = rand() % (nLevels - levelCubeCPU) + levelCubeCPU;
 		int rayLevel = rand() % (nLevels - levelCube) + levelCube;
 		unsigned int numPixels = (rand() % (MAX_RESOLUTION - MIN_RESOLUTION)) + MIN_RESOLUTION;
 
-		std::cout<<"Test "<<i<<" pixels "<<numPixels<<" nLevels "<<nLevels<<" levelCube "<<levelCube<<" dimension "<<exp2(nLevels - levelCube)<<" offset "<<s<<" : "<<std::endl;
+		std::cout<<"Test "<<i<<" pixels "<<numPixels<<" nLevels "<<nLevels<<" levelCube CPU "<<levelCubeCPU<<" levelCube "<<levelCube<<" dimension "<<exp2(nLevels - levelCube)<<" offset "<<s<<" : "<<std::endl;
 
 		double time = 0.0;
 		clock.reset();
-		test(nLevels, levelCube, s, rayLevel, numPixels);
+		test(nLevels, levelCube, levelCubeCPU, s, rayLevel, numPixels);
 		time = clock.getTimed()/1000.0;
 		std::cout<<"Time: "<<time<<" seconds"<<std::endl;
 	}
 
 
 	ccc.stopWork();
-	cpc.stopWork();
+	cccCPU.stopWork();
 	vc.destroy();
 
 	return 0;

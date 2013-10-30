@@ -114,7 +114,7 @@ void Cache::pushCubes(VisibleCubes * vc)
 	#ifdef TIMING
 	clockO.reset();
 	#endif
-			float * d = _cubeCache->getAndBlockCube(idCube);
+			float * d = _cubeCache->getAndBlockElement(idCube);
 	#ifdef TIMING
 	_getCubePush += clockO.getTimed()/1000.0;
 	_getCubePushN += 1.0;
@@ -153,7 +153,7 @@ void Cache::popCubes()
 			_PopN += 1.0;
 			clock.reset();
 			#endif
-			_cubeCache->unlockCube(it->first);
+			_cubeCache->unlockElement(it->first);
 			#ifdef TIMING
 			_Pop += clock.getTimed()/1000.0; 
 			#endif

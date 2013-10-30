@@ -478,6 +478,14 @@ bool createOctree(octreeParameter_t p)
 		cubeDim = exp2(p.nLevels - cubeLevel);
 	}
 
+	int levelCubeCPU = 0;
+	cubeDim = exp2(p.nLevels - p.maxLevel);
+
+	while(exp2(p.nLevels - levelCubeCPU) > 256)
+	{
+		levelCubeCPU++;
+	}
+
 	sP[0] = p.start.x() - CUBE_INC < 0 ? 0 : p.start.x() - CUBE_INC; 
 	sP[1] = p.start.y() - CUBE_INC < 0 ? 0 : p.start.y() - CUBE_INC; 
 	sP[2] = p.start.z() - CUBE_INC < 0 ? 0 : p.start.z() - CUBE_INC; 
@@ -494,23 +502,23 @@ bool createOctree(octreeParameter_t p)
 	#ifndef NDEBUG
 	std::cout<<"ReSize Plane Cache "<<sP<<" "<<eP<<std::endl;
 	std::cout<<"Subset volume "<<p.start - vmml::vector<3,int>(CUBE_INC,CUBE_INC,CUBE_INC)<<" "<<p.start+vmml::vector<3,int>(dimV+CUBE_INC, dimV+CUBE_INC,dimV+CUBE_INC)<<std::endl;
-	std::cout<<"ReSize Cube Cache nLevels "<<p.nLevels<<" level cube "<<cubeLevel<<" offset "<<p.start<<std::endl;
+	std::cout<<"ReSize Cube Cache nLevels "<<p.nLevels<<" level cube cpu "<<levelCubeCPU<<" level cube "<<cubeLevel<<" offset "<<p.start<<std::endl;
 	#endif
 
-	eqMivt::ControlPlaneCache cpc;
-	if (!cpc.initParameter(file_params, memoryOccupancy))
+	eqMivt::ControlCubeCPUCache cccCPU;
+	if (!cccCPU.initParameter(file_params, memoryOccupancy))
 	{
 		std::cerr<<"Error init control plane cache"<<std::endl;
 		return 0;
 	}
 
 	eqMivt::ControlCubeCache ccc;
-	if (!ccc.initParameter(&cpc, eqMivt::getBestDevice()))
+	if (!ccc.initParameter(&cccCPU, eqMivt::getBestDevice()))
 	{
 		std::cerr<<"Error init control cube cache"<<std::endl;
 	}
 
-	if (!cpc.freeCacheAndPause() || !cpc.reSizeCacheAndContinue(sP, eP))
+	if (!cccCPU.freeCacheAndPause() || !cccCPU.reSizeCacheAndContinue(p.start, eP, levelCubeCPU, p.nLevels))
 	{
 		std::cerr<<"Error, resizing plane cache"<<std::endl;
 		return false;
@@ -539,13 +547,13 @@ bool createOctree(octreeParameter_t p)
 			cube = 0;
 			do
 			{
-				cube = ccc.getAndBlockCube(id);
+				cube = ccc.getAndBlockElement(id);
 			}
 			while(cube == 0);
 
 			_checkCube_cuda(oc, p.isos, p.nLevels, p.maxLevel, dimNode, id, ccc.getCubeLevel(), ccc.getDimCube(), cube);
 
-			ccc.unlockCube(id);
+			ccc.unlockElement(id);
 		}
 		#ifndef DISK_TIMING 
 			++show_progress;
@@ -553,7 +561,7 @@ bool createOctree(octreeParameter_t p)
 	}
 
 	ccc.stopWork();
-	cpc.stopWork();
+	cccCPU.stopWork();
 
 	return true;
 }

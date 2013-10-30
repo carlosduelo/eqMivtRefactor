@@ -257,11 +257,13 @@ bool hdf5File::readPlane(float * cube, vmml::vector<3, int> s, vmml::vector<3, i
 	// The data required is completly outside of the dataset
 	if (s.x() >= (int)this->_dims[0] || s.y() >= (int)this->_dims[1] || s.z() >= (int)this->_dims[2] || e.x() < 0 || e.y() < 0 || e.z() < 0)
 	{
+		#if 0
 		std::cerr<<"Warning: reading cube outsite the volume "<<std::endl;
 		std::cerr<<"Dimension volume "<<this->_dims[0]<<" "<<this->_dims[1]<<" "<<this->_dims[2]<<std::endl;
 		std::cerr<<"start "<<s.x()<<" "<<s.y()<<" "<<s.z()<<std::endl;
 		std::cerr<<"end "<<e.x()<<" "<<e.y()<<" "<<e.z()<<std::endl;
 		std::cerr<<"Dimension plane "<<dim[0]<<" "<<dim[1]<<" "<<dim[2]<<std::endl;
+		#endif
 
 		return true;
 	}
@@ -398,6 +400,7 @@ void hdf5File::readCube(index_node_t index, float * cube, int levelCube, int nLe
 	// The data required is completly outside of the dataset
 	if (s.x() >= (int)this->_dims[0] || s.y() >= (int)this->_dims[1] || s.z() >= (int)this->_dims[2] || e.x() < 0 || e.y() < 0 || e.z() < 0)
 	{
+		#if 0
 		std::cerr<<"Warning: reading cube outsite the volume "<<std::endl;
 		std::cerr<<"Dimension volume "<<this->_dims[0]<<" "<<this->_dims[1]<<" "<<this->_dims[2]<<std::endl;
 		std::cerr<<"Cube dimension "<<cubeDim<<" in level "<<levelCube<<std::endl;
@@ -406,7 +409,8 @@ void hdf5File::readCube(index_node_t index, float * cube, int levelCube, int nLe
 		std::cerr<<"start "<<s.x()<<" "<<s.y()<<" "<<s.z()<<std::endl;
 		std::cerr<<"end "<<e.x()<<" "<<e.y()<<" "<<e.z()<<std::endl;
 		std::cerr<<"Dimension cube "<<dim[0]<<" "<<dim[1]<<" "<<dim[2]<<std::endl;
-
+		#endif
+			
 		return;
 	}
 

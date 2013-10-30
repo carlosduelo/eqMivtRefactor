@@ -19,12 +19,12 @@ Notes:
 #include <boost/progress.hpp>
 
 
-eqMivt::ControlPlaneCache cpc;
+eqMivt::ControlCubeCPUCache cccCPU;
 eqMivt::hdf5File hdf5File;
 eqMivt::ControlCubeCache ccc;
 float mO = 1.0f;
 
-bool test(int nLevels, int levelCube, vmml::vector<3,int> offset)
+bool test(int nLevels, int levelCube, int levelCubeCPU, vmml::vector<3,int> offset)
 {
 	int dim = exp2(nLevels - levelCube); 
 	int dimC = dim + 2 * CUBE_INC;
@@ -48,7 +48,7 @@ bool test(int nLevels, int levelCube, vmml::vector<3,int> offset)
 	std::cout<<"Subset volume "<<offset - vmml::vector<3,int>(CUBE_INC,CUBE_INC,CUBE_INC)<<" "<<offset+vmml::vector<3,int>(dimV+CUBE_INC, dimV+CUBE_INC,dimV+CUBE_INC)<<std::endl;
 	std::cout<<"ReSize Cube Cache nLevels "<<nLevels<<" level cube "<<levelCube<<" offset "<<offset<<std::endl;
 
-	if (!cpc.freeCacheAndPause() || !cpc.reSizeCacheAndContinue(sP, eP))
+	if (!cccCPU.freeCacheAndPause() || !cccCPU.reSizeCacheAndContinue(offset, eP, levelCubeCPU, nLevels))
 	{
 		std::cerr<<"Error, resizing plane cache"<<std::endl;
 		return true;
@@ -72,7 +72,7 @@ bool test(int nLevels, int levelCube, vmml::vector<3,int> offset)
 		vmml::vector<3,int> coord = eqMivt::getMinBoxIndex2(id, levelCube, nLevels) + offset - vmml::vector<3,int>(CUBE_INC, CUBE_INC, CUBE_INC);
 		do
 		{
-			cubeG = ccc.getAndBlockCube(id);
+			cubeG = ccc.getAndBlockElement(id);
 			lunchbox::sleep(50);	
 		}
 		while(cubeG == 0);
@@ -96,7 +96,7 @@ bool test(int nLevels, int levelCube, vmml::vector<3,int> offset)
 					}
 				}
 
-		ccc.unlockCube(id);
+		ccc.unlockElement(id);
 		
 		if (error)
 		{
@@ -116,7 +116,7 @@ bool test(int nLevels, int levelCube, vmml::vector<3,int> offset)
 }
 
 
-void testPerf(int nLevels, int levelCube, vmml::vector<3,int> offset)
+void testPerf(int nLevels, int levelCube, int levelCubeCPU, vmml::vector<3,int> offset)
 {
 	int dimV = exp2(nLevels);
 
@@ -136,7 +136,7 @@ void testPerf(int nLevels, int levelCube, vmml::vector<3,int> offset)
 	std::cout<<"Subset volume "<<offset - vmml::vector<3,int>(CUBE_INC,CUBE_INC,CUBE_INC)<<" "<<offset+vmml::vector<3,int>(dimV+CUBE_INC, dimV+CUBE_INC,dimV+CUBE_INC)<<std::endl;
 	std::cout<<"ReSize Cube Cache nLevels "<<nLevels<<" level cube "<<levelCube<<" offset "<<offset<<std::endl;
 
-	if (!cpc.freeCacheAndPause() || !cpc.reSizeCacheAndContinue(sP, eP))
+	if (!cccCPU.freeCacheAndPause() || !cccCPU.reSizeCacheAndContinue(offset, eP, levelCubeCPU, nLevels))
 	{
 		std::cerr<<"Error, resizing plane cache"<<std::endl;
 		return;
@@ -161,11 +161,11 @@ void testPerf(int nLevels, int levelCube, vmml::vector<3,int> offset)
 		{
 			do
 			{
-				cubeG = ccc.getAndBlockCube(id);
+				cubeG = ccc.getAndBlockElement(id);
 			}
 			while(cubeG == 0);
 
-			ccc.unlockCube(id);
+			ccc.unlockElement(id);
 		}
 		
 		#ifndef DISK_TIMING 
@@ -178,6 +178,7 @@ int main(int argc, char ** argv)
 {
 	int nLevels = 10;
 	int levelCube = 8;
+	int levelCubeCPU = 5;
 	vmml::vector<3,int> offset(0,0,0);
 
 	lunchbox::Clock clock;
@@ -192,13 +193,13 @@ int main(int argc, char ** argv)
 		mO = boost::lexical_cast<double>(n);
 	}
 
-	if (!cpc.initParameter(parameters, mO))
+	if (!cccCPU.initParameter(parameters, mO))
 	{
 		std::cerr<<"Error init control plane cache"<<std::endl;
 		return 0;
 	}
 	hdf5File.init(parameters);
-	if (!ccc.initParameter(&cpc, eqMivt::getBestDevice()))
+	if (!ccc.initParameter(&cccCPU, eqMivt::getBestDevice()))
 	{
 		std::cerr<<"Error init control cube cache"<<std::endl;
 	}
@@ -233,11 +234,17 @@ int main(int argc, char ** argv)
 		}
 		while(nLevels <= 1 || s.x()+dimV >= dim.x() || s.y()+dimV >= dim.y() || s.z()+dimV >= dim.z());
 
-		int levelCube = rand() % (nLevels - 1) + 1;
+		int levelCubeCPU = 0;
+		do
+		{
+			levelCubeCPU = rand() % (nLevels + 1);
+		}
+		while(levelCubeCPU == nLevels);
+		int levelCube = rand() % (nLevels - levelCubeCPU) + levelCubeCPU;
 
-		std::cout<<"Test "<<i<<" nLevels "<<nLevels<<" levelCube "<<levelCube<<" dimension "<<exp2(nLevels - levelCube)<<" offset "<<s<<" : "<<std::endl;
+		std::cout<<"Test "<<i<<" nLevels "<<nLevels<<" levelCubeCPU "<<levelCubeCPU<<" levelCube "<<levelCube<<" dimension "<<exp2(nLevels - levelCube)<<" offset "<<s<<" : "<<std::endl;
 
-		error = test(nLevels, levelCube, s);
+		error = test(nLevels, levelCube, levelCubeCPU, s);
 		if (error)
 			std::cout<<"Test Fail!"<<std::endl;
 		else
@@ -273,13 +280,19 @@ int main(int argc, char ** argv)
 		}
 		while(nLevels <= 1 || s.x()+dimV >= dim.x() || s.y()+dimV >= dim.y() || s.z()+dimV >= dim.z());
 
-		int levelCube = rand() % (nLevels - 1) + 1;
+		int levelCubeCPU  = 0;
+		do
+		{
+			levelCubeCPU = rand() % (nLevels + 1);
+		}
+		while(levelCubeCPU == nLevels);
+		int levelCube = rand() % (nLevels - levelCubeCPU) + levelCubeCPU;
 
-		std::cout<<"Test "<<i<<" nLevels "<<nLevels<<" levelCube "<<levelCube<<" dimension "<<exp2(nLevels - levelCube)<<" offset "<<s<<" : "<<std::endl;
+		std::cout<<"Test "<<i<<" nLevels "<<nLevels<<" levelCubeCPU "<<levelCubeCPU<<" levelCube "<<levelCube<<" dimension "<<exp2(nLevels - levelCube)<<" offset "<<s<<" : "<<std::endl;
 
 		double time = 0.0;
 		clock.reset();
-		testPerf(nLevels, levelCube, s);
+		testPerf(nLevels, levelCube, levelCubeCPU, s);
 		time = clock.getTimed()/1000.0;
 		double bw = ((((dimV-s.x())*(dimV-s.y())*(dimV-s.z()))*sizeof(float))/1204.0/1024.0)/time;
 
@@ -295,9 +308,15 @@ int main(int argc, char ** argv)
 		float aux2 = aux - floorf(aux);
 		nLevels = aux2>0.0 ? aux+1 : aux;
 
-		levelCube = rand() % (nLevels - 4) + 4;
+		levelCubeCPU = 0;
+		do
+		{
+			levelCubeCPU = rand() % (nLevels + 1);
+		}
+		while(levelCubeCPU == nLevels);
+		levelCube = rand() % (nLevels - levelCubeCPU) + levelCubeCPU;
 		std::cout<<"Test reading complete volume"<<std::endl;
-		if (test(nLevels, levelCube, vmml::vector<3,int>(0,0,0)))
+		if (test(nLevels, levelCube, levelCubeCPU, vmml::vector<3,int>(0,0,0)))
 		{
 			std::cerr<<"Test Fail!!"<<std::endl;	
 		}
@@ -305,7 +324,7 @@ int main(int argc, char ** argv)
 		{
 			double time = 0.0;
 			clock.reset();
-			testPerf(nLevels, levelCube, vmml::vector<3,int>(0,0,0));
+			testPerf(nLevels, levelCube, levelCubeCPU, vmml::vector<3,int>(0,0,0));
 			time = clock.getTimed()/1000.0;
 			double bw = (((dim.x()*dim.y()*dim.z())*sizeof(float))/1204.0/1024.0)/time;
 
@@ -315,7 +334,7 @@ int main(int argc, char ** argv)
 
 
 	ccc.stopWork();
-	cpc.stopWork();
+	cccCPU.stopWork();
 	hdf5File.close();
 
 	return 0;

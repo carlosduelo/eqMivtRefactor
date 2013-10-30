@@ -77,7 +77,7 @@ class LinkedList
 				delete[] memoryList;
 		}
 
-		void reSize(int size);
+		bool reSize(int size);
 
 		/* pop_front and push_last */
 		NodeLinkedList<T> * 	getFirstFreePosition();

@@ -14,13 +14,15 @@ namespace eqMivt
 {
 
 template<>
-void LinkedList<int>::reSize(int size)
+bool LinkedList<int>::reSize(int size)
 {
 	if (memoryList != 0)
 		delete[] memoryList;
 
 	freePositions 	= size;
 	memoryList 	= new NodeLinkedList<int>[size];
+	if (memoryList == 0)
+		return false;
 	list 		= memoryList;
 	last 		= &memoryList[size-1];
 
@@ -51,17 +53,20 @@ void LinkedList<int>::reSize(int size)
 			memoryList[i].refs		= 0;
 		}
 	}
+
+	return true;
 }
 
 template<>
-void LinkedList<index_node_t>::reSize(int size)
+bool LinkedList<index_node_t>::reSize(int size)
 {
 	if (memoryList != 0)
 		delete[] memoryList;
 
 	freePositions 	= size;
-	std::cout<< (size*sizeof(NodeLinkedList<index_node_t>))/1024.0/1024.0 <<std::endl;
 	memoryList 	= new NodeLinkedList<index_node_t>[size];
+	if (memoryList == 0)
+		return false;
 	list 		= memoryList;
 	last 		= &memoryList[size-1];
 
@@ -92,6 +97,8 @@ void LinkedList<index_node_t>::reSize(int size)
 			memoryList[i].refs		= 0;
 		}
 	}
+
+	return true;
 }
 
 template<>

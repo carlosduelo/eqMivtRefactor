@@ -54,6 +54,7 @@ class  ControlCubeCPUCache : public ControlElementCache<index_node_t>
 		int		getCubeLevel() { return _levelCube; }
 		int		getnLevels() { return _nLevels; }
 		int		getDimCube() { return _dimCube; }
+		vmml::vector<3,int> getRealCubeDim(){ return vmml::vector<3,int>(_dimCube, _dimCube, _dimCube); }
 
 		vmml::vector<2,int>	getPlaneDim() { return _planeCache.getPlaneDim();}
 		vmml::vector<3,int> getMinCoord() { return _planeCache.getMinCoord(); }

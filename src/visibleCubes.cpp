@@ -276,7 +276,7 @@ void VisibleCubes::updateIndexCPU()
 		throw;
 	}
 
-	#ifdef DEBUG
+	#if 0
 	for(int i=0; i<_cubeC[0]; i++)
 	{
 		for(int j=0; j<_nocubeC[0]; j++)

@@ -10,49 +10,21 @@ Notes:
 
 #include <mortonCodeUtil_CPU.h>
 
-#include <lunchbox/sleep.h>
-
-#ifdef TIMING
-#include <lunchbox/clock.h>
-#endif
-
-#define PROCESSING -1
-#define PROCESSED -2
-#define WAITING 200
+#include <cuda_runtime.h>
 
 namespace eqMivt
 {
-bool ComparePendingCubes(pending_cube_t a, pending_cube_t b)
-{
-	if (a.coord.x() == b.coord.x())
-		return a.coord.z() < b.coord.z();
-	else 
-		return a.coord.x() < b.coord.x();
-}
 
-bool ControlCubeCache::initParameter(ControlPlaneCache * planeCache, device_t device)
+bool ControlCubeCache::initParameter(ControlCubeCPUCache * cpuCache, device_t device)
 {
-	_planeCache = planeCache;
+	_cpuCache = cpuCache;
 	_device = device;
 
-	#ifdef TIMING
-	_searchCubeN = 0.0;
-	_insertCubeN = 0.0;
-	_readingCubeN = 0.0;
-	_readingCube = 0.0;
-	_searchCube = 0.0;
-	_insertCube = 0.0;
-	#endif
-
-	return  ControlCache::_initControlCache();
+	return  ControlElementCache::_init();
 }
 
 bool ControlCubeCache::_threadInit()
 {
-	_freeSlots = 0;
-	_maxNumCubes = 0;
-	_maxCubes = 0;
-
 	_offset.set(0,0,0);
 	_nextOffset.set(-1,-1,-1);
 	_nextnLevels = -1;
@@ -60,8 +32,7 @@ bool ControlCubeCache::_threadInit()
 	_nLevels = 0;
 	_levelCube = 0;
 	_dimCube = 0;
-	_sizeCubes = 0;
-	_memoryCubes = 0;
+	_maxNumCubes = 0;
 
 	if (cudaSuccess != cudaSetDevice(_device))
 	{
@@ -69,152 +40,13 @@ bool ControlCubeCache::_threadInit()
 		return false;
 	}
 
-	if (cudaSuccess != cudaStreamCreate(&_stream))
-	{
-		std::cerr<<"Control Cube Cache, error creating cuda stream: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
-		return false;
-	}
-
-	return true;
-}
-
-void ControlCubeCache::_addNewCube(index_node_t cube)
-{
-	boost::unordered_map<index_node_t, NodeCube_t *>::iterator it;
-	it = _currentCubes.find(cube);
-	if (it == _currentCubes.end())
-	{
-		NodeCube_t * c = _lruCubes.getFirstFreePosition();
-
-		it = _currentCubes.find(c->id);
-		if (it != _currentCubes.end())
-			_currentCubes.erase(it);
-
-		#ifndef NDEBUG
-		if (c->refs != 0 || c->pendingPlanes.size() != 0)
-		{
-			std::cerr<<"Control Cube Cache, unistable state, free cube slot with references "<<c->id<<" refs "<<c->refs<<std::endl;
-			throw;
-		}
-		#endif
-		_freeSlots--;
-	
-		c->id = cube;
-		c->refs = PROCESSING;
-		vmml::vector<3, int> coord = getMinBoxIndex2(cube, _levelCube, _nLevels) + _offset - CUBE_INC;
-
-		vmml::vector<3, int> minC = _planeCache->getMinCoord();
-		vmml::vector<3, int> maxC = _planeCache->getMaxCoord();
-
-		#if 1
-		if (coord[1] < maxC[1] && coord[2] < maxC[2] && 
-			minC[1] < (coord[1] + _dimCube) && minC[2] < (coord[2] + _dimCube))
-		{
-			int minPlane = coord.x();
-			int maxPlane = minPlane + _dimCube;
-			for(int i=minPlane; i<maxPlane; i++)
-				if (i>=_planeCache->getMinPlane() && i< _planeCache->getMaxPlane())
-					c->pendingPlanes.push_back(i);
-		}
-		#else
-			int minPlane = coord.x();
-			int maxPlane = minPlane + _dimCube;
-			for(int i=minPlane; i<maxPlane; i++)
-				if (i>=_planeCache->getMinPlane() && i< _planeCache->getMaxPlane())
-					c->pendingPlanes.push_back(i);
-		#endif
-
-		if (cudaSuccess != cudaMemsetAsync((void*)(_memoryCubes + c->element*_sizeCubes), 0, _sizeCubes*sizeof(float), _stream))
-		{
-			std::cerr<<"Control Cube Cache, error copying cube to GPU: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
-			throw;
-		}
-
-		if (!readCube(c))
-			_readingCubes.push(c->id);
-		else
-			c->refs = PROCESSED;
-
-		_currentCubes.insert(std::make_pair<index_node_t, NodeCube_t *>(c->id, c));
-		_lruCubes.moveToLastPosition(c);
-	}
-	return;
-}
-
-void ControlCubeCache::_threadWork()
-{
-	index_node_t cube = 0;
-
-	if (!_readingCubes.empty())
-	{
-		cube = _readingCubes.front();
-
-		_fullSlots.lock();
-
-			boost::unordered_map<index_node_t, NodeCube_t *>::iterator it;
-			it = _currentCubes.find(cube);
-			if (it != _currentCubes.end())
-			{
-				if (readCube(it->second))
-				{
-					it->second->refs = PROCESSED;
-					_readingCubes.pop();
-				}
-
-				_lruCubes.moveToLastPosition(it->second);
-			}
-			else
-			{
-				if (_freeSlots > 0 || _fullSlots.timedWait(WAITING))
-					_addNewCube(cube);
-			}
-
-		_fullSlots.unlock();
-	}
-	else
-	{
-		_emptyPendingCubes.lock();
-
-			if (_pendingCubes.size() == 0)
-			{
-				if (!_emptyPendingCubes.timedWait(WAITING))
-				{
-					_emptyPendingCubes.unlock();
-					return;
-				}
-			}
-			else
-			{
-				pending_cube_t pcube = _pendingCubes.front();;
-				cube = pcube.id;
-				_pendingCubes.erase(_pendingCubes.begin());
-			}
-
-		_emptyPendingCubes.unlock();
-
-		_fullSlots.lock();
-
-			if (_freeSlots == 0 && !_fullSlots.timedWait(WAITING))
-			{
-				_readingCubes.push(cube);
-			}
-			else
-				_addNewCube(cube);
-
-		_fullSlots.unlock();
-	}
-
-	return;
+	return ControlElementCache::_threadInit();
 }
 
 void ControlCubeCache::_threadStop()
 {
 	_freeCache();
-	if (cudaSuccess != cudaStreamDestroy(_stream))
-	{
-		std::cerr<<"Control Cube Cache, error destroying cuda steam: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
-		throw;
-	}
+	ControlElementCache::_threadStop();
 }
 
 void ControlCubeCache::_freeCache()
@@ -224,45 +56,30 @@ void ControlCubeCache::_freeCache()
 		std::cerr<<"Control Cube Cache, error setting device: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
-	if (_memoryCubes != 0)
+	if (_memory != 0)
 	{
-		if(cudaSuccess != cudaFree((void*)_memoryCubes))
+		if(cudaSuccess != cudaFree((void*)_memory))
 		{
 			std::cerr<<"Control Cubes Cache, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 			throw;
 		}
+		_memory = 0;
 	}
-	_memoryCubes = 0;
-	_freeSlots = 0;
-
-	_currentCubes.clear();
-	_pendingCubes.clear();
-	std::queue<index_node_t> emptyQ;
-	std::swap(_readingCubes, emptyQ);
 
 	#ifdef TIMING
-	if (_searchCubeN != 0.0 && _insertCubeN != 0.0 && _readingCubeN != 0.0)
-	{
-		int dim = exp2(_nLevels);
-		index_node_t s = coordinateToIndex(vmml::vector<3, int>(0,0,0), _levelCube, _nLevels);
-		index_node_t e = coordinateToIndex(vmml::vector<3, int>(dim-1, dim-1, dim-1), _levelCube, _nLevels);
-		std::cout<<"==== CONTROL CUBE CACHE ====="<<std::endl;
-		std::cout<<"Max num cubes "<< _maxNumCubes<<" cubes form "<<s<<" to "<<e<<" total "<<e-s+1<<std::endl;
-		std::cout<<"Time searching cubes "<<_searchCube<<" seconds"<<std::endl;
-		std::cout<<"Time inserting cubes "<<_insertCube<<" seconds"<<std::endl;
-		std::cout<<"Time reading cubes "<<_readingCube<<" seconds"<<std::endl;
-		std::cout<<"Average searching cubes "<<_searchCube/_searchCubeN<<" seconds, operations "<<_searchCubeN<<std::endl;
-		std::cout<<"Average inserting cubes "<<_insertCube/_insertCubeN<<" seconds, operations "<<_insertCubeN<<std::endl;
-		std::cout<<"Average reading cubes "<<_readingCube/_readingCubeN<<" seconds, operations "<<_readingCubeN<<std::endl;
-		std::cout<<"=============================="<<std::endl;
-		_searchCubeN = 0.0;
-		_insertCubeN = 0.0;
-		_readingCubeN = 0.0;
-		_readingCube = 0.0;
-		_searchCube = 0.0;
-		_insertCube = 0.0;
-	}
+	int dim = exp2(_nLevels);
+	index_node_t s = coordinateToIndex(vmml::vector<3, int>(0,0,0), _levelCube, _nLevels);
+	index_node_t e = coordinateToIndex(vmml::vector<3, int>(dim-1, dim-1, dim-1), _levelCube, _nLevels);
+	std::cout<<"==== CONTROL CUBE CACHE ====="<<std::endl;
+	std::cout<<"Max num cubes "<< _maxNumCubes<<" cubes form "<<s<<" to "<<e<<" total "<<e-s+1<<std::endl;
 	#endif
+
+	ControlElementCache::_freeCache();
+
+	#ifdef TIMING
+	std::cout<<"=============================="<<std::endl;
+	#endif
+
 }
 
 void ControlCubeCache::_reSizeCache()
@@ -275,15 +92,15 @@ void ControlCubeCache::_reSizeCache()
 
 	_dimCube = exp2(_nLevels - _levelCube) + 2 * CUBE_INC;
 
-	_sizeCubes = pow(_dimCube, 3); 
+	_sizeElement = pow(_dimCube, 3); 
 
 	if (cudaSuccess != cudaSetDevice(_device))
 	{
 		std::cerr<<"Control Cube Cache, error setting device: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
 	}
-	if (_memoryCubes != 0)
-		if (cudaSuccess != cudaFree((void*)_memoryCubes))
+	if (_memory != 0)
+		if (cudaSuccess != cudaFree((void*)_memory))
 		{                                                                                               
 			std::cerr<<"Control Cube Cache, error resizing cache: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 			throw;
@@ -297,16 +114,16 @@ void ControlCubeCache::_reSizeCache()
 		throw;
 	}
 
-	float memorySize = (8.0f*free)/10.0f; // Get 80% of free memory
+	float memorySize = (0.80f*free); // Get 80% of free memory
 
-	_maxNumCubes = memorySize/ (_sizeCubes*sizeof(float));
+	_maxNumCubes = memorySize/ (_sizeElement*sizeof(float));
 	if (_maxNumCubes == 0)
 	{
 		std::cerr<<"Control Cube Cache: Memory aviable is not enough "<<memorySize/1024/1024<<" MB"<<std::endl;
 		throw;
 	}
 
-	if (cudaSuccess != cudaMalloc((void**)&_memoryCubes, _maxNumCubes*_sizeCubes*sizeof(float)))
+	if (cudaSuccess != cudaMalloc((void**)&_memory, _maxNumCubes*_sizeElement*sizeof(float)))
 	{
 		std::cerr<<"Control Cube Cache, error resizing cache: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
@@ -314,194 +131,59 @@ void ControlCubeCache::_reSizeCache()
 
 	_freeSlots = _maxNumCubes;
 
-	_lruCubes.reSize(_maxNumCubes);
-	_currentCubes.clear();
-	_pendingCubes.clear();
-	std::queue<index_node_t> emptyQ;
-	std::swap(_readingCubes, emptyQ);
+	ControlElementCache::_reSizeCache();
 }
 
-
-float * ControlCubeCache::getAndBlockCube(index_node_t cube)
+bool ControlCubeCache::_readElement(NodeLinkedList<index_node_t> * element)
 {
-	float * dcube = 0;
-	boost::unordered_map<index_node_t, NodeCube_t * >::iterator it;
+	index_node_t idCube = element->id;
+	index_node_t idCubeCPU = idCube >> 3*(_levelCube - _cpuCache->getCubeLevel()); 
 
-	#ifdef TIMING
-	lunchbox::Clock clock;
-	clock.reset();
-	#endif
-	_fullSlots.lock();
+	float * pCube = _cpuCache->getAndBlockElement(idCubeCPU);
+	float * cube = (_memory + element->element*_sizeElement);
 
-	it = _currentCubes.find(cube);
-	#ifdef TIMING
-	_searchCube += clock.getTimed()/1000.0;
-	_searchCubeN += 1.0;
-	#endif
-	if (it != _currentCubes.end())
+	if (pCube != 0)
 	{
-		if (it->second->refs != PROCESSING)
-		{
-			if (it->second->refs == 0)
-				_freeSlots--;
-			else if (it->second->refs == PROCESSED)
-				it->second->refs = 0;
+		vmml::vector<3, int> coord = getMinBoxIndex2(idCube, _levelCube, _nLevels);
+		vmml::vector<3, int> coordC = getMinBoxIndex2(idCubeCPU, _cpuCache->getCubeLevel(), _nLevels);
+		coord -= coordC;
+		vmml::vector<3, int> realDimCPU = _cpuCache->getRealCubeDim();
 
-			it->second->refs += 1;
-			dcube = _memoryCubes + it->second->element*_sizeCubes;
+		cudaMemcpy3DParms myParms = {0};
+		myParms.srcPtr = make_cudaPitchedPtr((void*)pCube, realDimCPU.z()*sizeof(float), realDimCPU.x(), realDimCPU.y()); 
+		//myParms.dstPtr = make_cudaPitchedPtr((void*)cube, _realcubeDim.z()*sizeof(float), _realcubeDim.x(), _realcubeDim.y()); 
+		myParms.dstPtr = make_cudaPitchedPtr((void*)cube, _dimCube*sizeof(float), _dimCube, _dimCube); 
+		myParms.extent = make_cudaExtent(_dimCube*sizeof(float), _dimCube, _dimCube);
+		myParms.dstPos = make_cudaPos(0,0,0);
+		myParms.srcPos = make_cudaPos(coord.z()*sizeof(float), coord.y(), coord.x());
+		myParms.kind = cudaMemcpyHostToDevice;
+
+		if (cudaSuccess != cudaMemcpy3D(&myParms))
+		{
+			LBERROR<<"Control Cube Cache: error copying to a device: "<<cudaGetErrorString(cudaGetLastError()) <<" "<<cube<<" "<<pCube<<" "<<_sizeElement<<std::endl;
+			return false;
 		}
 
-		_fullSlots.unlock();
+		return true;
 	}
 	else
 	{
-		_fullSlots.unlock();
-
-	#ifdef TIMING
-	clock.reset();
-	#endif
-		_emptyPendingCubes.lock();
-			if (std::find_if(_pendingCubes.begin(), _pendingCubes.end(), find_pending_cube(cube)) == _pendingCubes.end())
-			{
-				pending_cube_t pcube;
-				pcube.id = cube;
-				pcube.coord = getMinBoxIndex2(cube, _levelCube, _nLevels); 
-				_pendingCubes.push_back(pcube);
-				//std::sort(_pendingCubes.begin(), _pendingCubes.end(), ComparePendingCubes);
-			}
-	#ifdef TIMING
-	_insertCube += clock.getTimed()/1000.0;
-	_insertCubeN += 1.0;
-	#endif
-			if (_pendingCubes.size() == 1)
-				_emptyPendingCubes.signal();
-		_emptyPendingCubes.unlock();
+		return false;
 	}
-
-	return dcube;
-}
-
-void ControlCubeCache::unlockCube(index_node_t cube)
-{
-	boost::unordered_map<index_node_t, NodeCube_t *>::iterator it;
-
-	_fullSlots.lock();
-
-	it = _currentCubes.find(cube);
-	if (it != _currentCubes.end())
-	{
-		it->second->refs -= 1;
-		if (it->second->refs == 0)
-		{
-			_freeSlots++;
-			_fullSlots.signal();
-		}
-
-		#ifndef NDEBUG
-		if (it->second->refs < 0)
-		{
-			std::cerr<<"Control Cube Cache, error unlocking cube"<<std::endl;
-			throw;
-		}
-		#endif
-	}
-	#ifndef NDEBUG
-	else
-	{
-		std::cerr<<"Control Cube Cache, error unlocking cube that not exists"<<std::endl;
-		throw;
-	}
-	#endif
-
-	_fullSlots.unlock();
-
-	return;
 }
 
 bool ControlCubeCache::freeCacheAndPause()
 {
-	return _pauseWorkAndFreeCache();
+	return ControlElementCache::_freeCacheAndPause();
 }
 
 bool ControlCubeCache::reSizeCacheAndContinue(int nLevels, int levelCube, vmml::vector<3, int> offset)
 {
-	if (_checkRunning())
-		return false;
-
 	_nextOffset	= offset;
 	_nextnLevels = nLevels;
 	_nextLevelCube = levelCube;
 
-	return _continueWorkAndReSize();
-}
-
-bool ControlCubeCache::readCube(NodeCube_t * c)
-{
-#ifdef TIMING
-	lunchbox::Clock clock;
-	clock.reset();
-#endif
-
-	vmml::vector<3, int> coordS = getMinBoxIndex2(c->id, _levelCube, _nLevels) + _offset - vmml::vector<3, int>(CUBE_INC, CUBE_INC, CUBE_INC);
-	vmml::vector<3, int> coordE = coordS + vmml::vector<3, int>(_dimCube, _dimCube, _dimCube);
-
-	vmml::vector<2, int> planeDim = _planeCache->getPlaneDim();
-	vmml::vector<3, int> minC = _planeCache->getMinCoord();
-	vmml::vector<3, int> maxC = _planeCache->getMaxCoord();
-
-	std::vector<int>::iterator it = c->pendingPlanes.begin(); 
-
-	while (it != c->pendingPlanes.end())
-	{
-		float * start = (_memoryCubes + c->element*_sizeCubes) + _dimCube * _dimCube * abs(coordS.x() - (*it));
-		float * plane = _planeCache->getAndBlockPlane(*it);
-
-		if (plane != 0)
-		{
-			start += coordS.z() < 0 ? abs(coordS.z()) : 0;
-			plane += coordS.z() <= minC.z() ? 0 : coordS.z() - minC.z();
-			int dimC = _dimCube;
-			#if 0
-			if (coordS.z() < 0)
-				dimC -= abs(coordS.z()) + minC.z();
-			else
-			#endif
-			dimC -= coordS.z() < minC.z() ? abs(minC.z() - coordS.z()) : 0;
-			dimC -= coordE.z() > maxC.z() ? coordE.z() - maxC.z() : 0;
-
-			int sL = coordS.y() < minC.y() ? abs(minC.y() - coordS.y()) : 0;
-			int lL = coordE.y() > maxC.y() ? _dimCube - (coordE.y() - maxC.y()) : _dimCube;
-
-			for(int i = sL; i < lL; i++)
-			{
-				int planeI = i+(coordS.y() - minC.y());
-				if (cudaSuccess != cudaMemcpyAsync((void*)(start + i*_dimCube), (void*)(plane + planeI*planeDim.y()), dimC*sizeof(float), cudaMemcpyHostToDevice, _stream))
-				{
-					std::cerr<<"Control Cube Cache, error copying cube to GPU: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
-					throw;
-				}
-			}
-
-			if(cudaSuccess != cudaStreamSynchronize(_stream))
-			{
-				std::cerr<<"Control Cubes Cache, stream synchronization: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
-				throw;
-			}
-
-			_planeCache->unlockPlane(*it);
-			it = c->pendingPlanes.erase(it);
-		}
-
-		if (it != c->pendingPlanes.end())
-			it++;
-	}
-
-#ifdef TIMING
-	_readingCube += clock.getTimed()/1000.0;
-	_readingCubeN += 1.0;
-#endif
-
-	return c->pendingPlanes.empty();
+	return ControlElementCache::_reSizeCacheAndContinue();
 }
 
 }
