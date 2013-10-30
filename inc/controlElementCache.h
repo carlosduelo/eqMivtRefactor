@@ -100,7 +100,20 @@ class  ControlElementCache : public ControlCache
 				it = _currentElement.find(element);
 				if (it == _currentElement.end())
 				{
+					if (_freeSlots == 0 && !_fullSlots.timedWait(WAITING))
+					{
+						_fullSlots.unlock();
+						return;
+					}
+
+
 					NodeLinkedList<TYPE> * c = _lruElement.getFirstFreePosition();
+
+					if (c == 0)
+					{
+						std::cerr<<"Error control element cache, cache is full"<<std::endl;
+						throw;
+					}
 
 					it = _currentElement.find(c->id);
 					if (it != _currentElement.end())
@@ -133,8 +146,7 @@ class  ControlElementCache : public ControlCache
 
 					_emptyPending.lock();
 
-					while(_pendingElement.front() == element)
-						_pendingElement.pop();
+					_pendingElement.pop();
 
 					_emptyPending.unlock();
 
@@ -146,8 +158,7 @@ class  ControlElementCache : public ControlCache
 
 					_emptyPending.lock();
 
-					while(_pendingElement.front() == element)
-						_pendingElement.pop();
+					_pendingElement.pop();
 
 					_emptyPending.unlock();
 				}
@@ -284,13 +295,19 @@ class  ControlElementCache : public ControlCache
 				_emptyPending.lock();
 				if (_pendingElement.size() <=  MAX_QUEUE)
 				{	
-					_pendingElement.push(element);
+					if (_pendingElement.size() == 0)
+					{
+						_pendingElement.push(element);
+						_emptyPending.signal();
+					}
+					else if (_pendingElement.front() != element)
+					{
+						_pendingElement.push(element);
+					}
 			#ifdef TIMING
 			_insert += clock.getTimed()/1000.0;
 			_insertN += 1.0;
 			#endif
-					if (_pendingElement.size() == 1)
-						_emptyPending.signal();
 				}
 				_emptyPending.unlock();
 			}

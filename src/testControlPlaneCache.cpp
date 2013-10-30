@@ -170,6 +170,7 @@ int main(int argc, char ** argv)
 		std::cout<<"Test "<<s<<" "<<e<<": "<<time<<" seconds ~ "<<bw<<" MB/s"<<std::endl;
 	}
 	
+#if 0
 	if (!error)
 	{
 		double time = 0.0;
@@ -184,6 +185,7 @@ int main(int argc, char ** argv)
 			std::cout<<"Test Fail!"<<std::endl;
 		}
 	}
+#endif
 
 	cpc.stopWork();
 

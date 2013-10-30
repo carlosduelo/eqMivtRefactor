@@ -26,6 +26,16 @@ bool LinkedList<int>::reSize(int size)
 	list 		= memoryList;
 	last 		= &memoryList[size-1];
 
+	if (list == last)
+	{
+		memoryList[0].after 	= 0;
+		memoryList[0].before 	= 0;
+		memoryList[0].element 	= 0;
+		memoryList[0].id		= -1;
+		memoryList[0].refs		= 0;
+		return true;
+	}
+
 	for(int i=0; i<size; i++)
 	{
 		if (i==0)
@@ -70,6 +80,16 @@ bool LinkedList<index_node_t>::reSize(int size)
 	list 		= memoryList;
 	last 		= &memoryList[size-1];
 
+	if (list == last)
+	{
+		memoryList[0].after 	= 0;
+		memoryList[0].before 	= 0;
+		memoryList[0].element 	= 0;
+		memoryList[0].id		= 0;
+		memoryList[0].refs		= 0;
+		return true;
+	}
+
 	for(int i=0; i<size; i++)
 	{
 		if (i==0)
@@ -108,29 +128,45 @@ NodeLinkedList<int> * LinkedList<int>::getFirstFreePosition()
 
 	if (freePositions == 0)
 	{
-		// Search first free position
-		while(list->refs != 0)
+		if (list == last)
 		{
-			moveToLastPosition(list);
-			if (first == list)
-			{
+			if (list->refs != 0)
 				return 0;
+		}
+		else
+		{
+			// Search first free position
+			while(list->refs != 0)
+			{
+				moveToLastPosition(list);
+				if (first == list)
+				{
+					return 0;
+				}
 			}
 		}
 	}
 	else
 	{
-		// Search first free position
-		while(list->refs != 0 && list->id >= 0)
+		if (list == last)
 		{
-			moveToLastPosition(list);
-			if (first == list)
-			{
-				std::cerr<<"Error cache is unistable"<<std::endl;
+			if (list->refs != 0 && list->id >= 0)
 				throw;
-			}
 		}
+		else
+		{
+			// Search first free position
+			while(list->refs != 0 && list->id >= 0)
+			{
+				moveToLastPosition(list);
+				if (first == list)
+				{
+					std::cerr<<"Error cache is unistable"<<std::endl;
+					throw;
+				}
+			}
 
+		}
 		freePositions--;
 	}
 	return list;
@@ -143,26 +179,42 @@ NodeLinkedList<index_node_t> * LinkedList<index_node_t>::getFirstFreePosition()
 
 	if (freePositions == 0)
 	{
-		// Search first free position
-		while(list->refs != 0)
+		if (list == last)
 		{
-			moveToLastPosition(list);
-			if (first == list)
-			{
+			if (list->refs != 0)
 				return 0;
+		}
+		else
+		{
+			// Search first free position
+			while(list->refs != 0)
+			{
+				moveToLastPosition(list);
+				if (first == list)
+				{
+					return 0;
+				}
 			}
 		}
 	}
 	else
 	{
-		// Search first free position
-		while(list->refs != 0 && list->id > 0)
+		if (list == last)
 		{
-			moveToLastPosition(list);
-			if (first == list)
-			{
-				std::cerr<<"Error cache is unistable"<<std::endl;
+			if (list->refs != 0 && list->id > 0)
 				throw;
+		}
+		else
+		{
+			// Search first free position
+			while(list->refs != 0 && list->id > 0)
+			{
+				moveToLastPosition(list);
+				if (first == list)
+				{
+					std::cerr<<"Error cache is unistable"<<std::endl;
+					throw;
+				}
 			}
 		}
 
@@ -174,7 +226,11 @@ NodeLinkedList<index_node_t> * LinkedList<index_node_t>::getFirstFreePosition()
 template<class T>
 NodeLinkedList<T> * LinkedList<T>::moveToLastPosition(NodeLinkedList<T> * node)
 {
-	if (node == list)
+	if (list == last)
+	{
+		return list;
+	}
+	else if (node == list)
 	{
 		NodeLinkedList<T> * first = list;
 

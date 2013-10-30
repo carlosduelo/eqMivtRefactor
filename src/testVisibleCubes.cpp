@@ -126,8 +126,6 @@ int main(int argc, char ** argv)
 	for(std::vector<int>::iterator it = nc.begin(); it!= nc.end(); ++it)
 	{
 		eqMivt::visibleCube_t  * s = vC.getCube(*it);
-		s->pixel = *it;
-		s->cubeID = 21;
 
 		if ((*it) % 4 == 0)
 			s->state = NOCUBE;

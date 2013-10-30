@@ -50,14 +50,12 @@ bool ControlCache::stopWork()
 			_stateCond.unlock();
 		}
 		_notEnd = false;
-		_operationCond.wait();
+		//_operationCond.wait();
 		r = true;
 	}
 	_operationCond.unlock();
-	if (r)
-		return join();
-	else
-		return false;
+
+	join();
 }
 
 bool ControlCache::pauseWork()
@@ -242,13 +240,13 @@ void ControlCache::run()
 					_resize = false;
 					_state = RUNNING;
 					_operationCond.signal();
+					_operationCond.unlock();
 				}
 				else
 				{
 					std::cerr<<"Control Cache, try to continue wihtout resizing the first time"<<std::endl;
 					throw;
 				}
-				_operationCond.unlock();
 			}
 			else if (_state == PAUSED)
 			{
@@ -265,13 +263,14 @@ void ControlCache::run()
 					_resize = false;
 					_state = RUNNING;
 					_operationCond.signal();
+					_operationCond.unlock();
 				}
 				else 
 				{
 					_state = RUNNING;
 					_operationCond.signal();
+					_operationCond.unlock();
 				}
-				_operationCond.unlock();
 			}
 			else if (_state == STOPPED)
 			{
@@ -286,7 +285,7 @@ void ControlCache::run()
 
 		_threadStop();
 
-		_operationCond.signal();
+		//_operationCond.signal();
 		_operationCond.unlock(); 
 		_stateCond.unlock();
 
@@ -294,13 +293,10 @@ void ControlCache::run()
 	else
 	{
 		_state = STOPPED;
+		_stateCond.unlock();
 		_operationCond.signal();
 		_operationCond.unlock();
 	}
-
-	lunchbox::Thread::exit();
-
-	return;
 }
 
 }

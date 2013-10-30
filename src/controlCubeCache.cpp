@@ -164,6 +164,7 @@ bool ControlCubeCache::_readElement(NodeLinkedList<index_node_t> * element)
 			return false;
 		}
 
+		_cpuCache->unlockElement(idCubeCPU);
 		return true;
 	}
 	else

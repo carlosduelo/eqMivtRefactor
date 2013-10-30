@@ -26,8 +26,6 @@ typedef struct
 	index_node_t	id;
 	float *			data;
 	statusCube		state;
-	index_node_t	cubeID;
-	int				pixel;
 } visibleCube_t;
 
 typedef visibleCube_t * visibleCubeGPU_t;

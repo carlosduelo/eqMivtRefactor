@@ -267,8 +267,6 @@ void VisibleCubes::init()
 		_visibleCubes[i].id = 0;
 		_visibleCubes[i].data = 0;
 		_visibleCubes[i].state = NOCUBE;
-		_visibleCubes[i].cubeID = 0;
-		_visibleCubes[i].pixel= i;
 		_nocubeC[i+1] = i;
 		_cubeC[i+1] = 0;
 		_cachedC[i+1] = 0;

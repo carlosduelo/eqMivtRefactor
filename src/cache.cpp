@@ -105,7 +105,6 @@ void Cache::pushCubes(VisibleCubes * vc)
 
 		if (itC != _cubes.end())
 		{
-			cube->cubeID = idCube;
 			cube->state = itC->second.state;
 			cube->data = itC->second.cube;
 		}
@@ -120,7 +119,6 @@ void Cache::pushCubes(VisibleCubes * vc)
 	_getCubePushN += 1.0;
 	#endif
 
-			cube->cubeID = idCube;
 			cube->state = d == 0 ? CUBE : CACHED;
 			cube->data = d;
 
