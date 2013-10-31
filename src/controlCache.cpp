@@ -50,12 +50,11 @@ bool ControlCache::stopWork()
 			_stateCond.unlock();
 		}
 		_notEnd = false;
-		//_operationCond.wait();
 		r = true;
 	}
 	_operationCond.unlock();
 
-	join();
+	return join();
 }
 
 bool ControlCache::pauseWork()
@@ -195,7 +194,7 @@ void ControlCache::run()
 		_operationCond.signal();
 		_operationCond.unlock();
 
-		while(_notEnd)
+		while(_state != STOPPED)
 		{
 			if (_state == RUNNING)
 			{
@@ -285,7 +284,6 @@ void ControlCache::run()
 
 		_threadStop();
 
-		//_operationCond.signal();
 		_operationCond.unlock(); 
 		_stateCond.unlock();
 
