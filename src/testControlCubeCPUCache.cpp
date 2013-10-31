@@ -289,8 +289,7 @@ int main(int argc, char ** argv)
 		}
 	}
 
-
-	ccc.stopWork();
+	ccc.stopCache();
 	hdf5File.close();
 
 	return 0;

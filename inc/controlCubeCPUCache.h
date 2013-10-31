@@ -50,6 +50,8 @@ class  ControlCubeCPUCache : public ControlElementCache<index_node_t>
 
 		bool reSizeCacheAndContinue(vmml::vector<3,int> offset, vmml::vector<3,int> max, int levelCube, int nLevels);
 
+		bool stopCache();
+
 		// NO SAFE CALLS
 		int		getCubeLevel() { return _levelCube; }
 		int		getnLevels() { return _nLevels; }

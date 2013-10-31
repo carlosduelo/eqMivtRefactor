@@ -56,6 +56,11 @@ void ControlCubeCPUCache::_threadStop()
 	ControlElementCache::_threadStop();
 }
 
+bool ControlCubeCPUCache::stopCache()
+{
+	return _planeCache.stopWork() && stopWork();
+}
+
 void ControlCubeCPUCache::_freeCache()
 {
 	#ifdef TIMING

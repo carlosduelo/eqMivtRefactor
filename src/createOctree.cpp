@@ -50,6 +50,9 @@ std::vector<eqMivt::octreeConstructor *> octreesT;
 vmml::vector<3, int> realDimVolume;
 vmml::vector<3, int> dimVolume;
 
+eqMivt::ControlCubeCPUCache cccCPU;
+eqMivt::ControlCubeCache ccc;
+
 float toFloat(std::string  s)
 {
 	try
@@ -505,19 +508,6 @@ bool createOctree(octreeParameter_t p)
 	std::cout<<"ReSize Cube Cache nLevels "<<p.nLevels<<" level cube cpu "<<levelCubeCPU<<" level cube "<<cubeLevel<<" offset "<<p.start<<std::endl;
 	#endif
 
-	eqMivt::ControlCubeCPUCache cccCPU;
-	if (!cccCPU.initParameter(file_params, memoryOccupancy))
-	{
-		std::cerr<<"Error init control plane cache"<<std::endl;
-		return 0;
-	}
-
-	eqMivt::ControlCubeCache ccc;
-	if (!ccc.initParameter(&cccCPU, eqMivt::getBestDevice()))
-	{
-		std::cerr<<"Error init control cube cache"<<std::endl;
-	}
-
 	if (!cccCPU.freeCacheAndPause() || !cccCPU.reSizeCacheAndContinue(p.start, eP, levelCubeCPU, p.nLevels))
 	{
 		std::cerr<<"Error, resizing plane cache"<<std::endl;
@@ -560,9 +550,6 @@ bool createOctree(octreeParameter_t p)
 		#endif
 	}
 
-	ccc.stopWork();
-	cccCPU.stopWork();
-
 	return true;
 }
 
@@ -573,6 +560,17 @@ int main( const int argc, char ** argv)
 	if (!checkParameters(argc, argv))
 		return 0;
 
+	if (!cccCPU.initParameter(file_params, memoryOccupancy))
+	{
+		std::cerr<<"Error init control plane cache"<<std::endl;
+		return 0;
+	}
+
+	if (!ccc.initParameter(&cccCPU, eqMivt::getBestDevice()))
+	{
+		std::cerr<<"Error init control cube cache"<<std::endl;
+	}
+
 	lunchbox::Clock clock;
 
 	for(std::vector<octreeParameter_t>::iterator it = octreeList.begin(); it!=octreeList.end(); it++)
@@ -581,6 +579,9 @@ int main( const int argc, char ** argv)
 		createOctree(*it);
 		std::cout<<"Time to create octree: "<<clock.getTimed()/1000.0<<" seconds."<<std::endl;
 	}
+
+	ccc.stopCache();
+	cccCPU.stopCache();
 
 	clock.reset();
 

@@ -333,8 +333,8 @@ int main(int argc, char ** argv)
 	}
 
 
-	ccc.stopWork();
-	cccCPU.stopWork();
+	ccc.stopCache();
+	cccCPU.stopCache();
 	hdf5File.close();
 
 	return 0;

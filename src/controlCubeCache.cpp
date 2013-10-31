@@ -43,6 +43,11 @@ bool ControlCubeCache::_threadInit()
 	return ControlElementCache::_threadInit();
 }
 
+bool ControlCubeCache::stopCache()
+{
+	return stopWork();
+}
+
 void ControlCubeCache::_threadStop()
 {
 	_freeCache();
