@@ -226,8 +226,8 @@ int main(int argc, char ** argv)
 	}
 
 
-	ccc.stopWork();
-	cccCPU.stopWork();
+	ccc.stopCache();
+	cccCPU.stopCache();
 	vc.destroy();
 
 	return 0;
