@@ -53,6 +53,9 @@ vmml::vector<3, int> dimVolume;
 eqMivt::ControlCubeCPUCache cccCPU;
 eqMivt::ControlCubeCache ccc;
 
+double kernelTime = 0.0;
+double nKernels = 0;
+
 float toFloat(std::string  s)
 {
 	try
@@ -528,6 +531,8 @@ bool createOctree(octreeParameter_t p)
 		boost::progress_display show_progress(idE-idS+1);
 	#endif
 
+	lunchbox::Clock clock;
+
 	for(eqMivt::index_node_t id = idS; id<=idE; id++)
 	{
 		vmml::vector<3,int> c = eqMivt::getMinBoxIndex2(id, ccc.getCubeLevel(), p.nLevels) + p.start;
@@ -541,7 +546,10 @@ bool createOctree(octreeParameter_t p)
 			}
 			while(cube == 0);
 
+			clock.reset();
 			_checkCube_cuda(oc, p.isos, p.nLevels, p.maxLevel, dimNode, id, ccc.getCubeLevel(), ccc.getDimCube(), cube);
+			kernelTime += clock.getTimed()/1000.0;
+			nKernels+=1.0;
 
 			ccc.unlockElement(id);
 		}
@@ -575,13 +583,18 @@ int main( const int argc, char ** argv)
 
 	for(std::vector<octreeParameter_t>::iterator it = octreeList.begin(); it!=octreeList.end(); it++)
 	{
+		kernelTime = 0.0;
+		nKernels = 0.0;
 		clock.reset();
 		createOctree(*it);
 		std::cout<<"Time to create octree: "<<clock.getTimed()/1000.0<<" seconds."<<std::endl;
+		std::cout<<"Accumulate kernel Time "<<kernelTime<<" seconds average kernel time "<<kernelTime/nKernels<<" seconds, kernels launched "<<nKernels<<std::endl;
 	}
 
 	ccc.stopCache();
 	cccCPU.stopCache();
+
+	std::cout<<"Writing output file"<<std::endl;
 
 	clock.reset();
 

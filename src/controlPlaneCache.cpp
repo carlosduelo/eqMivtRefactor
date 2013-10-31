@@ -148,6 +148,14 @@ bool ControlPlaneCache::_readElement(NodeLinkedList<int> * element)
 	float * data = _memory + element->element * _sizeElement;
 	int plane = element->id;
 
+	#ifndef NDEBUG
+	if (element->element >  _maxNumPlanes)
+	{
+		std::cerr<<"Control Plane Cache, try to write outside reserved memory"<<std::endl;
+		throw;
+	}
+	#endif
+
     return _file.readPlane(data, vmml::vector<3, int>(plane, _min.y(), _min.z()), vmml::vector<3, int>(plane, _max.y(), _max.z()));
 }
 

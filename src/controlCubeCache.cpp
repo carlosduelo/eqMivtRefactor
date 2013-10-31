@@ -141,6 +141,14 @@ void ControlCubeCache::_reSizeCache()
 
 bool ControlCubeCache::_readElement(NodeLinkedList<index_node_t> * element)
 {
+	#ifndef NDEBUG
+	if (element->element > _maxNumCubes) 
+	{
+		std::cerr<<"Control Cube CPU Cache, try to write outside reserved memory"<<std::endl;
+		throw;
+	}
+	#endif
+
 	index_node_t idCube = element->id;
 	index_node_t idCubeCPU = idCube >> 3*(_levelCube - _cpuCache->getCubeLevel()); 
 

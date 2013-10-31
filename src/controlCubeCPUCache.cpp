@@ -141,6 +141,13 @@ bool ControlCubeCPUCache::_readElement(NodeLinkedList<index_node_t> * element)
 				if (i>=_planeCache.getMinPlane() && i< _planeCache.getMaxPlane())
 					element->pendingPlanes.push_back(i);
 		}
+		#ifndef NDEBUG
+		if (element->element > _maxNumCubes) 
+		{
+			std::cerr<<"Control Cube CPU Cache, try to write outside reserved memory"<<std::endl;
+			throw;
+		}
+		#endif
 		memset((void*)(_memory + element->element*_sizeElement), 0, _sizeElement*sizeof(float));
 	}
 
