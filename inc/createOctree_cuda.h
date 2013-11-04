@@ -11,10 +11,9 @@ Notes:
 
 #include "typedef.h"
 
-	size_t	octreeConstructorGetFreeMemory();	
-	eqMivt::index_node_t * octreeConstructorCreateResult(int size);
-	bool	octreeConstructorCopyResult(eqMivt::index_node_t * cpuResult, eqMivt::index_node_t * gpuResult, int size);
-	void	octreeConstructorDestroyResult(eqMivt::index_node_t * result);
-	void	octreeConstructorComputeCube(eqMivt::index_node_t * cubes, int size, eqMivt::index_node_t startID, float iso, float * cube, int nodeLevel, int nLevels, int dimNode, int cubeDim, int coorCubeStart[3]);
+namespace eqMivt
+{
+	void extracIsosurface(unsigned int numElements, unsigned int cubeLevel, unsigned int nLevels, float iso, index_node_t idCube, unsigned int * result, float * cube);
+}
 
 #endif /*_EQ_MIVT_CREATOR_OCTREE_CUDA_H_*/

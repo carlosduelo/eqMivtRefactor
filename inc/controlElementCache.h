@@ -254,10 +254,19 @@ class  ControlElementCache : public ControlCache
 		unsigned int	_freeSlots;
 		unsigned int	_sizeElement;
 		float	*		_memory;
+		TYPE			_minValue;
+		TYPE			_maxValue;
+
 	public:
 
 		float * getAndBlockElement(TYPE element)
 		{
+			if (element < _minValue || element > _maxValue)
+			{
+				std::cerr<<"Try to get element out of range"<<std::endl;
+				throw;
+			}
+
 			typename boost::unordered_map<TYPE, NodeLinkedList<TYPE> * >::iterator it;
 			float * data = 0;
 
@@ -317,6 +326,12 @@ class  ControlElementCache : public ControlCache
 
 		void	unlockElement(TYPE element)
 		{
+			if (element < _minValue || element > _maxValue)
+			{
+				std::cerr<<"Try to get element out of range"<<std::endl;
+				throw;
+			}
+
 			typename boost::unordered_map<TYPE, NodeLinkedList<TYPE> * >::iterator it;
 			_fullSlots.lock();
 			it = _currentElement.find(element);

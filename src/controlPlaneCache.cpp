@@ -99,6 +99,8 @@ void ControlPlaneCache::_reSizeCache()
 	_max = _maxFuture;
 	_minFuture = vmml::vector<3,int>(0,0,0);
 	_maxFuture = vmml::vector<3,int>(0,0,0);
+	_minValue = _min.x();
+	_maxValue = _max.x();
 
 	_sizeElement = (_max.y()-_min.y())*(_max.z()-_min.z());	
 
@@ -149,7 +151,7 @@ bool ControlPlaneCache::_readElement(NodeLinkedList<int> * element)
 	int plane = element->id;
 
 	#ifndef NDEBUG
-	if (element->element >  _maxNumPlanes)
+	if ((int)element->element >  _maxNumPlanes)
 	{
 		std::cerr<<"Control Plane Cache, try to write outside reserved memory"<<std::endl;
 		throw;

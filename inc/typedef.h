@@ -82,6 +82,8 @@ struct octreePosition_t
 #define COLOR_INC 0.00390625f
 
 #define CUBE_INC 2
+#define MAX_LEVEL 10
+#define MIN_LEVEL 5
 
 #define MEMORY_OCCUPANCY_PLANE_CACHE 0.2*0.8
 #define MEMORY_OCCUPANCY_CUBE_CACHE 0.2*0.8

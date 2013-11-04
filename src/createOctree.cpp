@@ -20,13 +20,21 @@ Notes:
 #include <boost/progress.hpp>
 
 #include <vector>
+#include <queue>
 #include <iostream>
 #include <fstream>
 
 #include <lunchbox/clock.h>
+#include <lunchbox/thread.h>
+#include <lunchbox/condition.h>
+#include <lunchbox/thread.h>
+
+#include <cuda_runtime.h>
 
 #define MAX_DIMENSION 1024.0f
 #define MIN_DIMENSION 128
+
+#define LIMIT_BUFFER 100
 
 struct octreeParameter_t
 {
@@ -36,6 +44,19 @@ struct octreeParameter_t
 	int						nLevels;
 	int						maxLevel;
 };
+
+struct exploredCube_t
+{
+	unsigned int			iso;
+	eqMivt::index_node_t	id;
+	unsigned int * result;
+};
+
+lunchbox::Condition			queueCondEmpty;
+lunchbox::Condition			queueCondFull;
+unsigned	*				memoryExplored;			
+std::queue<exploredCube_t>	exploredCubes;
+std::queue<unsigned int *>	freeExploredMemory;
 
 bool						disk;
 std::vector<std::string>	file_params;
@@ -52,6 +73,8 @@ vmml::vector<3, int> dimVolume;
 
 eqMivt::ControlCubeCPUCache cccCPU;
 eqMivt::ControlCubeCache ccc;
+
+int device = 0;
 
 double kernelTime = 0.0;
 double nKernels = 0;
@@ -168,7 +191,7 @@ bool parseConfigFile(std::string file_name)
 		{
 			std::cerr<<"Error parsing config file"<<std::endl;
 			std::cerr<<"X0 [Y0 Z0] X1 [ Y1 Z1 ] l iso1 iso2 iso3 ..."<<std::endl;
-			std::cerr<<"Please, if you provide Y0 and Z0, provide Y1 and Z1 as well."<<std::endl;
+			std::cerr<<"Start coordinate is not inside the volume"<<std::endl;
 			std::cerr<<line<<std::endl;
 			infile.close();
 			return false;
@@ -209,7 +232,7 @@ bool parseConfigFile(std::string file_name)
 		{
 			std::cerr<<"Error parsing config file"<<std::endl;
 			std::cerr<<"X0 [Y0 Z0] X1 [ Y1 Z1 ] l iso1 iso2 iso3 ..."<<std::endl;
-			std::cerr<<"Please, if you provide Y0 and Z0, provide Y1 and Z1 as well."<<std::endl;
+			std::cerr<<"Start coordinate is not inside the volume"<<std::endl;
 			std::cerr<<line<<std::endl;
 			infile.close();
 			return false;
@@ -246,25 +269,13 @@ bool parseConfigFile(std::string file_name)
 		float aux2 = aux - floorf(aux);
 		param.nLevels = aux2>0.0 ? aux+1 : aux;
 
-		float sizeD = 0.0f;
-		param.maxLevel = 0;
-		while(param.maxLevel != param.nLevels)
+		param.maxLevel = param.nLevels >= MAX_LEVEL ? MAX_LEVEL : param.nLevels;
+
+		if (param.nLevels < MIN_LEVEL)
 		{
-			sizeD =	param.end[0] > dimVolume[0] ? (dimVolume[0] - param.start[0])/exp2f(param.nLevels - param.maxLevel) : (param.end[0] - param.start[0])/exp2f(param.nLevels - param.maxLevel);
-			sizeD *= param.end[1] > dimVolume[1] ? (dimVolume[1] - param.start[1])/exp2f(param.nLevels - param.maxLevel) : (param.end[1] - param.start[1])/exp2f(param.nLevels - param.maxLevel);
-			sizeD *= param.end[2] > dimVolume[2] ? (dimVolume[2] - param.start[2])/exp2f(param.nLevels - param.maxLevel) : (param.end[2] - param.start[2])/exp2f(param.nLevels - param.maxLevel);
-			sizeD *= 0.5f; // Isosurface could be the half of the volume
-			sizeD *= sizeof(eqMivt::index_node_t);
-			sizeD /= 1024.0f;
-			sizeD /= 1024.0f;
-
-			if (sizeD <= MAX_DIMENSION)
-				param.maxLevel++;
-			else
-				break;
+			std::cerr<<"Volume size should be at least greater than 32 yours is: "<<exp2(param.nLevels)<<std::endl;
+			return false;
 		}
-
-
 
 		#ifndef NDEBUG
 		std::cout<<"Start "<<param.start<<std::endl;
@@ -407,60 +418,225 @@ bool checkParameters(const int argc, char ** argv)
 	}
 }
 
-void _checkCube_cuda(std::vector<eqMivt::octreeConstructor *> octrees, std::vector<float> isos, int nLevels, int nodeLevel, int dimNode, eqMivt::index_node_t idCube, int cubeLevel, int cubeDim, float * cube)
+class Worker : public lunchbox::Thread
 {
-	vmml::vector<3, int> coorCubeStart = eqMivt::getMinBoxIndex2(idCube, cubeLevel, nLevels);
-	vmml::vector<3, int> coorCubeFinish = coorCubeStart + (cubeDim - 2*CUBE_INC);
-	int coorCubeStartV[3] = {coorCubeStart.x() - CUBE_INC, coorCubeStart.y() - CUBE_INC, coorCubeStart.z() - CUBE_INC};
+	private:
+	eqMivt::octreeConstructor * _o;
+	eqMivt::index_node_t		_id;
+	unsigned int _lCPU;
+	unsigned int _l;
+	std::queue<exploredCube_t>	*	_queue;
+	lunchbox::Condition *			_cond;
 
-	eqMivt::index_node_t start = idCube << 3*(nodeLevel - cubeLevel); 
-	eqMivt::index_node_t finish = eqMivt::coordinateToIndex(coorCubeFinish - 1, nodeLevel, nLevels);
-
-	double freeMemory = octreeConstructorGetFreeMemory();
-	int inc = finish - start + 1;
-	int rest = inc / 10;
-
-	while(inc*sizeof(eqMivt::index_node_t) > freeMemory)
+	public:
+	void setParameters(eqMivt::octreeConstructor * o, eqMivt::index_node_t id, unsigned int lCPU, unsigned int l, std::queue<exploredCube_t>  *  queue, lunchbox::Condition *  cond)
 	{
-		inc = inc - rest;
+		_o = o;
+		_id = id;
+		_lCPU = lCPU;
+		_l = l;
+		_cond = cond;
+		_queue = queue;
 	}
 
-	eqMivt::index_node_t * resultCPU = new eqMivt::index_node_t[inc];
-	eqMivt::index_node_t * resultGPU = 0;
-	resultGPU = octreeConstructorCreateResult(inc);
-	if (resultGPU == 0)
+	virtual void run()
 	{
-		std::cerr<<"Error creating a structure in a cuda device"<<std::endl;
-		throw;
-	}
-
-	for(eqMivt::index_node_t id=start; id<=finish; id+=inc)
-	{
-		for(unsigned int i=0; i<octrees.size(); i++)
+		eqMivt::index_node_t idS = _id << (3*(_l - _lCPU));
+		eqMivt::index_node_t idE = (_id + 1) << (3*(_l - _lCPU));
+		for(eqMivt::index_node_t id=idS; id<idE; id++)
 		{
-			int num = (id + inc) > finish ? finish - id  + 1: inc;
-			octreeConstructorComputeCube(resultGPU, num, id, isos[i], cube, nodeLevel, nLevels, dimNode, cubeDim, coorCubeStartV);
+			_cond->lock();
+			if (_queue->empty())
+				_cond->wait();
 
-			bzero(resultCPU, inc*sizeof(eqMivt::index_node_t));
+			exploredCube_t cubeE = _queue->front();
+			_queue->pop();
+			_cond->unlock();
 
-			if (!octreeConstructorCopyResult(resultCPU, resultGPU, num))
-			{
-				std::cerr<<"Error copying structures from a cuda device"<<std::endl;
-				throw;
-			}
-			for(int j=0; j<num; j++)
-			{
-				if (resultCPU[j] != (eqMivt::index_node_t)0)
-				{
-					octrees[i]->addVoxel(resultCPU[j]);
-				}
-			}
+				
+			queueCondEmpty.lock();
+			freeExploredMemory.push(cubeE.result);
+
+			if (freeExploredMemory.size() == 1)
+				queueCondEmpty.signal();
+
+			queueCondEmpty.unlock();
 		}
 	}
 
-	delete[] resultCPU;
-	octreeConstructorDestroyResult(resultGPU);
-}
+};
+
+
+class MasterWorker : public lunchbox::Thread
+{
+	private:
+	std::vector<eqMivt::octreeConstructor *> _oc;
+	eqMivt::index_node_t		_id;
+	unsigned int _lCPU;
+	unsigned int _l;
+
+	public:
+	void setParameters(std::vector<eqMivt::octreeConstructor *> oc, eqMivt::index_node_t id, unsigned int lCPU, unsigned int l)
+	{
+		_oc = oc;
+		_id = id;
+		_lCPU = lCPU;
+		_l = l;
+	}
+
+	virtual void run()
+	{
+		eqMivt::index_node_t idS = _id << (3*(_l - _lCPU));
+		eqMivt::index_node_t idE = (_id + 1) << (3*(_l - _lCPU));
+		int dim = idE - idS; 
+		dim *= _oc.size();
+
+		lunchbox::Condition conds[_oc.size()];
+		std::queue<exploredCube_t> queues[_oc.size()];
+		Worker workers[_oc.size()];
+
+		for(unsigned int i=0; i<_oc.size(); i++)
+		{
+			workers[i].setParameters(_oc[i], _id, _lCPU, _l, &queues[i], &conds[i]);
+			workers[i].start();
+		}
+
+		for(int i=0; i<dim; i++)
+		{
+			queueCondFull.lock();
+			if (exploredCubes.empty())
+				queueCondFull.wait();
+
+			exploredCube_t cubeE = exploredCubes.front();
+			exploredCubes.pop();
+			//std::cout<<"MasterWorker: worker thread "<<cubeE.iso<<" "<<cubeE.id<<" done"<<std::endl;
+			queueCondFull.unlock();
+
+			// INSERT IN WORKER
+			conds[cubeE.iso].lock();
+
+			queues[cubeE.iso].push(cubeE);
+			if (queues[cubeE.iso].size() == 1)
+				conds[cubeE.iso].signal();
+
+			conds[cubeE.iso].unlock();
+			// END INSERT IN WORKER
+		}
+
+		for(unsigned int i=0; i<_oc.size(); i++)
+			workers[i].join();
+	}
+
+};
+
+
+class Extractor : public lunchbox::Thread
+{
+	private:
+	eqMivt::index_node_t _id;
+	octreeParameter_t _p;
+	unsigned int _lCPU;
+	unsigned int _l;
+
+	public:
+	void setParameters( unsigned int lCPU, unsigned int l, octreeParameter_t p, eqMivt::index_node_t id)
+	{
+		_id = id;
+		_p = p;
+		_lCPU = lCPU;
+		_l = l;
+	}
+
+	virtual void run()
+	{
+		if (cudaSuccess != cudaSetDevice(device))
+		{
+			std::cerr<<"Error setting device "<<device<<" : "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+			throw;
+		}
+		eqMivt::index_node_t idS = _id << (3*(_l - _lCPU));
+		eqMivt::index_node_t idE = (_id + 1) << (3*(_l - _lCPU));
+
+		unsigned int dimD = (pow(exp2(_p.nLevels - _l),3) / 32)*sizeof(unsigned int);
+		unsigned int dim = pow(exp2(_p.nLevels - _l),3);
+		unsigned int * result = 0;
+		if (cudaSuccess != cudaMalloc((void**)&result, dimD))
+		{
+			std::cerr<<"Error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+			throw;
+		}
+
+		//std::cout<<idS<<" "<<idE<<std::endl;
+
+		#ifdef TIMING
+		lunchbox::Clock clock;
+		#endif
+
+		for(eqMivt::index_node_t id=idS; id<idE; id++)
+		{
+			float * cube = 0;
+
+			do
+			{
+				cube = ccc.getAndBlockElement(id);
+			}
+			while(cube == 0);
+
+			for(unsigned int i=0; i<_p.isos.size(); i++)
+			{
+				queueCondEmpty.lock();
+				if (freeExploredMemory.empty())
+					queueCondEmpty.wait();
+
+				exploredCube_t cubeE;
+				cubeE.id = id;
+				cubeE.iso = i;
+				cubeE.result = freeExploredMemory.front();
+				freeExploredMemory.pop();
+				queueCondEmpty.unlock();
+
+				#ifdef TIMING
+				clock.reset();
+				#endif
+
+				if (cudaSuccess != cudaMemset((void*)result, 0, dimD))
+				{
+					std::cerr<<"Error int memory "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+				}
+
+				// WORK
+				eqMivt::extracIsosurface(dim, _l, _p.nLevels, _p.isos[i], id, result, cube);
+
+				if (cudaSuccess != cudaMemcpy((void*)cubeE.result, (void*)result, dimD, cudaMemcpyDeviceToHost))
+				{
+					std::cerr<<"Error updateing cpu memory "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+				}
+				#ifdef TIMING
+				kernelTime += clock.getTimed() / 1000.0;
+				nKernels += 1.0;
+				#endif
+
+				queueCondFull.lock();
+				exploredCubes.push(cubeE);
+				if (exploredCubes.size() == 1)
+					queueCondFull.signal();
+				//std::cout<<"Extractor: worked thread "<<i<<" "<<id<<" done"<<std::endl;
+				queueCondFull.unlock();
+			}
+
+			ccc.unlockElement(id);
+		}
+
+			if (cudaSuccess != cudaFree((void*)result))
+			{
+				std::cerr<<"Error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+				throw;
+			}
+
+		}
+};
+
+
 
 bool createOctree(octreeParameter_t p)
 {
@@ -474,36 +650,15 @@ bool createOctree(octreeParameter_t p)
 
 	int dimV = exp2(p.nLevels); 
 	vmml::vector<3, int> sP, eP;
-	int dimNode = exp2(p.nLevels - p.maxLevel);
-	int cubeLevel = 0;
-	int cubeDim = dimV;
-
-	while(cubeDim > 64)
-	{
-		cubeLevel++;
-		cubeDim = exp2(p.nLevels - cubeLevel);
-	}
-
-	int levelCubeCPU = 0;
-	cubeDim = exp2(p.nLevels - p.maxLevel);
-
-	while(exp2(p.nLevels - levelCubeCPU) > 256)
-	{
-		levelCubeCPU++;
-	}
+	int cubeLevel = p.nLevels <= MIN_LEVEL ? 0 : p.nLevels - p.maxLevel > MIN_LEVEL ? p.maxLevel : p.nLevels - MIN_LEVEL;
+	int levelCubeCPU = p.nLevels < 8 ? 0 : p.nLevels - 8;
 
 	sP[0] = p.start.x() - CUBE_INC < 0 ? 0 : p.start.x() - CUBE_INC; 
 	sP[1] = p.start.y() - CUBE_INC < 0 ? 0 : p.start.y() - CUBE_INC; 
 	sP[2] = p.start.z() - CUBE_INC < 0 ? 0 : p.start.z() - CUBE_INC; 
-	#if 1
 	eP[0] = p.end.x() + CUBE_INC >= realDimVolume.x() ? realDimVolume.x() : p.end.x() + CUBE_INC;
 	eP[1] = p.end.y() + CUBE_INC >= realDimVolume.y() ? realDimVolume.y() : p.end.y() + CUBE_INC;
 	eP[2] = p.end.z() + CUBE_INC >= realDimVolume.z() ? realDimVolume.z() : p.end.z() + CUBE_INC;
-	#else
-	eP[0] = p.start.x() + dimV + CUBE_INC >= realDimVolume.x() ? realDimVolume.x() : p.start.x() + dimV + CUBE_INC;
-	eP[1] = p.start.y() + dimV + CUBE_INC >= realDimVolume.y() ? realDimVolume.y() : p.start.y() + dimV + CUBE_INC;
-	eP[2] = p.start.z() + dimV + CUBE_INC >= realDimVolume.z() ? realDimVolume.z() : p.start.z() + dimV + CUBE_INC;
-	#endif
 
 	#ifndef NDEBUG
 	std::cout<<"ReSize Plane Cache "<<sP<<" "<<eP<<std::endl;
@@ -522,41 +677,55 @@ bool createOctree(octreeParameter_t p)
 		return false;
 	}
 
-	float * cube = 0;
+	int dimCube = pow(exp2(p.nLevels - cubeLevel),3) / 32;
+	#ifndef NDEBUG
+	if (dimCube % 32 != 0)
+	{
+		std::cerr<<"Error, selecting cube level "<<std::endl;
+		throw;
+	}
+	#endif
+	memoryExplored = new unsigned int[dimCube*LIMIT_BUFFER];
+	for(int i=0; i<LIMIT_BUFFER; i++)
+		freeExploredMemory.push(memoryExplored + i*dimCube);
 
-	eqMivt::index_node_t idS = eqMivt::coordinateToIndex(vmml::vector<3,int>(0,0,0), cubeLevel, p.nLevels);
-	eqMivt::index_node_t idE = eqMivt::coordinateToIndex(vmml::vector<3,int>(dimV-1,dimV-1,dimV-1), cubeLevel, p.nLevels);
+	eqMivt::index_node_t idS = eqMivt::coordinateToIndex(vmml::vector<3,int>(0,0,0), levelCubeCPU, p.nLevels);
+	eqMivt::index_node_t idE = eqMivt::coordinateToIndex(vmml::vector<3,int>(dimV-1,dimV-1,dimV-1), levelCubeCPU, p.nLevels);
 
 	#ifndef DISK_TIMING 
 		boost::progress_display show_progress(idE-idS+1);
 	#endif
 
+	//std::cout<<"From "<<idS<<" to "<<idE<<std::endl;
+
 	lunchbox::Clock clock;
 
 	for(eqMivt::index_node_t id = idS; id<=idE; id++)
 	{
-		vmml::vector<3,int> c = eqMivt::getMinBoxIndex2(id, ccc.getCubeLevel(), p.nLevels) + p.start;
-		if (//c.x() < realDimVolume.x() || c.y() < realDimVolume.y() || c.z() < realDimVolume.z() ||
-			c.x() < p.end.x() || c.y() < p.end.y() || c.z() < p.end.z())
-		{
-			cube = 0;
-			do
-			{
-				cube = ccc.getAndBlockElement(id);
-			}
-			while(cube == 0);
 
-			clock.reset();
-			_checkCube_cuda(oc, p.isos, p.nLevels, p.maxLevel, dimNode, id, ccc.getCubeLevel(), ccc.getDimCube(), cube);
-			kernelTime += clock.getTimed()/1000.0;
-			nKernels+=1.0;
+		MasterWorker masterW;
+		masterW.setParameters(oc, id, levelCubeCPU, cubeLevel);
+		masterW.start();
 
-			ccc.unlockElement(id);
-		}
+		Extractor extractor;
+		extractor.setParameters(levelCubeCPU, cubeLevel, p, id);
+		extractor.start();
+	
+		masterW.join();
+
+		extractor.join();
+
 		#ifndef DISK_TIMING 
 			++show_progress;
 		#endif
 	}
+
+
+	delete[] memoryExplored;
+	std::queue<exploredCube_t> emptyQ1;
+	std::queue<unsigned int *> emptyQ2;
+	std::swap(exploredCubes, emptyQ1);
+	std::swap(freeExploredMemory, emptyQ2);
 
 	return true;
 }
@@ -574,7 +743,9 @@ int main( const int argc, char ** argv)
 		return 0;
 	}
 
-	if (!ccc.initParameter(&cccCPU, eqMivt::getBestDevice()))
+	device = eqMivt::getBestDevice();
+
+	if (!ccc.initParameter(&cccCPU, device))
 	{
 		std::cerr<<"Error init control cube cache"<<std::endl;
 	}

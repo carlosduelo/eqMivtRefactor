@@ -99,6 +99,10 @@ void ControlCubeCache::_reSizeCache()
 
 	_sizeElement = pow(_dimCube, 3); 
 
+	int dimV = exp2(_nLevels);
+	_minValue = coordinateToIndex(vmml::vector<3,int>(0,0,0), _levelCube, _nLevels);
+	_maxValue = coordinateToIndex(vmml::vector<3,int>(dimV-1,dimV-1,dimV-1), _levelCube, _nLevels);
+
 	if (cudaSuccess != cudaSetDevice(_device))
 	{
 		std::cerr<<"Control Cube Cache, error setting device: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
@@ -142,7 +146,7 @@ void ControlCubeCache::_reSizeCache()
 bool ControlCubeCache::_readElement(NodeLinkedList<index_node_t> * element)
 {
 	#ifndef NDEBUG
-	if (element->element > _maxNumCubes) 
+	if ((int)element->element > _maxNumCubes) 
 	{
 		std::cerr<<"Control Cube CPU Cache, try to write outside reserved memory"<<std::endl;
 		throw;
@@ -173,8 +177,9 @@ bool ControlCubeCache::_readElement(NodeLinkedList<index_node_t> * element)
 
 		if (cudaSuccess != cudaMemcpy3D(&myParms))
 		{
+			std::cout<<"---> "<<idCube<<" "<<_minValue<<" "<<_maxValue<<std::endl;
 			LBERROR<<"Control Cube Cache: error copying to a device: "<<cudaGetErrorString(cudaGetLastError()) <<" "<<cube<<" "<<pCube<<" "<<_sizeElement<<std::endl;
-			return false;
+			throw;
 		}
 
 		_cpuCache->unlockElement(idCubeCPU);

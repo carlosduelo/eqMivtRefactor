@@ -90,6 +90,10 @@ void ControlCubeCPUCache::_reSizeCache()
 
 	_sizeElement = pow(_dimCube, 3); 
 
+	int dimV = exp2(_nLevels);
+	_minValue = coordinateToIndex(vmml::vector<3,int>(0,0,0), _levelCube, _nLevels);
+	_maxValue = coordinateToIndex(vmml::vector<3,int>(dimV-1,dimV-1,dimV-1), _levelCube, _nLevels);
+
 	if (_memory == 0)
 	{
 		_memoryAviable = getMemorySize();
@@ -142,7 +146,7 @@ bool ControlCubeCPUCache::_readElement(NodeLinkedList<index_node_t> * element)
 					element->pendingPlanes.push_back(i);
 		}
 		#ifndef NDEBUG
-		if (element->element > _maxNumCubes) 
+		if ((int)element->element > _maxNumCubes) 
 		{
 			std::cerr<<"Control Cube CPU Cache, try to write outside reserved memory"<<std::endl;
 			throw;

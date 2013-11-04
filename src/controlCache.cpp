@@ -35,8 +35,6 @@ bool ControlCache::_initControlCache()
 
 bool ControlCache::stopWork()
 {
-	bool r = false;
-
 	if (Thread::isStopped())
 		return true;
 
@@ -50,7 +48,6 @@ bool ControlCache::stopWork()
 			_stateCond.unlock();
 		}
 		_notEnd = false;
-		r = true;
 	}
 	_operationCond.unlock();
 
