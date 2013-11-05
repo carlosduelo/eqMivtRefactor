@@ -28,6 +28,8 @@ class  ControlCubeCache : public ControlElementCache<index_node_t>
 		int		_nextnLevels;
 		int		_nextLevelCube;
 
+		vmml::vector<3, int> _maxC;
+
 		device_t _device;
 
 		ControlCubeCPUCache * _cpuCache;
@@ -51,6 +53,8 @@ class  ControlCubeCache : public ControlElementCache<index_node_t>
 		bool reSizeCacheAndContinue(int nLevels, int levelCube, vmml::vector<3, int> offset);
 
 		bool stopCache();
+
+		bool checkCubeInside(index_node_t id);
 
 		// NO SAFE CALLS
 		int		getCubeLevel() { return _levelCube; }

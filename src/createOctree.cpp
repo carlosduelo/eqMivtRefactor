@@ -29,12 +29,8 @@ Notes:
 #include <lunchbox/condition.h>
 #include <lunchbox/thread.h>
 
-#include <cuda_runtime.h>
-
 #define MAX_DIMENSION 1024.0f
 #define MIN_DIMENSION 128
-
-#define LIMIT_BUFFER 100
 
 struct octreeParameter_t
 {
@@ -44,19 +40,6 @@ struct octreeParameter_t
 	int						nLevels;
 	int						maxLevel;
 };
-
-struct exploredCube_t
-{
-	unsigned int			iso;
-	eqMivt::index_node_t	id;
-	unsigned int * result;
-};
-
-lunchbox::Condition			queueCondEmpty;
-lunchbox::Condition			queueCondFull;
-unsigned	*				memoryExplored;			
-std::queue<exploredCube_t>	exploredCubes;
-std::queue<unsigned int *>	freeExploredMemory;
 
 bool						disk;
 std::vector<std::string>	file_params;
@@ -269,7 +252,24 @@ bool parseConfigFile(std::string file_name)
 		float aux2 = aux - floorf(aux);
 		param.nLevels = aux2>0.0 ? aux+1 : aux;
 
-		param.maxLevel = param.nLevels >= MAX_LEVEL ? MAX_LEVEL : param.nLevels;
+		float sizeD = 0.0f;
+		param.maxLevel = 0;
+		while(param.maxLevel != param.nLevels)
+		{
+			sizeD =        param.end[0] > dimVolume[0] ? (dimVolume[0] - param.start[0])/exp2f(param.nLevels - param.maxLevel) : (param.end[0] - param.start[0])/exp2f(param.nLevels - param.maxLevel);
+			sizeD *= param.end[1] > dimVolume[1] ? (dimVolume[1] - param.start[1])/exp2f(param.nLevels - param.maxLevel) : (param.end[1] - param.start[1])/exp2f(param.nLevels - param.maxLevel);
+			sizeD *= param.end[2] > dimVolume[2] ? (dimVolume[2] - param.start[2])/exp2f(param.nLevels - param.maxLevel) : (param.end[2] - param.start[2])/exp2f(param.nLevels - param.maxLevel);
+			sizeD *= 0.5f; // Isosurface could be the half of the volume
+			sizeD *= sizeof(eqMivt::index_node_t);
+			sizeD /= 1024.0f;
+			sizeD /= 1024.0f;
+
+			if (sizeD <= MAX_DIMENSION)
+				param.maxLevel++;
+			else
+				break;
+		}
+
 
 		if (param.nLevels < MIN_LEVEL)
 		{
@@ -422,129 +422,21 @@ class Worker : public lunchbox::Thread
 {
 	private:
 	eqMivt::octreeConstructor * _o;
-	eqMivt::index_node_t		_id;
 	unsigned int _lCPU;
 	unsigned int _l;
-	std::queue<exploredCube_t>	*	_queue;
-	lunchbox::Condition *			_cond;
+	cudaStream_t stream;
 
 	public:
-	void setParameters(eqMivt::octreeConstructor * o, eqMivt::index_node_t id, unsigned int lCPU, unsigned int l, std::queue<exploredCube_t>  *  queue, lunchbox::Condition *  cond)
+	void setParameters(eqMivt::octreeConstructor * o, unsigned int lCPU, unsigned int l)
 	{
 		_o = o;
-		_id = id;
 		_lCPU = lCPU;
 		_l = l;
-		_cond = cond;
-		_queue = queue;
-	}
-
-	virtual void run()
-	{
-		eqMivt::index_node_t idS = _id << (3*(_l - _lCPU));
-		eqMivt::index_node_t idE = (_id + 1) << (3*(_l - _lCPU));
-		for(eqMivt::index_node_t id=idS; id<idE; id++)
+		if (cudaSuccess != cudaStreamCreate(&stream))
 		{
-			_cond->lock();
-			if (_queue->empty())
-				_cond->wait();
-
-			exploredCube_t cubeE = _queue->front();
-			_queue->pop();
-			_cond->unlock();
-
-				
-			queueCondEmpty.lock();
-			freeExploredMemory.push(cubeE.result);
-
-			if (freeExploredMemory.size() == 1)
-				queueCondEmpty.signal();
-
-			queueCondEmpty.unlock();
+			std::cerr<<"Error creating stream "<<device<<" : "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+			throw;
 		}
-	}
-
-};
-
-
-class MasterWorker : public lunchbox::Thread
-{
-	private:
-	std::vector<eqMivt::octreeConstructor *> _oc;
-	eqMivt::index_node_t		_id;
-	unsigned int _lCPU;
-	unsigned int _l;
-
-	public:
-	void setParameters(std::vector<eqMivt::octreeConstructor *> oc, eqMivt::index_node_t id, unsigned int lCPU, unsigned int l)
-	{
-		_oc = oc;
-		_id = id;
-		_lCPU = lCPU;
-		_l = l;
-	}
-
-	virtual void run()
-	{
-		eqMivt::index_node_t idS = _id << (3*(_l - _lCPU));
-		eqMivt::index_node_t idE = (_id + 1) << (3*(_l - _lCPU));
-		int dim = idE - idS; 
-		dim *= _oc.size();
-
-		lunchbox::Condition conds[_oc.size()];
-		std::queue<exploredCube_t> queues[_oc.size()];
-		Worker workers[_oc.size()];
-
-		for(unsigned int i=0; i<_oc.size(); i++)
-		{
-			workers[i].setParameters(_oc[i], _id, _lCPU, _l, &queues[i], &conds[i]);
-			workers[i].start();
-		}
-
-		for(int i=0; i<dim; i++)
-		{
-			queueCondFull.lock();
-			if (exploredCubes.empty())
-				queueCondFull.wait();
-
-			exploredCube_t cubeE = exploredCubes.front();
-			exploredCubes.pop();
-			//std::cout<<"MasterWorker: worker thread "<<cubeE.iso<<" "<<cubeE.id<<" done"<<std::endl;
-			queueCondFull.unlock();
-
-			// INSERT IN WORKER
-			conds[cubeE.iso].lock();
-
-			queues[cubeE.iso].push(cubeE);
-			if (queues[cubeE.iso].size() == 1)
-				conds[cubeE.iso].signal();
-
-			conds[cubeE.iso].unlock();
-			// END INSERT IN WORKER
-		}
-
-		for(unsigned int i=0; i<_oc.size(); i++)
-			workers[i].join();
-	}
-
-};
-
-
-class Extractor : public lunchbox::Thread
-{
-	private:
-	eqMivt::index_node_t _id;
-	octreeParameter_t _p;
-	unsigned int _lCPU;
-	unsigned int _l;
-
-	public:
-	void setParameters( unsigned int lCPU, unsigned int l, octreeParameter_t p, eqMivt::index_node_t id)
-	{
-		_id = id;
-		_p = p;
-		_lCPU = lCPU;
-		_l = l;
 	}
 
 	virtual void run()
@@ -554,89 +446,90 @@ class Extractor : public lunchbox::Thread
 			std::cerr<<"Error setting device "<<device<<" : "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 			throw;
 		}
-		eqMivt::index_node_t idS = _id << (3*(_l - _lCPU));
-		eqMivt::index_node_t idE = (_id + 1) << (3*(_l - _lCPU));
+		
+		int dimV = exp2(_o->getnLevels());
+		int dimC = pow(exp2(_o->getnLevels() - _l), 3); 
 
-		unsigned int dimD = (pow(exp2(_p.nLevels - _l),3) / 32)*sizeof(unsigned int);
-		unsigned int dim = pow(exp2(_p.nLevels - _l),3);
-		unsigned int * result = 0;
-		if (cudaSuccess != cudaMalloc((void**)&result, dimD))
+		eqMivt::index_node_t idS = eqMivt::coordinateToIndex(vmml::vector<3,int>(0,0,0), _l, _o->getnLevels());
+		eqMivt::index_node_t idE = eqMivt::coordinateToIndex(vmml::vector<3,int>(dimV-1,dimV-1,dimV-1), _l, _o->getnLevels());
+
+		unsigned char * resultGPU = 0;
+		unsigned char * resultCPU = new unsigned char[dimC];
+
+		if (cudaSuccess != cudaMalloc((void**)&resultGPU, dimC*sizeof(unsigned char)))
 		{
 			std::cerr<<"Error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 			throw;
 		}
 
-		//std::cout<<idS<<" "<<idE<<std::endl;
-
-		#ifdef TIMING
-		lunchbox::Clock clock;
-		#endif
-
-		for(eqMivt::index_node_t id=idS; id<idE; id++)
+		for(eqMivt::index_node_t id = idS; id<=idE; id++)
 		{
-			float * cube = 0;
-
-			do
+			if (ccc.checkCubeInside(id))
 			{
-				cube = ccc.getAndBlockElement(id);
-			}
-			while(cube == 0);
+				float * cube = 0;
 
-			for(unsigned int i=0; i<_p.isos.size(); i++)
-			{
-				queueCondEmpty.lock();
-				if (freeExploredMemory.empty())
-					queueCondEmpty.wait();
-
-				exploredCube_t cubeE;
-				cubeE.id = id;
-				cubeE.iso = i;
-				cubeE.result = freeExploredMemory.front();
-				freeExploredMemory.pop();
-				queueCondEmpty.unlock();
-
-				#ifdef TIMING
-				clock.reset();
-				#endif
-
-				if (cudaSuccess != cudaMemset((void*)result, 0, dimD))
+				do
 				{
-					std::cerr<<"Error int memory "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+					cube = ccc.getAndBlockElement(id);
+				}
+				while(cube == 0);
+
+				if (cudaSuccess != cudaMemsetAsync((void*)resultGPU, 0, dimC*sizeof(unsigned char), stream))
+				{
+					std::cerr<<"Error init memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+					throw;
 				}
 
-				// WORK
-				eqMivt::extracIsosurface(dim, _l, _p.nLevels, _p.isos[i], id, result, cube);
+				eqMivt::extracIsosurface(dimC, _l, _o->getnLevels(), _o->getIso(), id, resultGPU, cube, stream);
 
-				if (cudaSuccess != cudaMemcpy((void*)cubeE.result, (void*)result, dimD, cudaMemcpyDeviceToHost))
+				if (cudaSuccess != cudaMemcpyAsync((void*)resultCPU, (void*)resultGPU, dimC*sizeof(unsigned char), cudaMemcpyDeviceToHost, stream))
 				{
-					std::cerr<<"Error updateing cpu memory "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+					std::cerr<<"Error copying memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+					throw;
 				}
-				#ifdef TIMING
-				kernelTime += clock.getTimed() / 1000.0;
-				nKernels += 1.0;
-				#endif
 
-				queueCondFull.lock();
-				exploredCubes.push(cubeE);
-				if (exploredCubes.size() == 1)
-					queueCondFull.signal();
-				//std::cout<<"Extractor: worked thread "<<i<<" "<<id<<" done"<<std::endl;
-				queueCondFull.unlock();
+				if (cudaSuccess !=	cudaStreamSynchronize(stream))
+				{
+					std::cerr<<"Error sync stream "<<device<<" : "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+					throw;
+				}
+
+				eqMivt::index_node_t ids = id << (3*(_o->getMaxLevel() - _l));
+				eqMivt::index_node_t ide = (id+1) << (3*(_o->getMaxLevel() - _l));
+				int dim = pow(exp2(_o->getnLevels() - _o->getMaxLevel()), 3);
+				int index = 0;
+
+				for(eqMivt::index_node_t i=ids; i<ide; i++)
+				{
+					for(int j=0; j<dim; j++)
+					{
+						if (resultCPU[index + j] == (unsigned char) 1)
+						{
+							_o->addVoxel(i);
+							break;
+						}
+					}
+					index +=dim;
+				}
+				
+
+				ccc.unlockElement(id);
 			}
-
-			ccc.unlockElement(id);
 		}
 
-			if (cudaSuccess != cudaFree((void*)result))
-			{
-				std::cerr<<"Error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
-				throw;
-			}
-
+		if (cudaSuccess != cudaFree((void*)resultGPU))
+		{
+			std::cerr<<"Error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+			throw;
 		}
+		if (cudaSuccess != cudaStreamDestroy(stream))
+		{
+			std::cerr<<"Error destroy stream "<<device<<" : "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+			throw;
+		}
+	}
+
 };
-
-
 
 bool createOctree(octreeParameter_t p)
 {
@@ -677,55 +570,16 @@ bool createOctree(octreeParameter_t p)
 		return false;
 	}
 
-	int dimCube = pow(exp2(p.nLevels - cubeLevel),3) / 32;
-	#ifndef NDEBUG
-	if (dimCube % 32 != 0)
+	Worker workers[p.isos.size()];
+
+	for(unsigned int i=0; i<p.isos.size(); i++)
 	{
-		std::cerr<<"Error, selecting cube level "<<std::endl;
-		throw;
-	}
-	#endif
-	memoryExplored = new unsigned int[dimCube*LIMIT_BUFFER];
-	for(int i=0; i<LIMIT_BUFFER; i++)
-		freeExploredMemory.push(memoryExplored + i*dimCube);
-
-	eqMivt::index_node_t idS = eqMivt::coordinateToIndex(vmml::vector<3,int>(0,0,0), levelCubeCPU, p.nLevels);
-	eqMivt::index_node_t idE = eqMivt::coordinateToIndex(vmml::vector<3,int>(dimV-1,dimV-1,dimV-1), levelCubeCPU, p.nLevels);
-
-	#ifndef DISK_TIMING 
-		boost::progress_display show_progress(idE-idS+1);
-	#endif
-
-	//std::cout<<"From "<<idS<<" to "<<idE<<std::endl;
-
-	lunchbox::Clock clock;
-
-	for(eqMivt::index_node_t id = idS; id<=idE; id++)
-	{
-
-		MasterWorker masterW;
-		masterW.setParameters(oc, id, levelCubeCPU, cubeLevel);
-		masterW.start();
-
-		Extractor extractor;
-		extractor.setParameters(levelCubeCPU, cubeLevel, p, id);
-		extractor.start();
-	
-		masterW.join();
-
-		extractor.join();
-
-		#ifndef DISK_TIMING 
-			++show_progress;
-		#endif
+		workers[i].setParameters(oc[i], levelCubeCPU, cubeLevel);
+		workers[i].start();
 	}
 
-
-	delete[] memoryExplored;
-	std::queue<exploredCube_t> emptyQ1;
-	std::queue<unsigned int *> emptyQ2;
-	std::swap(exploredCubes, emptyQ1);
-	std::swap(freeExploredMemory, emptyQ2);
+	for(unsigned int i=0; i<p.isos.size(); i++)
+		workers[i].join();
 
 	return true;
 }

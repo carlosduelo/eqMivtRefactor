@@ -24,7 +24,7 @@ Notes:
 
 #define PROCESSING -1
 #define PROCESSED -2
-#define WAITING 200
+#define WAITING 201
 
 #define MAX_QUEUE 250
 
@@ -213,7 +213,7 @@ class  ControlElementCache : public ControlCache
 
 		virtual void _reSizeCache()
 		{
-			if (!_lruElement.reSize(_freeSlots))
+			if (_freeSlots == 0 || !_lruElement.reSize(_freeSlots))
 			{
 				std::cerr<<"Error resizing control element cache "<<_freeSlots <<" elements"<<std::endl;
 			}
@@ -263,7 +263,7 @@ class  ControlElementCache : public ControlCache
 		{
 			if (element < _minValue || element > _maxValue)
 			{
-				std::cerr<<"Try to get element out of range"<<std::endl;
+				std::cerr<<"Try to get element out of range "<<element<<" "<<_minValue<<" "<<_maxValue<<std::endl;
 				throw;
 			}
 

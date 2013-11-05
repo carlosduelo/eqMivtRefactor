@@ -44,28 +44,37 @@ __device__ bool cuda_checkIsosurface(int x, int y, int z, int dim, float * cube,
 	return false;
 }
 
-__global__ void cuda_extracIsosurface(unsigned int numElements, unsigned int cubeLevel, unsigned int nLevels, float iso, index_node_t idCube, unsigned int * result, float * cube)
+__global__ void cuda_extracIsosurface(unsigned int numElements, unsigned int cubeLevel, unsigned int nLevels, float iso, index_node_t idCube, unsigned char * result, float * cube)
 {
 	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
 
 	if (tid < numElements)
 	{
-		index_node_t id = idCube + tid;
-		int3 coord = getMinBoxIndex2(id, nLevels, nLevels);
-		int cubeDim = (nLevels - cubeLevel) * (nLevels - cubeLevel) + 2 * CUBE_INC;
+
+		int3 coorCubeStart = getMinBoxIndex2(idCube, cubeLevel, nLevels);
+
+		index_node_t id = (idCube << (3*(nLevels - cubeLevel))) + tid;
+		int3 coord = getMinBoxIndex2(id, nLevels, nLevels) + make_int3(CUBE_INC, CUBE_INC, CUBE_INC);
+		coord -= coorCubeStart;
+
+		int cubeDim = (1 << (nLevels - cubeLevel))  + 2 * CUBE_INC;
+
 		if ( cuda_checkIsosurface(coord.x, coord.y, coord.z, cubeDim, cube, iso))
 		{
-			unsigned int mask = 1 << (tid % 32);
-			atomicOr(&result[tid/32], mask);
+			result[tid] = (unsigned char)1;
+		}
+		else
+		{	
+			result[tid] = (unsigned char)0;
 		}
 	}
 }
 
-void extracIsosurface(unsigned int numElements, unsigned int cubeLevel, unsigned int nLevels, float iso, index_node_t idCube, unsigned int * result, float * cube)
+void extracIsosurface(unsigned int numElements, unsigned int cubeLevel, unsigned int nLevels, float iso, index_node_t idCube, unsigned char * result, float * cube, cudaStream_t stream)
 {
 	dim3 threads = getThreads(numElements);
 	dim3 blocks = getBlocks(numElements);
-	cuda_extracIsosurface<<<blocks, threads>>>(numElements, cubeLevel, nLevels, iso, idCube, result, cube);
+	cuda_extracIsosurface<<<blocks, threads, 0 , stream>>>(numElements, cubeLevel, nLevels, iso, idCube, result, cube);
 }
 
 }

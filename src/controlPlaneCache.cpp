@@ -45,6 +45,8 @@ bool ControlPlaneCache::_threadInit()
 
 void ControlPlaneCache::_threadStop()
 {
+	_freeCache();
+
 	if (_memory != 0)
 		if(cudaSuccess != cudaFreeHost((void*)_memory))
 		{

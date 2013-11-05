@@ -103,6 +103,17 @@ void ControlCubeCache::_reSizeCache()
 	_minValue = coordinateToIndex(vmml::vector<3,int>(0,0,0), _levelCube, _nLevels);
 	_maxValue = coordinateToIndex(vmml::vector<3,int>(dimV-1,dimV-1,dimV-1), _levelCube, _nLevels);
 
+	int dc = exp2(_nLevels - _levelCube);
+	vmml::vector<3,int> mn = _cpuCache->getMinCoord();
+	vmml::vector<3,int> mx = _cpuCache->getMaxCoord();
+	_maxC = mx - mn;
+	if ((mx.x() - mn.x()) % dc != 0)
+		_maxC[0] += dc;
+	if ((mx.y() - mn.y()) % dc != 0)
+		_maxC[1] += dc;
+	if ((mx.z() - mn.z()) % dc != 0)
+		_maxC[2] += dc;
+
 	if (cudaSuccess != cudaSetDevice(_device))
 	{
 		std::cerr<<"Control Cube Cache, error setting device: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
@@ -152,12 +163,21 @@ bool ControlCubeCache::_readElement(NodeLinkedList<index_node_t> * element)
 		throw;
 	}
 	#endif
-
 	index_node_t idCube = element->id;
-	index_node_t idCubeCPU = idCube >> 3*(_levelCube - _cpuCache->getCubeLevel()); 
-
-	float * pCube = _cpuCache->getAndBlockElement(idCubeCPU);
 	float * cube = (_memory + element->element*_sizeElement);
+
+	if (checkCubeInside(element->id))
+	{
+		if (cudaSuccess != cudaMemset((void*)cube, 0, _sizeElement*sizeof(float)))
+		{
+			std::cout<<"---> "<<idCube<<" "<<_minValue<<" "<<_maxValue<<std::endl;
+			LBERROR<<"Control Cube Cache: error copying to a device: "<<cudaGetErrorString(cudaGetLastError()) <<" "<<cube<<" "<<_sizeElement<<std::endl;
+			throw;
+		}
+	}
+
+	index_node_t idCubeCPU = idCube >> 3*(_levelCube - _cpuCache->getCubeLevel()); 
+	float * pCube = _cpuCache->getAndBlockElement(idCubeCPU);
 
 	if (pCube != 0)
 	{
@@ -203,6 +223,20 @@ bool ControlCubeCache::reSizeCacheAndContinue(int nLevels, int levelCube, vmml::
 	_nextLevelCube = levelCube;
 
 	return ControlElementCache::_reSizeCacheAndContinue();
+}
+
+bool ControlCubeCache::checkCubeInside(index_node_t id)
+{
+	vmml::vector<3,int> coordS = getMinBoxIndex2(id, _levelCube, _nLevels); 
+
+	if (coordS.x() >= _maxC.x() || 
+		coordS.y() >= _maxC.y() || 
+		coordS.z() >= _maxC.z())
+		{
+			return false;
+		}
+	
+	return true;
 }
 
 }

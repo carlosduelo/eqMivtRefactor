@@ -46,6 +46,8 @@ bool ControlCubeCPUCache::_threadInit()
 
 void ControlCubeCPUCache::_threadStop()
 {
+	_freeCache();
+
 	if (_memory != 0)
 		if(cudaSuccess != cudaFreeHost((void*)_memory))
 		{

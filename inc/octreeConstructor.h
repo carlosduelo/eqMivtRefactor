@@ -48,6 +48,10 @@ namespace eqMivt
 			
 			float getIso();
 
+			int getMaxLevel() { return _maxLevel; }
+
+			int getnLevels() { return _nLevels; }
+
 			int getSize();
 
 			void writeToFile(std::ofstream * file);
