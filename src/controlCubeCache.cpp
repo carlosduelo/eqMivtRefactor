@@ -166,7 +166,7 @@ bool ControlCubeCache::_readElement(NodeLinkedList<index_node_t> * element)
 	index_node_t idCube = element->id;
 	float * cube = (_memory + element->element*_sizeElement);
 
-	if (checkCubeInside(element->id))
+	if (!checkCubeInside(element->id))
 	{
 		if (cudaSuccess != cudaMemset((void*)cube, 0, _sizeElement*sizeof(float)))
 		{
@@ -174,6 +174,7 @@ bool ControlCubeCache::_readElement(NodeLinkedList<index_node_t> * element)
 			LBERROR<<"Control Cube Cache: error copying to a device: "<<cudaGetErrorString(cudaGetLastError()) <<" "<<cube<<" "<<_sizeElement<<std::endl;
 			throw;
 		}
+		return true;
 	}
 
 	index_node_t idCubeCPU = idCube >> 3*(_levelCube - _cpuCache->getCubeLevel()); 

@@ -59,9 +59,6 @@ eqMivt::ControlCubeCache ccc;
 
 int device = 0;
 
-double kernelTime = 0.0;
-double nKernels = 0;
-
 float toFloat(std::string  s)
 {
 	try
@@ -425,13 +422,15 @@ class Worker : public lunchbox::Thread
 	unsigned int _lCPU;
 	unsigned int _l;
 	cudaStream_t stream;
+	bool _showp;
 
 	public:
-	void setParameters(eqMivt::octreeConstructor * o, unsigned int lCPU, unsigned int l)
+	void setParameters(eqMivt::octreeConstructor * o, unsigned int lCPU, unsigned int l, bool showp)
 	{
 		_o = o;
 		_lCPU = lCPU;
 		_l = l;
+		_showp = showp;
 		if (cudaSuccess != cudaStreamCreate(&stream))
 		{
 			std::cerr<<"Error creating stream "<<device<<" : "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
@@ -441,6 +440,8 @@ class Worker : public lunchbox::Thread
 
 	virtual void run()
 	{
+		boost::progress_display * showP = 0;
+
 		if (cudaSuccess != cudaSetDevice(device))
 		{
 			std::cerr<<"Error setting device "<<device<<" : "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
@@ -450,8 +451,13 @@ class Worker : public lunchbox::Thread
 		int dimV = exp2(_o->getnLevels());
 		int dimC = pow(exp2(_o->getnLevels() - _l), 3); 
 
-		eqMivt::index_node_t idS = eqMivt::coordinateToIndex(vmml::vector<3,int>(0,0,0), _l, _o->getnLevels());
-		eqMivt::index_node_t idE = eqMivt::coordinateToIndex(vmml::vector<3,int>(dimV-1,dimV-1,dimV-1), _l, _o->getnLevels());
+		eqMivt::index_node_t idST = eqMivt::coordinateToIndex(vmml::vector<3,int>(0,0,0), _lCPU, _o->getnLevels());
+		eqMivt::index_node_t idET = eqMivt::coordinateToIndex(vmml::vector<3,int>(dimV-1,dimV-1,dimV-1), _lCPU, _o->getnLevels());
+
+		#ifndef DISK_TIMING 
+			if (_showp)
+				showP = new boost::progress_display(idET - idST + 1);
+		#endif
 
 		unsigned char * resultGPU = 0;
 		unsigned char * resultCPU = new unsigned char[dimC];
@@ -462,59 +468,69 @@ class Worker : public lunchbox::Thread
 			throw;
 		}
 
-		for(eqMivt::index_node_t id = idS; id<=idE; id++)
+		for(eqMivt::index_node_t idT = idST; idT<=idET; idT++)
 		{
-			if (ccc.checkCubeInside(id))
+			eqMivt::index_node_t idS = idT << (3*(_l - _lCPU)); 
+			eqMivt::index_node_t idE = (idT+1) << (3*(_l - _lCPU));
+
+			for(eqMivt::index_node_t id = idS; id<idE; id++)
 			{
-				float * cube = 0;
-
-				do
+				if (ccc.checkCubeInside(id))
 				{
-					cube = ccc.getAndBlockElement(id);
-				}
-				while(cube == 0);
+					float * cube = 0;
 
-				if (cudaSuccess != cudaMemsetAsync((void*)resultGPU, 0, dimC*sizeof(unsigned char), stream))
-				{
-					std::cerr<<"Error init memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
-					throw;
-				}
-
-				eqMivt::extracIsosurface(dimC, _l, _o->getnLevels(), _o->getIso(), id, resultGPU, cube, stream);
-
-				if (cudaSuccess != cudaMemcpyAsync((void*)resultCPU, (void*)resultGPU, dimC*sizeof(unsigned char), cudaMemcpyDeviceToHost, stream))
-				{
-					std::cerr<<"Error copying memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
-					throw;
-				}
-
-				if (cudaSuccess !=	cudaStreamSynchronize(stream))
-				{
-					std::cerr<<"Error sync stream "<<device<<" : "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
-					throw;
-				}
-
-				eqMivt::index_node_t ids = id << (3*(_o->getMaxLevel() - _l));
-				eqMivt::index_node_t ide = (id+1) << (3*(_o->getMaxLevel() - _l));
-				int dim = pow(exp2(_o->getnLevels() - _o->getMaxLevel()), 3);
-				int index = 0;
-
-				for(eqMivt::index_node_t i=ids; i<ide; i++)
-				{
-					for(int j=0; j<dim; j++)
+					do
 					{
-						if (resultCPU[index + j] == (unsigned char) 1)
-						{
-							_o->addVoxel(i);
-							break;
-						}
+						cube = ccc.getAndBlockElement(id);
 					}
-					index +=dim;
-				}
-				
+					while(cube == 0);
 
-				ccc.unlockElement(id);
+					if (cudaSuccess != cudaMemsetAsync((void*)resultGPU, 0, dimC*sizeof(unsigned char), stream))
+					{
+						std::cerr<<"Error init memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+						throw;
+					}
+
+					eqMivt::extracIsosurface(dimC, _l, _o->getnLevels(), _o->getIso(), id, resultGPU, cube, stream);
+
+					if (cudaSuccess != cudaMemcpyAsync((void*)resultCPU, (void*)resultGPU, dimC*sizeof(unsigned char), cudaMemcpyDeviceToHost, stream))
+					{
+						std::cerr<<"Error copying memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+						throw;
+					}
+
+					if (cudaSuccess !=	cudaStreamSynchronize(stream))
+					{
+						std::cerr<<"Error sync stream "<<device<<" : "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+						throw;
+					}
+
+					eqMivt::index_node_t ids = id << (3*(_o->getMaxLevel() - _l));
+					eqMivt::index_node_t ide = (id+1) << (3*(_o->getMaxLevel() - _l));
+					int dim = pow(exp2(_o->getnLevels() - _o->getMaxLevel()), 3);
+					int index = 0;
+
+					for(eqMivt::index_node_t i=ids; i<ide; i++)
+					{
+						for(int j=0; j<dim; j++)
+						{
+							if (resultCPU[index + j] == (unsigned char) 1)
+							{
+								_o->addVoxel(i);
+								break;
+							}
+						}
+						index +=dim;
+					}
+					
+
+					ccc.unlockElement(id);
+				}
 			}
+		#ifndef DISK_TIMING 
+			if (_showp)
+				++(*showP);
+		#endif
 		}
 
 		if (cudaSuccess != cudaFree((void*)resultGPU))
@@ -544,7 +560,7 @@ bool createOctree(octreeParameter_t p)
 	int dimV = exp2(p.nLevels); 
 	vmml::vector<3, int> sP, eP;
 	int cubeLevel = p.nLevels <= MIN_LEVEL ? 0 : p.nLevels - p.maxLevel > MIN_LEVEL ? p.maxLevel : p.nLevels - MIN_LEVEL;
-	int levelCubeCPU = p.nLevels < 8 ? 0 : p.nLevels - 8;
+	int levelCubeCPU = p.nLevels < 9 ? 0 : p.nLevels - 9;
 
 	sP[0] = p.start.x() - CUBE_INC < 0 ? 0 : p.start.x() - CUBE_INC; 
 	sP[1] = p.start.y() - CUBE_INC < 0 ? 0 : p.start.y() - CUBE_INC; 
@@ -572,9 +588,11 @@ bool createOctree(octreeParameter_t p)
 
 	Worker workers[p.isos.size()];
 
-	for(unsigned int i=0; i<p.isos.size(); i++)
+	workers[0].setParameters(oc[0], levelCubeCPU, cubeLevel, true);
+	workers[0].start();
+	for(unsigned int i=1; i<p.isos.size(); i++)
 	{
-		workers[i].setParameters(oc[i], levelCubeCPU, cubeLevel);
+		workers[i].setParameters(oc[i], levelCubeCPU, cubeLevel, false);
 		workers[i].start();
 	}
 
@@ -608,12 +626,9 @@ int main( const int argc, char ** argv)
 
 	for(std::vector<octreeParameter_t>::iterator it = octreeList.begin(); it!=octreeList.end(); it++)
 	{
-		kernelTime = 0.0;
-		nKernels = 0.0;
 		clock.reset();
 		createOctree(*it);
 		std::cout<<"Time to create octree: "<<clock.getTimed()/1000.0<<" seconds."<<std::endl;
-		std::cout<<"Accumulate kernel Time "<<kernelTime<<" seconds average kernel time "<<kernelTime/nKernels<<" seconds, kernels launched "<<nKernels<<std::endl;
 	}
 
 	ccc.stopCache();

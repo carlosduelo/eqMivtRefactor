@@ -83,10 +83,10 @@ struct octreePosition_t
 
 #define CUBE_INC 2
 #define MAX_LEVEL 10
-#define MIN_LEVEL 5
+#define MIN_LEVEL 7
 
-#define MEMORY_OCCUPANCY_PLANE_CACHE 0.2*0.8
-#define MEMORY_OCCUPANCY_CUBE_CACHE 0.2*0.8
+#define MEMORY_OCCUPANCY_PLANE_CACHE 0.4*0.8
+#define MEMORY_OCCUPANCY_CUBE_CACHE 0.6*0.8
 
 #define TO3V(v) (vmml::vector<3,float>((v.x()),(v.y()),(v.z())))
 }

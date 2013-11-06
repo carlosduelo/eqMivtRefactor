@@ -15,6 +15,7 @@ Notes:
 #include <iostream> 
 #include <algorithm>
 #include <queue>
+#include <set>
 
 #include <boost/unordered_map.hpp>
 
@@ -37,7 +38,7 @@ class  ControlElementCache : public ControlCache
 	private:
 		LinkedList<TYPE>										_lruElement;
 		boost::unordered_map<TYPE, NodeLinkedList<TYPE> * >		_currentElement;
-		std::queue<TYPE>										_pendingElement;
+		std::set<TYPE>											_pendingElement;
 		std::queue<NodeLinkedList<TYPE> *>						_readingElement;
 
 		lunchbox::Condition			_emptyPending;
@@ -75,7 +76,10 @@ class  ControlElementCache : public ControlCache
 				NodeLinkedList<TYPE> * element = _readingElement.front();
 				if (readElement(element))
 				{
-					element->refs = PROCESSED;
+					_fullSlots.lock();
+					element->refs = 0;
+					_fullSlots.unlock();
+
 					_readingElement.pop();
 				}
 			}
@@ -91,7 +95,7 @@ class  ControlElementCache : public ControlCache
 					}
 				}
 
-				TYPE element = _pendingElement.front();
+				TYPE element = *_pendingElement.begin();
 				_emptyPending.unlock();
 
 				_fullSlots.lock();
@@ -119,9 +123,6 @@ class  ControlElementCache : public ControlCache
 					if (it != _currentElement.end())
 						_currentElement.erase(it);	
 				
-					_freeSlots--;
-					_fullSlots.unlock();
-
 					#ifndef NDEBUG
 					if (c->refs != 0)
 					{
@@ -132,12 +133,20 @@ class  ControlElementCache : public ControlCache
 
 					c->id = element;
 					c->refs = PROCESSING;
-					if (!readElement(c))
-						_readingElement.push(c);
-					else
-						c->refs = PROCESSED;
+					_freeSlots--;
 
-					_fullSlots.lock();
+					_fullSlots.unlock();
+
+					if (!readElement(c))
+					{
+						_readingElement.push(c);
+						_fullSlots.lock();
+					}
+					else
+					{
+						_fullSlots.lock();
+						c->refs = 0;//PROCESSED;
+					}
 
 					_currentElement.insert(std::make_pair<index_node_t, NodeLinkedList<TYPE> *>(c->id, c));
 					_lruElement.moveToLastPosition(c);
@@ -146,7 +155,7 @@ class  ControlElementCache : public ControlCache
 
 					_emptyPending.lock();
 
-					_pendingElement.pop();
+					_pendingElement.erase(_pendingElement.begin());
 
 					_emptyPending.unlock();
 
@@ -158,7 +167,7 @@ class  ControlElementCache : public ControlCache
 
 					_emptyPending.lock();
 
-					_pendingElement.pop();
+					_pendingElement.erase(_pendingElement.begin());
 
 					_emptyPending.unlock();
 				}
@@ -171,9 +180,8 @@ class  ControlElementCache : public ControlCache
 		virtual bool _threadInit()
 		{
 			_currentElement.clear();
-			std::queue<TYPE> emptyQ;
+			_pendingElement.clear();
 			std::queue<NodeLinkedList<TYPE>*> emptyQN;
-			std::swap(_pendingElement, emptyQ);
 			std::swap(_readingElement, emptyQN);
 			_freeSlots = 0;
 			_memory = 0;
@@ -201,6 +209,7 @@ class  ControlElementCache : public ControlCache
 				std::cout<<"Average searching "<<_search/_searchN<<" seconds, operations "<<_searchN<<std::endl;
 				std::cout<<"Average inserting "<<_insert/_insertN<<" seconds, operations "<<_insertN<<std::endl;
 				std::cout<<"Average reading "<<_reading/_readingN<<" seconds, operations "<<_readingN<<std::endl;
+				std::cout<<"Bandwidth "<<(_sizeElement*_readingN/1024.0/1024.0)/_reading<<" MB/sec, operations "<<_readingN<<std::endl;
 				_searchN = 0.0;
 				_insertN = 0.0;
 				_readingN = 0.0;
@@ -218,9 +227,8 @@ class  ControlElementCache : public ControlCache
 				std::cerr<<"Error resizing control element cache "<<_freeSlots <<" elements"<<std::endl;
 			}
 			_currentElement.clear();
-			std::queue<TYPE> emptyQ;
+			_pendingElement.clear();
 			std::queue<NodeLinkedList<TYPE>*> emptyQN;
-			std::swap(_pendingElement, emptyQ);
 			std::swap(_readingElement, emptyQN);
 		}
 
@@ -284,15 +292,19 @@ class  ControlElementCache : public ControlCache
 			{
 				if (it->second->refs != PROCESSING)
 				{
+					#if 0
 					if (it->second->refs == 0)
 						_freeSlots--;
-					else if (it->second->refs == PROCESSED)
+					else 
+					#endif
+					if (it->second->refs == PROCESSED)
 						it->second->refs = 0;
 
 					it->second->refs += 1;
 					data = _memory + it->second->element*_sizeElement;
 				}
 
+				_lruElement.moveToLastPosition(it->second);
 				_fullSlots.unlock();
 			}
 			else
@@ -304,15 +316,11 @@ class  ControlElementCache : public ControlCache
 				_emptyPending.lock();
 				if (_pendingElement.size() <=  MAX_QUEUE)
 				{	
-					if (_pendingElement.size() == 0)
-					{
-						_pendingElement.push(element);
+					_pendingElement.insert(element);
+
+					if (_pendingElement.size() == 1)
 						_emptyPending.signal();
-					}
-					else if (_pendingElement.front() != element)
-					{
-						_pendingElement.push(element);
-					}
+
 			#ifdef TIMING
 			_insert += clock.getTimed()/1000.0;
 			_insertN += 1.0;

@@ -121,7 +121,7 @@ void testPerf(int nLevels, int levelCube, vmml::vector<3,int> offset)
 	std::cout<<"Subset volume "<<offset - vmml::vector<3,int>(CUBE_INC,CUBE_INC,CUBE_INC)<<" "<<offset+vmml::vector<3,int>(dimV+CUBE_INC, dimV+CUBE_INC,dimV+CUBE_INC)<<std::endl;
 	std::cout<<"ReSize Cube Cache nLevels "<<nLevels<<" level cube "<<levelCube<<" offset "<<offset<<std::endl;
 
-	if (!ccc.freeCacheAndPause() || !ccc.reSizeCacheAndContinue(offset, eP, nLevels, levelCube))
+	if (!ccc.freeCacheAndPause() || !ccc.reSizeCacheAndContinue(offset, eP, levelCube, nLevels))
 	{
 		std::cerr<<"Error, resizing cube cpu cache"<<std::endl;
 		return;
