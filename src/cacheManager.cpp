@@ -13,7 +13,7 @@ namespace eqMivt
 
 bool CacheManager::init(std::vector<std::string> parameters, float memoryOccupancy)
 {
-	return cpc.initParameter(parameters, memoryOccupancy);
+	return cccCPU.initParameter(parameters, memoryOccupancy);
 }
 
 void CacheManager::stop()
@@ -21,15 +21,15 @@ void CacheManager::stop()
 	boost::unordered_map<device_t, ControlCubeCache *>::iterator it = _cubeCaches.begin();
 	while(it != _cubeCaches.end())
 	{
-		it->second->stopWork();
+		it->second->stopCache();
 		delete it->second;
 		it++;
 	}
 	_cubeCaches.clear();
-	cpc.stopWork();
+	cccCPU.stopCache();
 }
 
-bool CacheManager::reSizeAndContinue(vmml::vector<3,int> min, vmml::vector<3,int> max, int nLevels, int levelCube, vmml::vector<3,int> offset)
+bool CacheManager::reSizeAndContinue(vmml::vector<3,int> min, vmml::vector<3,int> max, int nLevels, int levelCubeCPU, int levelCube, vmml::vector<3,int> offset)
 {
 	_min = min;
 	_max = max;
@@ -46,7 +46,7 @@ bool CacheManager::reSizeAndContinue(vmml::vector<3,int> min, vmml::vector<3,int
 			return false;
 		it++;
 	}
-	return cpc.reSizeCacheAndContinue(_min, _max);
+	return cccCPU.reSizeCacheAndContinue(_min, _max, levelCubeCPU, nLevels);
 }
 
 bool CacheManager::existsDevice(device_t device)
@@ -62,7 +62,7 @@ ControlCubeCache * CacheManager::getCubeCache(device_t device)
 		return it->second;
 
 	ControlCubeCache * c = new ControlCubeCache();
-	bool r =	c->initParameter(&cpc, device) &&
+	bool r =	c->initParameter(&cccCPU, device) &&
 				c->freeCacheAndPause() && 
 				c->reSizeCacheAndContinue(_nLevels, _levelCube, _offset);
 	
@@ -83,6 +83,6 @@ bool CacheManager::freeMemoryAndPause()
 			return false;
 		it++;
 	}
-	return cpc.freeCacheAndPause();
+	return cccCPU.freeCacheAndPause();
 }
 }

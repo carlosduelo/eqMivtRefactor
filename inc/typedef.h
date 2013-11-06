@@ -46,6 +46,7 @@ struct octreePosition_t
 	std::vector<int>		index;
 	std::vector<int>		maxHeight;
 	int						cubeLevel;
+	int						cubeLevelCPU;
 	int						rayCastingLevel;
 	int						nLevels;
 	int						maxLevel;
@@ -61,6 +62,7 @@ struct octreePosition_t
 		os<<"nLevels "<<o.nLevels<<std::endl;
 		os<<"maxLevel "<<o.maxLevel<<std::endl;
 		os<<"Cube Level "<<o.cubeLevel<<std::endl;
+		os<<"Cube Level CPU "<<o.cubeLevelCPU<<std::endl;
 		os<<"Ray casting level "<<o.rayCastingLevel<<std::endl;
 		return os;
 	}

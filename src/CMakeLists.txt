@@ -221,6 +221,7 @@ set(TEST_RAYCASTING_SOURCE
 	linkedList.cpp
 	cache.cpp
 	controlPlaneCache.cpp
+	controlCubeCPUCache.cpp
 	controlCubeCache.cpp
 	hdf5File.cpp
 	memoryCheck.cpp
@@ -236,9 +237,9 @@ set(TEST_RAYCASTING_CUDA_SOURCE
 
 set(LIBS_NEEDED_TEST_RAYCASTING ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES} freeimage) 
 
-#cuda_compile(TEST_RAYCASTING_CUDA_OBJECTS ${TEST_RAYCASTING_CUDA_SOURCE})
-#add_executable(testRayCasting ${TEST_RAYCASTING_SOURCE} ${TEST_RAYCASTING_CUDA_OBJECTS} testRayCasting.cpp) 
-#target_link_libraries(testRayCasting ${LIBS_NEEDED_TEST_RAYCASTING} )
+cuda_compile(TEST_RAYCASTING_CUDA_OBJECTS ${TEST_RAYCASTING_CUDA_SOURCE})
+add_executable(testRayCasting ${TEST_RAYCASTING_SOURCE} ${TEST_RAYCASTING_CUDA_OBJECTS} testRayCasting.cpp) 
+target_link_libraries(testRayCasting ${LIBS_NEEDED_TEST_RAYCASTING} )
 
 # TEST MULTITHREADING 
 set(TEST_MULTITHREADING_SOURCE

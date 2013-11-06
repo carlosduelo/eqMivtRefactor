@@ -170,7 +170,7 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 			if  (_cuda_RayAABB(origin, ray,  &tnear, &tfar, minBoxC, maxBoxC))
 			{
 				// To ray caster is needed bigger cube, so add cube inc
-				int3 minBoxD = getMinBoxIndex2(cube[tid].cubeID, levelC, nLevel) - make_int3(CUBE_INC, CUBE_INC, CUBE_INC);
+				int3 minBoxD = getMinBoxIndex2(cube[tid].id >> (3*(levelO - levelC)), levelC, nLevel) - make_int3(CUBE_INC, CUBE_INC, CUBE_INC);
 				int3 dimD;
 				dimD.x = (1 << (nLevel-levelC)) + 2*CUBE_INC;
 				dimD.y = (1 << (nLevel-levelC)) + 2*CUBE_INC;

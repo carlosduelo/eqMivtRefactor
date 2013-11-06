@@ -155,6 +155,13 @@ void OctreeContainer::_setBestCubeLevel()
 		float aux2 = aux - floorf(aux);
 		int nL = aux2>0.0 ? aux+1 : aux;
 
+		if (it->nLevels - 8 > 0)
+			nL = it->nLevels - 8;
+		if (nL <= 0)
+			nL = 0;
+
+		it->cubeLevelCPU = nL;
+
 		if (it->nLevels - 6 > 0)
 			nL = it->nLevels - 6;
 		if (nL <= 0)
@@ -294,6 +301,11 @@ int OctreeContainer::getmaxLevel()
 int	OctreeContainer::getCubeLevel()
 {
 	return _octrees[_currentPosition].cubeLevel;
+}
+
+int	OctreeContainer::getCubeLevelCPU()
+{
+	return _octrees[_currentPosition].cubeLevelCPU;
 }
 
 int OctreeContainer::getRayCastingLevel()

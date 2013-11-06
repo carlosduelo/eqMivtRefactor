@@ -52,6 +52,7 @@ class OctreeManager
 		int getnLevels() { return _oc.getnLevels(); }
 		int getmaxLevel() { return _oc.getmaxLevel();}
 		int	getCubeLevel() { return _oc.getCubeLevel(); }
+		int getCubeLevelCPU(){ return _oc.getCubeLevelCPU(); } 
 		int getRayCastingLevel(){ return _oc.getRayCastingLevel();}
 		int	getMaxHeight(){ return _oc.getMaxHeight(); }
 		int	getIsosurface(){ return _oc.getIsosurface(); }

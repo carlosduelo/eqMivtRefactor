@@ -29,7 +29,7 @@ bool ResourcesManager::start()
 		eP[1] = _oM.getEndCoord().y() + CUBE_INC >= realDimVolume.y() ? realDimVolume.y() : _oM.getEndCoord().y() + CUBE_INC;
 		eP[2] = _oM.getEndCoord().z() + CUBE_INC >= realDimVolume.z() ? realDimVolume.z() : _oM.getEndCoord().z() + CUBE_INC;
 
-		if (!_cM.freeMemoryAndPause() || !_cM.reSizeAndContinue(sP, eP, _oM.getnLevels(), _oM.getCubeLevel(), _oM.getStartCoord()))
+		if (!_cM.freeMemoryAndPause() || !_cM.reSizeAndContinue(sP, eP, _oM.getnLevels(), _oM.getCubeLevelCPU(), _oM.getCubeLevel(), _oM.getStartCoord()))
 		{
 			std::cerr<<"Error, resizing plane cache"<<std::endl;
 			return false;
@@ -103,7 +103,7 @@ bool ResourcesManager::loadNextPosition()
 		eP[1] = _oM.getEndCoord().y() + CUBE_INC >= realDimVolume.y() ? realDimVolume.y() : _oM.getEndCoord().y() + CUBE_INC;
 		eP[2] = _oM.getEndCoord().z() + CUBE_INC >= realDimVolume.z() ? realDimVolume.z() : _oM.getEndCoord().z() + CUBE_INC;
 
-		if (!_cM.reSizeAndContinue(sP, eP, _oM.getnLevels(), _oM.getCubeLevel(), _oM.getStartCoord()))
+		if (!_cM.reSizeAndContinue(sP, eP, _oM.getnLevels(), _oM.getCubeLevelCPU(), _oM.getCubeLevel(), _oM.getStartCoord()))
 		{
 			std::cerr<<"Error, resizing plane cache"<<std::endl;
 			return false;
@@ -129,7 +129,7 @@ bool ResourcesManager::loadPreviusPosition()
 		eP[1] = _oM.getEndCoord().y() + CUBE_INC >= realDimVolume.y() ? realDimVolume.y() : _oM.getEndCoord().y() + CUBE_INC;
 		eP[2] = _oM.getEndCoord().z() + CUBE_INC >= realDimVolume.z() ? realDimVolume.z() : _oM.getEndCoord().z() + CUBE_INC;
 
-		if (!_cM.reSizeAndContinue(sP, eP, _oM.getnLevels(), _oM.getCubeLevel(), _oM.getStartCoord()))
+		if (!_cM.reSizeAndContinue(sP, eP, _oM.getnLevels(), _oM.getCubeLevelCPU(), _oM.getCubeLevel(), _oM.getStartCoord()))
 		{
 			std::cerr<<"Error, resizing plane cache"<<std::endl;
 			return false;
@@ -155,7 +155,7 @@ bool ResourcesManager::loadNextIsosurface()
 		eP[1] = _oM.getEndCoord().y() + CUBE_INC >= realDimVolume.y() ? realDimVolume.y() : _oM.getEndCoord().y() + CUBE_INC;
 		eP[2] = _oM.getEndCoord().z() + CUBE_INC >= realDimVolume.z() ? realDimVolume.z() : _oM.getEndCoord().z() + CUBE_INC;
 
-		if (!_cM.reSizeAndContinue(sP, eP, _oM.getnLevels(), _oM.getCubeLevel(), _oM.getStartCoord()))
+		if (!_cM.reSizeAndContinue(sP, eP, _oM.getnLevels(), _oM.getCubeLevelCPU(), _oM.getCubeLevel(), _oM.getStartCoord()))
 		{
 			std::cerr<<"Error, resizing plane cache"<<std::endl;
 			return false;
@@ -181,7 +181,7 @@ bool ResourcesManager::loadPreviusIsosurface()
 		eP[1] = _oM.getEndCoord().y() + CUBE_INC >= realDimVolume.y() ? realDimVolume.y() : _oM.getEndCoord().y() + CUBE_INC;
 		eP[2] = _oM.getEndCoord().z() + CUBE_INC >= realDimVolume.z() ? realDimVolume.z() : _oM.getEndCoord().z() + CUBE_INC;
 
-		if (!_cM.reSizeAndContinue(sP, eP, _oM.getnLevels(), _oM.getCubeLevel(), _oM.getStartCoord()))
+		if (!_cM.reSizeAndContinue(sP, eP, _oM.getnLevels(), _oM.getCubeLevelCPU(), _oM.getCubeLevel(), _oM.getStartCoord()))
 		{
 			std::cerr<<"Error, resizing plane cache"<<std::endl;
 			return false;

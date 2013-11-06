@@ -75,6 +75,7 @@ class OctreeContainer
 		int getnLevels();
 		int getmaxLevel();
 		int	getCubeLevel();
+		int getCubeLevelCPU();
 		int getRayCastingLevel();
 		int	getMaxHeight();
 		float getIsosurface();

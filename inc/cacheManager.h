@@ -17,7 +17,7 @@ namespace eqMivt
 class CacheManager
 {
 	private:
-		ControlPlaneCache cpc;
+		ControlCubeCPUCache cccCPU;
 		boost::unordered_map<device_t, ControlCubeCache *> _cubeCaches;
 
 		int _nLevels;
@@ -37,7 +37,7 @@ class CacheManager
 
 		bool freeMemoryAndPause();
 
-		bool reSizeAndContinue(vmml::vector<3,int> min, vmml::vector<3,int> max, int nLevels, int levelCube, vmml::vector<3,int> offset);
+		bool reSizeAndContinue(vmml::vector<3,int> min, vmml::vector<3,int> max, int nLevels, int levelCubeCPU, int levelCube, vmml::vector<3,int> offset);
 
 };
 
