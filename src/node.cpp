@@ -93,5 +93,20 @@ namespace eqMivt
 	{
 		return _resourcesManager.getEndCoord();
 	}
+
+	vmml::vector<3, float> Node::getGridStartCoord()
+	{
+		return _resourcesManager.getGridStartCoord();
+	}
+
+	vmml::vector<3, float> Node::getGridEndCoord()
+	{
+		return _resourcesManager.getGridEndCoord();
+	}
+
+	vmml::vector<3, float> Node::getGridRealDimVolume()
+	{
+		return _resourcesManager.getGridRealDimVolume();
+	}
 }
 

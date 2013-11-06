@@ -40,10 +40,15 @@ bool test(bool cubes)
 		float tnear = 1.0f;
 		float fov = 30;
 		
-		vmml::vector<3, int> startV = rM.getStartCoord();
-		vmml::vector<3, int> endV = rM.getEndCoord();
-		//vmml::vector<4, float> origin(36 , 38, 2, 1.0f);
-		vmml::vector<4, float> origin(startV.x() + ((endV.x()-startV.x())/3.0f), rM.getMaxHeight(), 1.1f*endV.z(), 1.0f);
+		vmml::vector<3, float> startV = rM.getGridStartCoord();
+		vmml::vector<3, float> endV = rM.getGridEndCoord();
+	
+		float xp = (endV.x() - startV.x())/2.0f;
+		float xy = (endV.y() - startV.y())/2.0f;
+		float dZ = xp/tan(fov*M_PI/180);
+
+
+		vmml::vector<4, float> origin(startV.x() + xp, xy, endV.z() + dZ, 1.0f);
 		vmml::vector<4, float> up(0.0f, 1.0f, 0.0f, 0.0f);
 		vmml::vector<4, float> right(1.0f, 0.0f, 0.0f, 0.0f);
 		float ft = tan(fov*M_PI/180);

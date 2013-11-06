@@ -33,6 +33,9 @@ namespace eqMivt
 			vmml::vector<3, float>    getStartCoord();
 			vmml::vector<3, float>    getFinishCoord();
 			vmml::vector<3, float>    getVolumeCoord();
+			vmml::vector<3, float> getGridStartCoord();
+			vmml::vector<3, float> getGridEndCoord();
+			vmml::vector<3, float> getGridRealDimVolume();
 
 			bool updateRender(Render * render);
 

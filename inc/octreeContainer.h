@@ -69,6 +69,10 @@ class OctreeContainer
 
 		int	getCurrentOctree();
 
+		vmml::vector<3, float> getGridStartCoord();
+		vmml::vector<3, float> getGridEndCoord();
+		vmml::vector<3, float> getGridRealDimVolume();
+
 		int getNumOctrees(){ return _numOctrees; }
 		vmml::vector<3, int> getStartCoord();
 		vmml::vector<3, int> getEndCoord();
@@ -78,6 +82,7 @@ class OctreeContainer
 		int getCubeLevelCPU();
 		int getRayCastingLevel();
 		int	getMaxHeight();
+		float getGridMaxHeight();
 		float getIsosurface();
 
 		index_node_t * getOctree() { return _octree; }

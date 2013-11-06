@@ -222,46 +222,4 @@ NodeLinkedList<index_node_t> * LinkedList<index_node_t>::getFirstFreePosition()
 	}
 	return list;
 }
-
-template<class T>
-NodeLinkedList<T> * LinkedList<T>::moveToLastPosition(NodeLinkedList<T> * node)
-{
-	if (list == last)
-	{
-		return list;
-	}
-	else if (node == list)
-	{
-		NodeLinkedList<T> * first = list;
-
-		list = first->after;
-		list->before = 0;
-		
-		first->after  = 0;
-		first->before = last;
-		
-		last->after = first;
-		
-		last = first;
-
-		return first;
-	}
-	else if (node == last)
-	{
-		return node;
-	}
-	else
-	{
-		node->before->after = node->after;
-		node->after->before = node->before;
-		
-		last->after = node;
-		
-		node->before = last;
-		node->after  = 0;
-		last = node;
-		
-		return node;
-	}
-}
 }

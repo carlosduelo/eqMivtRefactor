@@ -53,7 +53,11 @@ class ResourcesManager
 		vmml::vector<3, int> getRealDimVolume(){ return _oM.getRealDimVolume(); }
 		vmml::vector<3, int> getStartCoord(){ return _oM.getStartCoord(); }
 		vmml::vector<3, int> getEndCoord() { return _oM.getEndCoord(); }
+		vmml::vector<3, float> getGridStartCoord(){return _oM.getGridStartCoord();}
+		vmml::vector<3, float> getGridEndCoord(){return _oM.getGridEndCoord();}
+		vmml::vector<3, float> getGridRealDimVolume(){return _oM.getGridRealDimVolume();}
 		int	getMaxHeight(){ return _oM.getMaxHeight(); }
+		float getGridMaxHeight(){ return _oM.getGridMaxHeight(); }
 
 		bool updateRender(Render * render);
 

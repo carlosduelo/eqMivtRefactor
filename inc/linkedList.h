@@ -82,7 +82,47 @@ class LinkedList
 		/* pop_front and push_last */
 		NodeLinkedList<T> * 	getFirstFreePosition();
 
-		NodeLinkedList<T> * 	moveToLastPosition(NodeLinkedList<T> * node);	
+
+		NodeLinkedList<T> * moveToLastPosition(NodeLinkedList<T> * node)
+		{
+			if (list == last)
+			{
+				return list;
+			}
+			else if (node == list)
+			{
+				NodeLinkedList<T> * first = list;
+
+				list = first->after;
+				list->before = 0;
+				
+				first->after  = 0;
+				first->before = last;
+				
+				last->after = first;
+				
+				last = first;
+
+				return first;
+			}
+			else if (node == last)
+			{
+				return node;
+			}
+			else
+			{
+				node->before->after = node->after;
+				node->after->before = node->before;
+				
+				last->after = node;
+				
+				node->before = last;
+				node->after  = 0;
+				last = node;
+				
+				return node;
+			}
+		}
 };
 }
 #endif /*EQ_MIVT_LINKED_LIST_H*/

@@ -67,7 +67,7 @@ bool Render::_drawCubes(	vmml::vector<4, float> origin, vmml::vector<4, float> L
 		rayCasterCubes(	VectorToFloat3(origin), VectorToFloat3(LB), VectorToFloat3(up), VectorToFloat3(right),
 						w, h, _pvpW, _pvpH, _vC.getSizeGPU(), _octree->getmaxLevel(), _octree->getnLevels(),
 						_vC.getVisibleCubesGPU(), _vC.getIndexVisibleCubesGPU(), 
-						_octree->getMaxHeight(), _pixelBuffer, _octree->getxGrid(), _octree->getyGrid(), _octree->getzGrid(),
+						_octree->getGridMaxHeight(), _pixelBuffer, _octree->getxGrid(), _octree->getyGrid(), _octree->getzGrid(),
 						VectorToInt3(_octree->getRealDim()), _colors.r, _colors.g, _colors.b, 0);
 
 		return true;
@@ -128,7 +128,7 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 						w, h, _pvpW, _pvpH, _vC.getSizeGPU(), _octree->getRayCastingLevel(), 
 						_octree->getCubeLevel(), _octree->getnLevels(), _octree->getIsosurface(),
 						_vC.getVisibleCubesGPU(), _vC.getIndexVisibleCubesGPU(), 
-						_octree->getMaxHeight(), _pixelBuffer, _octree->getxGrid(), _octree->getyGrid(), _octree->getzGrid(),
+						_octree->getGridMaxHeight(), _pixelBuffer, _octree->getxGrid(), _octree->getyGrid(), _octree->getzGrid(),
 						VectorToInt3(_octree->getRealDim()), _colors.r, _colors.g, _colors.b, 0);
 
 		_vC.updateCPU();

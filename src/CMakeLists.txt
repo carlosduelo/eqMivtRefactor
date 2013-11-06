@@ -7,7 +7,7 @@
 	add_definitions(-DTIMING)
 
 # SETTING CUDA PARAMETERS
-list(APPEND CUDA_NVCC_FLAGS -arch=sm_13)
+list(APPEND CUDA_NVCC_FLAGS -arch=sm_21)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 #	list(APPEND CUDA_NVCC_FLAGS -G)
@@ -35,6 +35,7 @@ set(MIVT_SOURCE
 	linkedList.cpp
 	cache.cpp
 	controlPlaneCache.cpp
+	controlCubeCPUCache.cpp
 	controlCubeCache.cpp
 	hdf5File.cpp
 	memoryCheck.cpp
@@ -62,9 +63,9 @@ set(MIVT_CUDA_SOURCE
 
 set(LIBS_NEEDED_MIVT ${EQUALIZER_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES} ${Boost_LIBRARIES} ) 
 
-#cuda_compile(MIVT_CUDA_OBJECTS ${MIVT_CUDA_SOURCE})
-#add_executable(mivt ${MIVT_SOURCE} ${MIVT_CUDA_OBJECTS} main.cpp) 
-#target_link_libraries(mivt ${LIBS_NEEDED_MIVT} )
+cuda_compile(MIVT_CUDA_OBJECTS ${MIVT_CUDA_SOURCE})
+add_executable(mivt ${MIVT_SOURCE} ${MIVT_CUDA_OBJECTS} main.cpp) 
+target_link_libraries(mivt ${LIBS_NEEDED_MIVT} )
 
 # CREATE OCTREE 
 set(CREATE_OCTREE_SOURCE

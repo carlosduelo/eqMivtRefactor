@@ -278,6 +278,30 @@ bool OctreeContainer::loadPreviusIsosurface()
 	return true;
 }
 
+vmml::vector<3, float> OctreeContainer::getGridStartCoord()
+{
+	return vmml::vector<3, float>(
+				_xGrid[CUBE_INC + _octrees[_currentPosition].start.x()],
+				_yGrid[CUBE_INC + _octrees[_currentPosition].start.y()],
+				_zGrid[CUBE_INC + _octrees[_currentPosition].start.z()]);
+}
+
+vmml::vector<3, float> OctreeContainer::getGridEndCoord()
+{
+	return vmml::vector<3, float>(
+				_xGrid[CUBE_INC + _octrees[_currentPosition].end.x()],
+				_yGrid[CUBE_INC + _octrees[_currentPosition].end.y()],
+				_zGrid[CUBE_INC + _octrees[_currentPosition].end.z()]);
+}
+
+vmml::vector<3, float> OctreeContainer::getGridRealDimVolume()
+{
+	return vmml::vector<3, float>(
+				_xGrid[CUBE_INC + _realDimVolume.x()],
+				_yGrid[CUBE_INC + _realDimVolume.y()],
+				_zGrid[CUBE_INC + _realDimVolume.z()]);
+}
+
 vmml::vector<3, int> OctreeContainer::getStartCoord()
 {
 	return _octrees[_currentPosition].start;
@@ -321,6 +345,11 @@ int	OctreeContainer::getCurrentOctree()
 int	OctreeContainer::getMaxHeight()
 {	
 	return _octrees[_currentPosition].maxHeight[_currentIsosurface];
+}
+
+float OctreeContainer::getGridMaxHeight()
+{
+	return _yGrid[CUBE_INC + _octrees[_currentPosition].maxHeight[_currentIsosurface]];
 }
 
 float OctreeContainer::getIsosurface()

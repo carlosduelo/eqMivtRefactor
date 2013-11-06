@@ -737,8 +737,8 @@ void Channel::_drawCube()
 	eq::Matrix4f viewM = frameData.getInvViewMatrix(); 
 	glMultMatrixf( viewM );
 
-	_drawBox(node->getStartCoord(), node->getFinishCoord());
-	_drawBox(vmml::vector<3, float>(0,0,0), node->getVolumeCoord());
+	_drawBox(node->getGridStartCoord(), node->getGridEndCoord());
+	_drawBox(vmml::vector<3, float>(0,0,0), node->getGridRealDimVolume());
 
 	glMatrixMode( GL_PROJECTION );
 	glPopMatrix();
