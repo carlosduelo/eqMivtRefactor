@@ -10,6 +10,7 @@ Notes:
 #include <octree_cuda.h>
 #include <visibleCubes.h>
 #include <cuda_help.h>
+#include <textures.h>
 
 #include <FreeImage.h>
 
@@ -22,6 +23,12 @@ int main(int argc, char ** argv)
 	eqMivt::OctreeContainer oC;
 	eqMivt::Octree o;
 	eqMivt::VisibleCubes vc;
+
+	if (!eqMivt::initTextures())
+	{
+		std::cerr<<"Error init textures"<<std::endl;
+		return 0;
+	}
 
 	if (!oC.init(argv[1]))
 	{
@@ -87,6 +94,13 @@ int main(int argc, char ** argv)
 		right.normalize();
 		up.normalize();
 
+		/* BIND TEXTURES */
+		if (!eqMivt::bindTextures(o.getxGrid(), o.getyGrid(), o.getzGrid(), VectorToInt3(o.getRealDim())))
+		{
+			std::cerr<<"Error Binding textures"<<std::endl;
+			return 0;
+		}
+
 		/* LAUNG OCTREE */
 		vc.reSize(numPixels);
 		vc.init();
@@ -94,10 +108,17 @@ int main(int argc, char ** argv)
 										VectorToFloat3(origin), VectorToFloat3(LB), VectorToFloat3(up), VectorToFloat3(right),
 										w, h, pvpW, pvpH, o.getmaxLevel(), vc.getSizeGPU(),
 										vc.getVisibleCubesGPU(), vc.getIndexVisibleCubesGPU(),
-										o.getxGrid(), o.getyGrid(), o.getzGrid(), VectorToInt3(o.getRealDim()), 0);
+										VectorToInt3(o.getRealDim()), 0);
 
 		vc.updateCPU();
 		/* LAUNCH OCTREE */
+
+		/* UNBIND TEXTURES */
+		if (!eqMivt::unBindTextures())
+		{
+			std::cerr<<"Error Binding textures"<<std::endl;
+			return 0;
+		}
 
 		std::cout<<"No hit: "<<vc.getNumElements(NOCUBE)<<" hit: "<<vc.getNumElements(CUBE)<<std::endl;
 

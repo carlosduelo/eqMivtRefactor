@@ -16,9 +16,10 @@ Notes:
 
 namespace eqMivt
 {
-	void rayCaster(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, int levelO, int levelC, int nLevel, float iso, visibleCubeGPU_t cube, indexVisibleCubeGPU_t indexCube, float maxHeight, float * pixelBuffer, float * xGrid, float * yGrid, float * zGrid, int3 realDim, float * r, float * g, float * b, cudaStream_t stream);
 
-	void rayCasterCubes(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, int levelO, int nLevel, visibleCubeGPU_t cube, indexVisibleCubeGPU_t indexCube, float maxHeight, float * pixelBuffer, float * xGrid, float * yGrid, float * zGrid, int3 realDim, float * r, float * g, float * b, cudaStream_t stream);
+	void rayCaster(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, int levelO, int levelC, int nLevel, float iso, visibleCube_t * cube, int * indexCube, float maxHeight, float * pixelBuffer, int3 realDim, float * r, float * g, float * b, cudaStream_t stream);
+
+	void rayCasterCubes(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, int levelO, int nLevel, visibleCube_t * cube, int * indexCube, float maxHeight, float * pixelBuffer, int3 realDim, float * r, float * g, float * b, cudaStream_t stream);
 }
 
 #endif

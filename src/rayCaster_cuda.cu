@@ -1,5 +1,9 @@
 #include "rayCaster_cuda.h"
 
+#ifndef DEVICE_CODE
+#include <../src/textures.cu>
+#endif
+
 #include "mortonCodeUtil.h"
 #include "cuda_help.h"
 
@@ -12,20 +16,41 @@
 
 namespace eqMivt
 {
-inline __device__ float3 _cuda_BoxToCoordinates(int3 pos, float * xGrid, float * yGrid, float * zGrid, int3 realDim)
+
+#ifndef DEVICE_CODE
+inline __device__ float3 _cuda_BoxToCoordinates(int3 pos, int3 realDim)
 {
 	float3 r;
-	r.x = pos.x < -2 ? xGrid[-2] - 1.0f : pos.x > realDim.x + 1 ? xGrid[realDim.x+1] + 1.0f : xGrid[pos.x];
-	r.y = pos.y < -2 ? yGrid[-2] - 1.0f : pos.y > realDim.y + 1 ? yGrid[realDim.y+1] + 1.0f : yGrid[pos.y];
-	r.z = pos.z < -2 ? zGrid[-2] - 1.0f : pos.z > realDim.z + 1 ? zGrid[realDim.z+1] + 1.0f : zGrid[pos.z];
+	r.x = pos.x < -2 ? tex1Dfetch(xgrid, 0) - 1.0f : pos.x > realDim.x + 1 ? tex1Dfetch(xgrid, realDim.x+1) + 1.0f : tex1Dfetch(xgrid, pos.x);
+	r.y = pos.y < -2 ? tex1Dfetch(ygrid, 0) - 1.0f : pos.y > realDim.y + 1 ? tex1Dfetch(ygrid, realDim.y+1) + 1.0f : tex1Dfetch(ygrid, pos.y);
+	r.z = pos.z < -2 ? tex1Dfetch(zgrid, 0) - 1.0f : pos.z > realDim.z + 1 ? tex1Dfetch(zgrid, realDim.z+1) + 1.0f : tex1Dfetch(zgrid, pos.z);
 
 	return r;
 }
+#endif
 
-__device__ int _cuda_searchCoordinate(float x, int min, int max, float * grid, int realDim)
+inline __device__ int _cuda_searchCoordinateX(float x, int min, int max, int realDim)
 {
 	for(int i=min; i<max; i++)
-		if ((grid[i] <= x && x < grid[i+1]))
+		if (tex1Dfetch(xgrid,i) <= x && x < tex1Dfetch(xgrid, i+1))
+			return i;
+	
+	return -10;
+}
+
+inline __device__ int _cuda_searchCoordinateY(float x, int min, int max, int realDim)
+{
+	for(int i=min; i<max; i++)
+		if (tex1Dfetch(ygrid,i) <= x && x < tex1Dfetch(ygrid, i+1))
+			return i;
+	
+	return -10;
+}
+
+inline __device__ int _cuda_searchCoordinateZ(float x, int min, int max, int realDim)
+{
+	for(int i=min; i<max; i++)
+		if (tex1Dfetch(zgrid,i) <= x && x < tex1Dfetch(zgrid, i+1))
 			return i;
 	
 	return -10;
@@ -133,7 +158,7 @@ inline __device__ float3 getNormal(float3 pos, float * data, int3 minBox, int3 m
 				(getElementInterpolateGrid(make_float3(pos.x,pos.y,pos.z-1),data,minBox,maxBox) - getElementInterpolateGrid(make_float3(pos.x,pos.y,pos.z+1.0f),data,minBox,maxBox))        /2.0f));
 }
 
-__global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, float iso, visibleCube_t * cube, int * indexCube, int levelO, int levelC, int nLevel, float maxHeight, float * xGrid, float * yGrid, float * zGrid, int3 realDim, float * r, float * g, float * b, float * screen)
+__global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, float iso, visibleCube_t * cube, int * indexCube, int levelO, int levelC, int nLevel, float maxHeight, int3 realDim, float * r, float * g, float * b, float * screen)
 {
 	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -157,8 +182,8 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 			int3 minBox = getMinBoxIndex2(cube[tid].id, levelO, nLevel);
 			int dim = powf(2,nLevel-levelO);
 			int3 maxBox = minBox + make_int3(dim,dim,dim);
-			float3 minBoxC = _cuda_BoxToCoordinates(minBox, xGrid, yGrid, zGrid, realDim);
-			float3 maxBoxC = _cuda_BoxToCoordinates(maxBox, xGrid, yGrid, zGrid, realDim);
+			float3 minBoxC = _cuda_BoxToCoordinates(minBox, realDim);
+			float3 maxBoxC = _cuda_BoxToCoordinates(maxBox, realDim);
 
 			int i = tid % pvpW;
 			int j = tid / pvpW;
@@ -178,9 +203,9 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 
 				float3 Xnear = origin + tnear * ray;
 
-				int3 pos = make_int3(	_cuda_searchCoordinate(Xnear.x, minBox.x - 1, maxBox.x+1, xGrid, realDim.x),
-										_cuda_searchCoordinate(Xnear.y, minBox.y - 1, maxBox.y+1, yGrid, realDim.y),
-										_cuda_searchCoordinate(Xnear.z, minBox.z - 1, maxBox.z+1, zGrid, realDim.z));
+				int3 pos = make_int3(	_cuda_searchCoordinateX(Xnear.x, minBox.x - 1, maxBox.x+1, realDim.x),
+										_cuda_searchCoordinateY(Xnear.y, minBox.y - 1, maxBox.y+1, realDim.y),
+										_cuda_searchCoordinateZ(Xnear.z, minBox.z - 1, maxBox.z+1, realDim.z));
 	
 				bool hit = false;
 				float3 Xfar = Xnear;
@@ -196,9 +221,9 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 				{
 					if (pos.x >= 0 && pos.y >= 0 && pos.z >= 0 && pos.x < realDim.x-1 && pos.y < realDim.y-1 && pos.z < realDim.z-1)
 					{
-						float3 xyz = make_float3(	pos.x + ((Xnear.x-xGrid[pos.x])/(xGrid[pos.x+1]-xGrid[pos.x])),
-													pos.y + ((Xnear.y-yGrid[pos.y])/(yGrid[pos.y+1]-yGrid[pos.y])),
-													pos.z + ((Xnear.z-zGrid[pos.z])/(zGrid[pos.z+1]-zGrid[pos.z])));
+						float3 xyz = make_float3(	pos.x + ((Xnear.x - tex1Dfetch(xgrid, pos.x)) / (tex1Dfetch(xgrid, pos.x+1) - tex1Dfetch(xgrid, pos.x))),
+													pos.y + ((Xnear.y - tex1Dfetch(ygrid, pos.y)) / (tex1Dfetch(ygrid, pos.y+1) - tex1Dfetch(ygrid, pos.y))),
+													pos.z + ((Xnear.z - tex1Dfetch(zgrid, pos.z)) / (tex1Dfetch(zgrid, pos.z+1) - tex1Dfetch(zgrid, pos.z))));
 						
 						if (primera)
 						{
@@ -225,25 +250,33 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 					}
 
 					// Update Xnear
-					Xnear += ((fminf(fabs(xGrid[pos.x+1] -xGrid[pos.x]), fminf(fabs(yGrid[pos.y+1] -yGrid[pos.y]),fabs(zGrid[pos.z+1] -zGrid[pos.z])))) / 3.0f) * ray;
+					Xnear += ((fminf(fabs(tex1Dfetch(xgrid, pos.x+1) - tex1Dfetch(xgrid, pos.x)), fminf(fabs(tex1Dfetch(ygrid, pos.y+1) - tex1Dfetch(ygrid, pos.y)),fabs( tex1Dfetch(zgrid, pos.z+1) - tex1Dfetch(zgrid, pos.z))))) / 3.0f) * ray;
 
 					// Get new pos
-					while((minBox.x-2 <= pos.x && pos.x <= maxBox.x + 1) &&  !(xGrid[pos.x] <= Xnear.x && Xnear.x <xGrid[pos.x+1]))
+					while((minBox.x-2 <= pos.x && pos.x <= maxBox.x + 1) &&  !(tex1Dfetch(xgrid, pos.x) <= Xnear.x && Xnear.x < tex1Dfetch(xgrid, pos.x+1)))
 						pos.x = ray.x < 0 ? pos.x - 1 : pos.x +1;
-					while((minBox.y-2 <= pos.y && pos.y <= maxBox.y + 1) &&!(yGrid[pos.y] <= Xnear.y && Xnear.y <yGrid[pos.y+1]))
+					while((minBox.y-2 <= pos.y && pos.y <= maxBox.y + 1) &&!(tex1Dfetch(ygrid, pos.y) <= Xnear.y && Xnear.y < tex1Dfetch(ygrid, pos.y+1)))
 						pos.y = ray.y < 0 ? pos.y - 1 : pos.y +1;
-					while((minBox.z-2 <= pos.z && pos.z <= maxBox.z + 1) &&!(zGrid[pos.z] <= Xnear.z && Xnear.z <zGrid[pos.z+1]))
+					while((minBox.z-2 <= pos.z && pos.z <= maxBox.z + 1) &&!(tex1Dfetch(zgrid, pos.z) <= Xnear.z && Xnear.z < tex1Dfetch(zgrid, pos.z+1)))
 						pos.z = ray.z < 0 ? pos.z - 1 : pos.z +1;
 				}
 
 				if (hit)
 				{
-					pos = make_int3(	_cuda_searchCoordinate(Xnew.x, minBox.x - 1, maxBox.x+1, xGrid, realDim.x),
-										_cuda_searchCoordinate(Xnew.y, minBox.y - 1, maxBox.y+1, yGrid, realDim.y),
-										_cuda_searchCoordinate(Xnew.z, minBox.z - 1, maxBox.z+1, zGrid, realDim.z));
+					pos = make_int3(	_cuda_searchCoordinateX(Xnew.x, minBox.x - 1, maxBox.x+1, realDim.x),
+										_cuda_searchCoordinateY(Xnew.y, minBox.y - 1, maxBox.y+1, realDim.y),
+										_cuda_searchCoordinateZ(Xnew.z, minBox.z - 1, maxBox.z+1, realDim.z));
+
+					#if 1
+					float3 xyz = make_float3(	pos.x + ((Xnear.x - tex1Dfetch(xgrid, pos.x)) / (tex1Dfetch(xgrid, pos.x+1) - tex1Dfetch(xgrid, pos.x))),
+												pos.y + ((Xnear.y - tex1Dfetch(ygrid, pos.y)) / (tex1Dfetch(ygrid, pos.y+1) - tex1Dfetch(ygrid, pos.y))),
+												pos.z + ((Xnear.z - tex1Dfetch(zgrid, pos.z)) / (tex1Dfetch(zgrid, pos.z+1) - tex1Dfetch(zgrid, pos.z))));
+					#else
 					float3 xyz = make_float3(	pos.x + ((Xnew.x-xGrid[pos.x])/(xGrid[pos.x+1]-xGrid[pos.x])),
 												pos.y + ((Xnew.y-yGrid[pos.y])/(yGrid[pos.y+1]-yGrid[pos.y])),
 												pos.z + ((Xnew.z-zGrid[pos.z])/(zGrid[pos.z+1]-zGrid[pos.z])));
+					#endif
+
 					float3 n = getNormal(xyz, cube[tid].data, minBoxD,  dimD);
 					float3 l = Xnew - origin;// ligth; light on the camera
 					l = normalize(l);	
@@ -288,7 +321,7 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 	}
 }
 
-__global__ void cuda_rayCaster_Cubes(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, visibleCube_t * cube, int * indexCube, int levelO, int nLevel, float maxHeight, float * xGrid, float * yGrid, float * zGrid, int3 realDim, float * r, float * g, float * b, float * screen)
+__global__ void cuda_rayCaster_Cubes(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, visibleCube_t * cube, int * indexCube, int levelO, int nLevel, float maxHeight, int3 realDim, float * r, float * g, float * b, float * screen)
 {
 	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -317,8 +350,8 @@ __global__ void cuda_rayCaster_Cubes(float3 origin, float3  LB, float3 up, float
 			int dim = powf(2,nLevel-levelO);
 			int3 maxBoxC = minBoxC + make_int3(dim,dim,dim);
 
-			float3 minBox = _cuda_BoxToCoordinates(minBoxC, xGrid, yGrid, zGrid, realDim);
-			float3 maxBox = _cuda_BoxToCoordinates(maxBoxC, xGrid, yGrid, zGrid, realDim);
+			float3 minBox = _cuda_BoxToCoordinates(minBoxC, realDim);
+			float3 maxBox = _cuda_BoxToCoordinates(maxBoxC, realDim);
 
 			float tnear = 0.0f;
 			float tfar = 0.0f;
@@ -391,12 +424,12 @@ __global__ void cuda_rayCaster_Cubes(float3 origin, float3  LB, float3 up, float
 	}
 }
 
-	void rayCaster(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, int levelO, int levelC, int nLevel, float iso, visibleCube_t * cube, int * indexCube, float maxHeight, float * pixelBuffer, float * xGrid, float * yGrid, float * zGrid, int3 realDim, float * r, float * g, float * b, cudaStream_t stream)
+	void rayCaster(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, int levelO, int levelC, int nLevel, float iso, visibleCube_t * cube, int * indexCube, float maxHeight, float * pixelBuffer, int3 realDim, float * r, float * g, float * b, cudaStream_t stream)
 {
 	dim3 threads = getThreads(numRays);
 	dim3 blocks = getBlocks(numRays);
 
-	cuda_rayCaster<<<blocks, threads, 0, stream>>>(origin, LB, up, right, w, h, pvpW, pvpH, numRays, iso, cube, indexCube, levelO, levelC, nLevel, maxHeight, xGrid, yGrid, zGrid, realDim, r, g, b, pixelBuffer);
+	cuda_rayCaster<<<blocks, threads, 0, stream>>>(origin, LB, up, right, w, h, pvpW, pvpH, numRays, iso, cube, indexCube, levelO, levelC, nLevel, maxHeight, realDim, r, g, b, pixelBuffer);
 	#ifndef NDEBUG
 	if (cudaSuccess != cudaDeviceSynchronize())
 	{
@@ -405,12 +438,12 @@ __global__ void cuda_rayCaster_Cubes(float3 origin, float3  LB, float3 up, float
 	}
 	#endif
 }
-	void rayCasterCubes(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, int levelO, int nLevel, visibleCube_t * cube, int * indexCube, float maxHeight, float * pixelBuffer, float * xGrid, float * yGrid, float * zGrid, int3 realDim, float * r, float * g, float * b, cudaStream_t stream)
+	void rayCasterCubes(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, int levelO, int nLevel, visibleCube_t * cube, int * indexCube, float maxHeight, float * pixelBuffer, int3 realDim, float * r, float * g, float * b, cudaStream_t stream)
 {
 	dim3 threads = getThreads(numRays);
 	dim3 blocks = getBlocks(numRays);
 
-	cuda_rayCaster_Cubes<<<blocks, threads, 0, stream>>>(origin, LB, up, right, w, h, pvpW, pvpH, numRays, cube, indexCube, levelO, nLevel, maxHeight, xGrid, yGrid, zGrid, realDim, r, g, b, pixelBuffer);
+	cuda_rayCaster_Cubes<<<blocks, threads, 0, stream>>>(origin, LB, up, right, w, h, pvpW, pvpH, numRays, cube, indexCube, levelO, nLevel, maxHeight, realDim, r, g, b, pixelBuffer);
 	#ifndef NDEBUG
 	if (cudaSuccess != cudaDeviceSynchronize())
 	{

@@ -56,8 +56,7 @@ set(MIVT_SOURCE
 	)
 
 set(MIVT_CUDA_SOURCE
-	rayCaster_cuda.cu
-	octree_cuda.cu
+	deviceCode.cu
 	visibleCubes_cuda.cu
 )
 
@@ -231,8 +230,7 @@ set(TEST_RAYCASTING_SOURCE
    )
 
 set(TEST_RAYCASTING_CUDA_SOURCE
-	rayCaster_cuda.cu
-	octree_cuda.cu
+	deviceCode.cu
 	visibleCubes_cuda.cu
 )
 

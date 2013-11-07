@@ -10,6 +10,9 @@ Notes:
 #include <octree.h>
 
 #include <octree_cuda.h>
+#include <cuda_help.h>
+
+#include <textures.h>
 
 namespace eqMivt
 {
@@ -58,7 +61,7 @@ bool Octree::init(OctreeContainer * oc, device_t device)
 		return false;
 	}
 
-	return true;
+	return initTextures();
 }
 
 bool Octree::loadCurrentOctree()
@@ -118,7 +121,7 @@ bool Octree::loadCurrentOctree()
 	
 	insertOctreePointers(_octree, _sizes, _memoryOctree, l);
 
-	return true;
+	return bindTextures(getxGrid(), getyGrid(), getzGrid(), VectorToInt3(getRealDim()));
 }
 
 void Octree::stop()
@@ -166,19 +169,24 @@ void Octree::stop()
 			std::cerr<<"Octree, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 			return;
 		}
+
+	if (!unBindTextures())
+	{
+		return;
+	}
 }
 
 float * Octree::getxGrid()
 {
-	return _xGrid + CUBE_INC + _oc->getStartCoord().x();
+	return _xGrid + _oc->getStartCoord().x();
 }
 
 float * Octree::getyGrid()
 {
-	return _yGrid + CUBE_INC + _oc->getStartCoord().y();
+	return _yGrid + _oc->getStartCoord().y();
 }
 float * Octree::getzGrid()
 {
-	return _zGrid + CUBE_INC + _oc->getStartCoord().z();
+	return _zGrid +  _oc->getStartCoord().z();
 }
 }
