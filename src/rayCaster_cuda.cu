@@ -21,37 +21,37 @@ namespace eqMivt
 inline __device__ float3 _cuda_BoxToCoordinates(int3 pos, int3 realDim)
 {
 	float3 r;
-	r.x = pos.x < -2 ? tex1Dfetch(xgrid, 0) - 1.0f : pos.x > realDim.x + 1 ? tex1Dfetch(xgrid, CUBE_INC + realDim.x+1) + 1.0f : tex1Dfetch(xgrid, CUBE_INC + pos.x);
-	r.y = pos.y < -2 ? tex1Dfetch(ygrid, 0) - 1.0f : pos.y > realDim.y + 1 ? tex1Dfetch(ygrid, CUBE_INC + realDim.y+1) + 1.0f : tex1Dfetch(ygrid, CUBE_INC + pos.y);
-	r.z = pos.z < -2 ? tex1Dfetch(zgrid, 0) - 1.0f : pos.z > realDim.z + 1 ? tex1Dfetch(zgrid, CUBE_INC + realDim.z+1) + 1.0f : tex1Dfetch(zgrid, CUBE_INC + pos.z);
+	r.x = pos.x >= realDim.x ? tex1Dfetch(xgrid, CUBE_INC + realDim.x-1) : tex1Dfetch(xgrid, CUBE_INC + pos.x);
+	r.y = pos.y >= realDim.y ? tex1Dfetch(ygrid, CUBE_INC + realDim.y-1) : tex1Dfetch(ygrid, CUBE_INC + pos.y);
+	r.z = pos.z >= realDim.z ? tex1Dfetch(zgrid, CUBE_INC + realDim.z-1) : tex1Dfetch(zgrid, CUBE_INC + pos.z);
 
 	return r;
 }
 #endif
 
-inline __device__ int _cuda_searchCoordinateX(float x, int min, int max, int realDim)
+inline __device__ int _cuda_searchCoordinateX(float x, int min, int max)
 {
-	for(int i=CUBE_INC + min; i<max; i++)
+	for(int i=min + CUBE_INC; i<max + CUBE_INC; i++)
 		if (tex1Dfetch(xgrid,i) <= x && x < tex1Dfetch(xgrid, i+1))
-			return i;
+			return i - CUBE_INC;
 	
 	return -10;
 }
 
-inline __device__ int _cuda_searchCoordinateY(float x, int min, int max, int realDim)
+inline __device__ int _cuda_searchCoordinateY(float x, int min, int max)
 {
-	for(int i=CUBE_INC + min; i<max; i++)
+	for(int i=min + CUBE_INC; i<max + CUBE_INC; i++)
 		if (tex1Dfetch(ygrid,i) <= x && x < tex1Dfetch(ygrid, i+1))
-			return i;
+			return i - CUBE_INC;
 	
 	return -10;
 }
 
-inline __device__ int _cuda_searchCoordinateZ(float x, int min, int max, int realDim)
+inline __device__ int _cuda_searchCoordinateZ(float x, int min, int max)
 {
-	for(int i=CUBE_INC + min; i<max; i++)
+	for(int i=min + CUBE_INC; i<max + CUBE_INC; i++)
 		if (tex1Dfetch(zgrid,i) <= x && x < tex1Dfetch(zgrid, i+1))
-			return i;
+			return i - CUBE_INC;
 	
 	return -10;
 }
@@ -203,9 +203,9 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 
 				float3 Xnear = origin + tnear * ray;
 
-				int3 pos = make_int3(	_cuda_searchCoordinateX(Xnear.x, minBox.x - 1, maxBox.x+1, realDim.x),
-										_cuda_searchCoordinateY(Xnear.y, minBox.y - 1, maxBox.y+1, realDim.y),
-										_cuda_searchCoordinateZ(Xnear.z, minBox.z - 1, maxBox.z+1, realDim.z));
+				int3 pos = make_int3(	_cuda_searchCoordinateX(Xnear.x, minBox.x - 1, maxBox.x+1),
+										_cuda_searchCoordinateY(Xnear.y, minBox.y - 1, maxBox.y+1),
+										_cuda_searchCoordinateZ(Xnear.z, minBox.z - 1, maxBox.z+1));
 	
 				bool hit = false;
 				float3 Xfar = Xnear;
@@ -221,9 +221,9 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 				{
 					if (pos.x >= 0 && pos.y >= 0 && pos.z >= 0 && pos.x < realDim.x-1 && pos.y < realDim.y-1 && pos.z < realDim.z-1)
 					{
-						float3 xyz = make_float3(	pos.x + ((Xnear.x - tex1Dfetch(xgrid, CUBE_INC + pos.x)) / (tex1Dfetch(xgrid, CUBE_INC + pos.x+1) - tex1Dfetch(xgrid, CUBE_INC + pos.x))),
-													pos.y + ((Xnear.y - tex1Dfetch(ygrid, CUBE_INC + pos.y)) / (tex1Dfetch(ygrid, CUBE_INC + pos.y+1) - tex1Dfetch(ygrid, CUBE_INC + pos.y))),
-													pos.z + ((Xnear.z - tex1Dfetch(zgrid, CUBE_INC + pos.z)) / (tex1Dfetch(zgrid, CUBE_INC + pos.z+1) - tex1Dfetch(zgrid, CUBE_INC + pos.z))));
+						float3 xyz = make_float3(	pos.x + ((Xnear.x - tex1Dfetch(xgrid, pos.x + CUBE_INC)) / (tex1Dfetch(xgrid, pos.x+1 + CUBE_INC) - tex1Dfetch(xgrid, pos.x + CUBE_INC))),
+													pos.y + ((Xnear.y - tex1Dfetch(ygrid, pos.y + CUBE_INC)) / (tex1Dfetch(ygrid, pos.y+1 + CUBE_INC) - tex1Dfetch(ygrid, pos.y + CUBE_INC))),
+													pos.z + ((Xnear.z - tex1Dfetch(zgrid, pos.z + CUBE_INC)) / (tex1Dfetch(zgrid, pos.z+1 + CUBE_INC) - tex1Dfetch(zgrid, pos.z + CUBE_INC))));
 						
 						if (primera)
 						{
@@ -250,27 +250,27 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 					}
 
 					// Update Xnear
-					Xnear += ((fminf(fabs(tex1Dfetch(xgrid, CUBE_INC + pos.x+1) - tex1Dfetch(xgrid, CUBE_INC + pos.x)), fminf(fabs(tex1Dfetch(ygrid, CUBE_INC + pos.y+1) - tex1Dfetch(ygrid, CUBE_INC + pos.y)),fabs( tex1Dfetch(zgrid, CUBE_INC + pos.z+1) - tex1Dfetch(zgrid, CUBE_INC + pos.z))))) / 3.0f) * ray;
+					Xnear += ((fminf(fabs(tex1Dfetch(xgrid, pos.x+1 + CUBE_INC) - tex1Dfetch(xgrid, pos.x + CUBE_INC)), fminf(fabs(tex1Dfetch(ygrid, pos.y+1 + CUBE_INC) - tex1Dfetch(ygrid, pos.y + CUBE_INC)),fabs( tex1Dfetch(zgrid, pos.z+1 + CUBE_INC) - tex1Dfetch(zgrid, pos.z + CUBE_INC))))) / 3.0f) * ray;
 
 					// Get new pos
-					while((minBox.x-2 <= pos.x && pos.x <= maxBox.x + 1) &&  !(tex1Dfetch(xgrid, CUBE_INC + pos.x) <= Xnear.x && Xnear.x < tex1Dfetch(xgrid, CUBE_INC + pos.x+1)))
+					while((minBox.x-2 <= pos.x && pos.x <= maxBox.x + 1) &&  !(tex1Dfetch(xgrid, pos.x + CUBE_INC) <= Xnear.x && Xnear.x < tex1Dfetch(xgrid, pos.x+1 + CUBE_INC)))
 						pos.x = ray.x < 0 ? pos.x - 1 : pos.x +1;
-					while((minBox.y-2 <= pos.y && pos.y <= maxBox.y + 1) &&!(tex1Dfetch(ygrid, CUBE_INC + pos.y) <= Xnear.y && Xnear.y < tex1Dfetch(ygrid, CUBE_INC + pos.y+1)))
+					while((minBox.y-2 <= pos.y && pos.y <= maxBox.y + 1) &&!(tex1Dfetch(ygrid, pos.y + CUBE_INC) <= Xnear.y && Xnear.y < tex1Dfetch(ygrid, pos.y+1 + CUBE_INC)))
 						pos.y = ray.y < 0 ? pos.y - 1 : pos.y +1;
-					while((minBox.z-2 <= pos.z && pos.z <= maxBox.z + 1) &&!(tex1Dfetch(zgrid, CUBE_INC + pos.z) <= Xnear.z && Xnear.z < tex1Dfetch(zgrid, CUBE_INC + pos.z+1)))
+					while((minBox.z-2 <= pos.z && pos.z <= maxBox.z + 1) &&!(tex1Dfetch(zgrid, pos.z + CUBE_INC) <= Xnear.z && Xnear.z < tex1Dfetch(zgrid, pos.z+1 + CUBE_INC)))
 						pos.z = ray.z < 0 ? pos.z - 1 : pos.z +1;
 				}
 
 				if (hit)
 				{
-					pos = make_int3(	_cuda_searchCoordinateX(Xnew.x, minBox.x - 1, maxBox.x+1, realDim.x),
-										_cuda_searchCoordinateY(Xnew.y, minBox.y - 1, maxBox.y+1, realDim.y),
-										_cuda_searchCoordinateZ(Xnew.z, minBox.z - 1, maxBox.z+1, realDim.z));
+					pos = make_int3(	_cuda_searchCoordinateX(Xnew.x, minBox.x - 1, maxBox.x+1),
+										_cuda_searchCoordinateY(Xnew.y, minBox.y - 1, maxBox.y+1),
+										_cuda_searchCoordinateZ(Xnew.z, minBox.z - 1, maxBox.z+1));
 
 					#if 1
-					float3 xyz = make_float3(	pos.x + ((Xnear.x - tex1Dfetch(xgrid, CUBE_INC + pos.x)) / (tex1Dfetch(xgrid, CUBE_INC + pos.x+1) - tex1Dfetch(xgrid, CUBE_INC + pos.x))),
-												pos.y + ((Xnear.y - tex1Dfetch(ygrid, CUBE_INC + pos.y)) / (tex1Dfetch(ygrid, CUBE_INC + pos.y+1) - tex1Dfetch(ygrid, CUBE_INC + pos.y))),
-												pos.z + ((Xnear.z - tex1Dfetch(zgrid, CUBE_INC + pos.z)) / (tex1Dfetch(zgrid, CUBE_INC + pos.z+1) - tex1Dfetch(zgrid, CUBE_INC + pos.z))));
+					float3 xyz = make_float3(	pos.x + ((Xnear.x - tex1Dfetch(xgrid, pos.x + CUBE_INC)) / (tex1Dfetch(xgrid, pos.x+1 + CUBE_INC) - tex1Dfetch(xgrid, pos.x + CUBE_INC))),
+												pos.y + ((Xnear.y - tex1Dfetch(ygrid, pos.y + CUBE_INC)) / (tex1Dfetch(ygrid, pos.y+1 + CUBE_INC) - tex1Dfetch(ygrid, pos.y + CUBE_INC))),
+												pos.z + ((Xnear.z - tex1Dfetch(zgrid, pos.z + CUBE_INC)) / (tex1Dfetch(zgrid, pos.z+1 + CUBE_INC) - tex1Dfetch(zgrid, pos.z + CUBE_INC))));
 					#else
 					float3 xyz = make_float3(	pos.x + ((Xnew.x-xGrid[pos.x])/(xGrid[pos.x+1]-xGrid[pos.x])),
 												pos.y + ((Xnew.y-yGrid[pos.y])/(yGrid[pos.y+1]-yGrid[pos.y])),

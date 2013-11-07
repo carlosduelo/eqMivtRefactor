@@ -22,6 +22,17 @@ Notes:
 
 namespace eqMivt
 {
+#ifndef DEVICE_CODE
+inline __device__ float3 _cuda_BoxToCoordinates(int3 pos, int3 realDim)
+{
+	float3 r;
+	r.x = pos.x >= realDim.x ? tex1Dfetch(xgrid, CUBE_INC + realDim.x-1) : tex1Dfetch(xgrid, CUBE_INC + pos.x);
+	r.y = pos.y >= realDim.y ? tex1Dfetch(ygrid, CUBE_INC + realDim.y-1) : tex1Dfetch(ygrid, CUBE_INC + pos.y);
+	r.z = pos.z >= realDim.z ? tex1Dfetch(zgrid, CUBE_INC + realDim.z-1) : tex1Dfetch(zgrid, CUBE_INC + pos.z);
+
+	return r;
+}
+#endif
 /*
  **********************************************************************************************
  ****** GPU Octree functions ******************************************************************
@@ -100,18 +111,6 @@ __device__  bool _cuda_searchSecuentialGrid(index_node_t * elements, index_node_
 
 	return find;
 }
-
-#ifndef DEVICE_CODE
-inline __device__ float3 _cuda_BoxToCoordinates(int3 pos, int3 realDim)
-{
-	float3 r;
-	r.x = pos.x >= realDim.x ? tex1Dfetch(xgrid, CUBE_INC + realDim.x-1) : tex1Dfetch(xgrid, CUBE_INC + pos.x);
-	r.y = pos.y >= realDim.y ? tex1Dfetch(ygrid, CUBE_INC + realDim.y-1) : tex1Dfetch(ygrid, CUBE_INC + pos.y);
-	r.z = pos.z >= realDim.z ? tex1Dfetch(zgrid, CUBE_INC + realDim.z-1) : tex1Dfetch(zgrid, CUBE_INC + pos.z);
-
-	return r;
-}
-#endif
 
 __device__ bool _cuda_RayAABB(index_node_t index, float3 origin, float3 dir,  float * tnear, float * tfar, int nLevels, int3 realDim)
 {
