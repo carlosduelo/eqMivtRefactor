@@ -37,19 +37,22 @@ public:
 
 int main( const int argc, char** argv )
 {
-    NodeFactory nodeFactory;
     eqMivt::initErrors();
 
+    // parse arguments
+    eqMivt::LocalInitData initData;
+    if (!initData.parseArguments( argc, argv ))
+	{
+		return EXIT_FAILURE;
+	}
+
+    NodeFactory nodeFactory;
     //1. Equalizer initialization
     if( !eq::init( argc, argv, &nodeFactory ))
     {
         LBERROR << "Equalizer init failed" << std::endl;
         return EXIT_FAILURE;
     }
-
-    // parse arguments
-    eqMivt::LocalInitData initData;
-    initData.parseArguments( argc, argv );
 
     // 3. initialization of local client node
     lunchbox::RefPtr< eqMivt::EqMivt > client = new eqMivt::EqMivt( initData );
