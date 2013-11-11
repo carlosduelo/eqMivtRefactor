@@ -180,7 +180,8 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 			float tfar;
 			// To do test intersection real cube position
 			int3 minBox = getMinBoxIndex2(cube[tid].id, levelO, nLevel);
-			int dim = powf(2,nLevel-levelO);
+			int dim = 1 << (3*(nLevel-levelO));
+			//int dim = powf(2,nLevel-levelO);
 			int3 maxBox = minBox + make_int3(dim,dim,dim);
 			float3 minBoxC = _cuda_BoxToCoordinates(minBox, realDim);
 			float3 maxBoxC = _cuda_BoxToCoordinates(maxBox, realDim);
@@ -321,129 +322,12 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 	}
 }
 
-__global__ void cuda_rayCaster_Cubes(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, visibleCube_t * cube, int * indexCube, int levelO, int nLevel, float maxHeight, int3 realDim, float * r, float * g, float * b, float * screen)
-{
-	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
-
-	if (tid < numRays)
-	{
-		tid = indexCube[tid];
-
-		if (cube[tid].state == CUDA_NOCUBE)
-		{
-			screen[tid*3] = r[NUM_COLORS];
-			screen[tid*3+1] = g[NUM_COLORS];
-			screen[tid*3+2] = b[NUM_COLORS];
-			cube[tid].state = CUDA_PAINTED;
-			return;
-		}
-		else if (cube[tid].state == CUDA_CUBE)
-		{
-			int i = tid % pvpW;
-			int j = tid / pvpW;
-
-			float3 ray = LB - origin;
-			ray += (j*h)*up + (i*w)*right;
-			ray = normalize(ray);
-
-			int3 minBoxC = getMinBoxIndex2(cube[tid].id, levelO, nLevel);
-			int dim = powf(2,nLevel-levelO);
-			int3 maxBoxC = minBoxC + make_int3(dim,dim,dim);
-
-			float3 minBox = _cuda_BoxToCoordinates(minBoxC, realDim);
-			float3 maxBox = _cuda_BoxToCoordinates(maxBoxC, realDim);
-
-			float tnear = 0.0f;
-			float tfar = 0.0f;
-			_cuda_RayAABB(origin, ray,  &tnear, &tfar, minBox, maxBox);
-			float3 hit = origin + tnear *ray;
-
-			float3 n = make_float3(0.0f,0.0f,0.0f);
-			float aux = 0.0f;
-
-			if (fabsf(maxBox.x - origin.x) < fabsf(minBox.x - origin.x))
-			{
-				aux = minBox.x;
-				minBox.x = maxBox.x; 
-				maxBox.x = aux;
-			}
-			if (fabsf(maxBox.y - origin.y) < fabsf(minBox.y - origin.y))
-			{
-				aux = minBox.y;
-				minBox.y = maxBox.y; 
-				maxBox.y = aux;
-			}
-			if (fabsf(maxBox.z - origin.z) < fabsf(minBox.z - origin.z))
-			{
-				aux = minBox.z;
-				minBox.z = maxBox.z; 
-				maxBox.z = aux;
-			}
-
-			if(fabsf(hit.x - minBox.x) < EPS) 
-				n.x = -1.0f;
-			else if(fabsf(hit.x - maxBox.x) < EPS) 
-				n.x = 1.0f;
-			else if(fabsf(hit.y - minBox.y) < EPS) 
-				n.y = -1.0f;
-			else if(fabsf(hit.y - maxBox.y) < EPS) 
-				n.y = 1.0f;
-			else if(fabsf(hit.z - minBox.z) < EPS) 
-				n.z = -1.0f;
-			else if(fabsf(hit.z - maxBox.z) < EPS) 
-				n.z = 1.0f;
-
-
-			float3 l = hit - origin;// ligth; light on the camera
-			l = normalize(l);	
-			float dif = fabsf(n.x*l.x + n.y*l.y + n.z*l.z);
-
-			float a = hit.y/maxHeight;
-			int pa = floorf(a*NUM_COLORS);
-			if (pa < 0)
-			{
-				screen[tid*3]   =r[0]*dif;
-				screen[tid*3+1] =g[0]*dif;
-				screen[tid*3+2] =b[0]*dif;
-			}
-			else if (pa >= NUM_COLORS-1) 
-			{
-				screen[tid*3]   = r[NUM_COLORS-1]*dif;
-				screen[tid*3+1] = g[NUM_COLORS-1]*dif;
-				screen[tid*3+2] = b[NUM_COLORS-1]*dif;
-			}
-			else
-			{
-				float dx = (a*(float)NUM_COLORS - (float)pa);
-				screen[tid*3]   = (r[pa] + (r[pa+1]-r[pa])*dx)*dif;
-				screen[tid*3+1] = (g[pa] + (g[pa+1]-g[pa])*dx)*dif;
-				screen[tid*3+2] = (b[pa] + (b[pa+1]-b[pa])*dx)*dif;
-			}
-			cube[tid].state= CUDA_PAINTED;
-		}
-	}
-}
-
 	void rayCaster(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, int levelO, int levelC, int nLevel, float iso, visibleCube_t * cube, int * indexCube, float maxHeight, float * pixelBuffer, int3 realDim, float * r, float * g, float * b, cudaStream_t stream)
 {
 	dim3 threads = getThreads(numRays);
 	dim3 blocks = getBlocks(numRays);
 
 	cuda_rayCaster<<<blocks, threads, 0, stream>>>(origin, LB, up, right, w, h, pvpW, pvpH, numRays, iso, cube, indexCube, levelO, levelC, nLevel, maxHeight, realDim, r, g, b, pixelBuffer);
-	#ifndef NDEBUG
-	if (cudaSuccess != cudaDeviceSynchronize())
-	{
-		std::cerr<<"Error ray caster: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
-		throw;
-	}
-	#endif
-}
-	void rayCasterCubes(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, int levelO, int nLevel, visibleCube_t * cube, int * indexCube, float maxHeight, float * pixelBuffer, int3 realDim, float * r, float * g, float * b, cudaStream_t stream)
-{
-	dim3 threads = getThreads(numRays);
-	dim3 blocks = getBlocks(numRays);
-
-	cuda_rayCaster_Cubes<<<blocks, threads, 0, stream>>>(origin, LB, up, right, w, h, pvpW, pvpH, numRays, cube, indexCube, levelO, nLevel, maxHeight, realDim, r, g, b, pixelBuffer);
 	#ifndef NDEBUG
 	if (cudaSuccess != cudaDeviceSynchronize())
 	{

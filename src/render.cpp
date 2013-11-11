@@ -57,17 +57,12 @@ bool Render::_drawCubes(	vmml::vector<4, float> origin, vmml::vector<4, float> L
 				vmml::vector<4, float> up, vmml::vector<4, float> right,
 				float w, float h)
 {
-		getBoxIntersectedOctree(_octree->getOctree(), _octree->getSizes(), _octree->getnLevels(),
+		drawCubes(_octree->getOctree(), _octree->getSizes(), _octree->getnLevels(),
 								VectorToFloat3(origin), VectorToFloat3(LB), VectorToFloat3(up), VectorToFloat3(right),
 								w, h, _pvpW, _pvpH, _octree->getmaxLevel(), _vC.getSizeGPU(),
 								_vC.getVisibleCubesGPU(), _vC.getIndexVisibleCubesGPU(),
-								VectorToInt3(_octree->getRealDim()), 0);
-
-		rayCasterCubes(	VectorToFloat3(origin), VectorToFloat3(LB), VectorToFloat3(up), VectorToFloat3(right),
-						w, h, _pvpW, _pvpH, _vC.getSizeGPU(), _octree->getmaxLevel(), _octree->getnLevels(),
-						_vC.getVisibleCubesGPU(), _vC.getIndexVisibleCubesGPU(), 
-						_octree->getGridMaxHeight(), _pixelBuffer, VectorToInt3(_octree->getRealDim()), 
-						_colors.r, _colors.g, _colors.b, 0);
+								VectorToInt3(_octree->getRealDim()), _octree->getGridMaxHeight(), _pixelBuffer, 
+								_colors.r, _colors.g, _colors.b, 0);
 
 		return true;
 
