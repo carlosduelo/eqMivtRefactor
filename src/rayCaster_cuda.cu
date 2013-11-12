@@ -178,7 +178,7 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 			float tfar;
 			// To do test intersection real cube position
 			int3 minBox = getMinBoxIndex2(cube[tid].id, levelO, nLevel);
-			int dim = 1 << (3*(nLevel-levelO));
+			int dim = 1 << (nLevel-levelO);
 			//int dim = powf(2,nLevel-levelO);
 			int3 maxBox = minBox + make_int3(dim,dim,dim);
 			float3 minBoxC = _cuda_BoxToCoordinates(minBox, realDim);
@@ -310,9 +310,9 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 			}
 			else
 			{
-				screen[tid*3] = r[NUM_COLORS];
-				screen[tid*3+1] = g[NUM_COLORS];
-				screen[tid*3+2] = b[NUM_COLORS];
+				screen[tid*3] = 1.0f;
+				screen[tid*3+1] = 0.0f;
+				screen[tid*3+2] = 0.0f;
 				cube[tid].state = CUDA_PAINTED;
 				return;
 			}
@@ -326,5 +326,12 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 	dim3 blocks = getBlocks(numRays);
 
 	cuda_rayCaster<<<blocks, threads, 0, stream>>>(origin, LB, up, right, w, h, pvpW, pvpH, numRays, iso, cube, levelO, levelC, nLevel, maxHeight, realDim, r, g, b, pixelBuffer);
+	#ifndef NDEBUG
+	if (cudaSuccess != cudaStreamSynchronize(stream))
+	{
+		std::cerr<<"Error ray caster: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
+	#endif
 }
 }

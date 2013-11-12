@@ -58,7 +58,7 @@ bool worker::_updateCPU(int offset, int size)
 
 bool worker::_updateGPU(int offset, int size)
 {
-	if (cudaSuccess != cudaMemcpyAsync((void*)(_parameters->visibleCubesGPU+offset), (void*)(_parameters->visibleCubes+offset), size*sizeof(visibleCube_t), cudaMemcpyDeviceToHost, _stream))
+	if (cudaSuccess != cudaMemcpyAsync((void*)(_parameters->visibleCubesGPU+offset), (void*)(_parameters->visibleCubes+offset), size*sizeof(visibleCube_t), cudaMemcpyHostToDevice, _stream))
 	{
 		std::cerr<<"Visible cubes, error updating cpu copy: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		return false;
@@ -70,7 +70,7 @@ bool worker::_sync()
 {
 	if (cudaSuccess != cudaStreamSynchronize(_stream))
 	{
-		std::cerr<<"Error octree: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		std::cerr<<"Error sync: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		return false;
 	}
 	return true;
@@ -132,8 +132,8 @@ bool workerOctree::_frame(workpackage_t work)
 	getBoxIntersectedOctree(_octree->getOctree(), _octree->getSizes(), _octree->getnLevels(),
 							_parameters->origin, _parameters->LB, _parameters->up, _parameters->right,
 							_parameters->w, _parameters->h, _parameters->pvpW, _parameters->pvpH,
-							_octree->getRayCastingLevel(), work.work[2], _parameters->visibleCubesGPU + work.work[1],
-							(VectorToInt3(_octree->getRealDim())), 0);
+							_octree->getRayCastingLevel(), work.work[2], (_parameters->visibleCubesGPU + work.work[1]),
+							(VectorToInt3(_octree->getRealDim())), _stream);
 
 	_updateCPU(work.work[1], work.work[2]);
 	_sync();
@@ -193,24 +193,24 @@ bool workerCache::_stopWorking()
 	return true;
 }
 
-bool workerRayCaster::init(Octree * octree, float * screen, color_t * colors, device_t device, queue_t * IN, queue_t * OUT, sharedParameters_t * parameters, queue_t * END, queuePOP_t * POP)
+bool workerRayCaster::init(Octree * octree, color_t * colors, device_t device, queue_t * IN, queue_t * OUT, sharedParameters_t * parameters, queue_t * END, queuePOP_t * POP)
 {
 	_POP = POP;
 	_END = END;
-	_screen = screen;
 	_colors = colors;
 	return _init(octree, device, IN, OUT, parameters);
 }
 
 bool workerRayCaster::_frame(workpackage_t work)
 {
+std::cout<<"RAYCASTER "<< _octree->getRayCastingLevel()<<std::endl;
 	rayCaster(	_parameters->origin, _parameters->LB, _parameters->up, _parameters->right,
 				_parameters->w, _parameters->h, _parameters->pvpW, _parameters->pvpH, 
 				work.work[2], _octree->getRayCastingLevel(), 
 				_octree->getCubeLevel(), _octree->getnLevels(), _octree->getIsosurface(),
-				_parameters->visibleCubesGPU + work.work[1], _octree->getGridMaxHeight(), _screen + work.work[1], 
-				VectorToInt3(_octree->getRealDim()),
-				_colors->r, _colors->g, _colors->b, 0);
+				(_parameters->visibleCubesGPU + work.work[1]), _octree->getGridMaxHeight(),
+				(_parameters->pixelBuffer + (3*work.work[1])), VectorToInt3(_octree->getRealDim()),
+				_colors->r, _colors->g, _colors->b, _stream);
 
 	_updateCPU(work.work[1], work.work[2]);
 	_sync();
@@ -220,7 +220,7 @@ bool workerRayCaster::_frame(workpackage_t work)
 	visibleCube_t * cubes = _parameters->visibleCubes + work.work[1];
 	for(int i=0; i<work.work[2]; i++)
 	{
-		if (sendO && cubes[i].state == NOCUBE)
+		if (cubes[i].state == NOCUBE || cubes[i].state == CUBE)
 		{
 			sendO = false;	
 		}
@@ -230,6 +230,7 @@ bool workerRayCaster::_frame(workpackage_t work)
 		}
 		else if (cubes[i].state == PAINTED)
 		{
+		std::cout<<"PAINTED"<<std::endl;
 			cF++;
 			_POP->cond.lock();
 			_POP->queue.push(cubes[i].id);
@@ -263,8 +264,16 @@ bool workerRayCaster::_frame(workpackage_t work)
 		_END->cond.unlock();
 
 	}
-
 	return !sendO; 
+	#if 0
+std::cout<<"RAYCASTER"<<std::endl;
+		_END->cond.lock();
+		_END->queue.push(work);
+		if (_END->queue.size() == 1)
+			_END->cond.signal();
+		_END->cond.unlock();
+	return false;
+	#endif
 }
 
 bool workerRayCaster::_startFrame()

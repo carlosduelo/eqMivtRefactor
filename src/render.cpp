@@ -93,7 +93,7 @@ bool Render::setCache(ControlCubeCache * ccc)
 		{
 			_octreeWorkers[i].init(_octree, _device, &_octreeQueue[i], &_cacheQueue[i], &_parameters);
 			_cacheWorkers[i].init(_octree, _ccc, _device, &_cacheQueue[i], &_rayCasterQueue[i], &_parameters);
-			_rayCasterWorkers[i].init(_octree, _pixelBuffer, &_colors, _device, &_rayCasterQueue[i], &_octreeQueue[i], &_parameters, &_masterQueue, &_popQueue[i]);
+			_rayCasterWorkers[i].init(_octree, &_colors, _device, &_rayCasterQueue[i], &_octreeQueue[i], &_parameters, &_masterQueue, &_popQueue[i]);
 			_poperWorkers[i].init(&_popQueue[i], _cacheWorkers[i].getCache());
 		}
 		for(int i=0; i<MAX_WORKERS; i++)
@@ -117,7 +117,7 @@ void Render::setOctree(Octree * octree)
 		{
 			_octreeWorkers[i].init(_octree, _device, &_octreeQueue[i], &_cacheQueue[i], &_parameters);
 			_cacheWorkers[i].init(_octree, _ccc, _device, &_cacheQueue[i], &_rayCasterQueue[i], &_parameters);
-			_rayCasterWorkers[i].init(_octree, _pixelBuffer, &_colors, _device, &_rayCasterQueue[i], &_octreeQueue[i], &_parameters, &_masterQueue, &_popQueue[i]);
+			_rayCasterWorkers[i].init(_octree, &_colors, _device, &_rayCasterQueue[i], &_octreeQueue[i], &_parameters, &_masterQueue, &_popQueue[i]);
 			_poperWorkers[i].init(&_popQueue[i], _cacheWorkers[i].getCache());
 		}
 		for(int i=0; i<MAX_WORKERS; i++)
@@ -139,7 +139,7 @@ void Render::setColors(color_t colors)
 		{
 			_octreeWorkers[i].init(_octree, _device, &_octreeQueue[i], &_cacheQueue[i], &_parameters);
 			_cacheWorkers[i].init(_octree, _ccc, _device, &_cacheQueue[i], &_rayCasterQueue[i], &_parameters);
-			_rayCasterWorkers[i].init(_octree, _pixelBuffer, &_colors, _device, &_rayCasterQueue[i], &_octreeQueue[i], &_parameters, &_masterQueue, &_popQueue[i]);
+			_rayCasterWorkers[i].init(_octree, &_colors, _device, &_rayCasterQueue[i], &_octreeQueue[i], &_parameters, &_masterQueue, &_popQueue[i]);
 			_poperWorkers[i].init(&_popQueue[i], _cacheWorkers[i].getCache());
 		}
 		for(int i=0; i<MAX_WORKERS; i++)
@@ -203,6 +203,7 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 	_parameters.LB = VectorToFloat3(LB);
 	_parameters.up = VectorToFloat3(up);
 	_parameters.right = VectorToFloat3(right);
+	_parameters.pixelBuffer = _pixelBuffer;
 	/* END SET SHARED PARAMETERS*/
 	
 	workpackage_t workP;
@@ -217,10 +218,12 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 		_octreeQueue[i].cond.unlock();
 	}
 
+	_masterQueue.cond.lock();
+
 	/* SEND FRAME */
 	workP.work[0] = FRAME;
-	workP.work[1] = 0;
-	workP.work[2] = _pvpW*_pvpH;
+	workP.work[1] = 300*_pvpW;
+	workP.work[2] = 1*_pvpW;//_pvpW*_pvpH;
 	for(int i=0; i<MAX_WORKERS; i++)
 	{
 		_octreeQueue[i].cond.lock();
@@ -231,7 +234,6 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 	}
 
 	// WAIT FOR FRAMES
-	_masterQueue.cond.lock();
 	for(int i=0; i<MAX_WORKERS; i++)
 	{
 		if (_masterQueue.queue.empty())
@@ -240,6 +242,7 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 		std::cout<<p.work[0]<<" "<<p.work[1]<<" "<<p.work[2]<<std::endl;
 		_masterQueue.queue.pop();
 	}
+	_masterQueue.cond.unlock();
 
 
 	return true;

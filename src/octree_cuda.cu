@@ -741,6 +741,14 @@ __global__ void cuda_drawCubes(index_node_t ** octree, int * sizes, int nLevels,
 
 	cuda_getFirtsVoxel<<<blocks,threads, 0, stream>>>(octree, sizes, nLevels, origin, LB, up, right, w, h, pvpW, pvpH, finalLevel, visibleGPU, numElements, realDim);
 
+	#ifndef NDEBUG
+	if (cudaSuccess != cudaStreamSynchronize(stream))
+	{
+		std::cerr<<"Error octree: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		throw;
+	}
+	#endif
+
 }
 
 	void drawCubes(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int finalLevel, int numElements, int3 realDim, float maxHeight, float * r, float * g, float * b, float * screen, cudaStream_t stream)
@@ -778,8 +786,9 @@ void insertOctreePointers(index_node_t ** octreeGPU, int * sizes, index_node_t *
 	dim3 blocks(1);
 	dim3 threads(levels);
 
-	cuda_insertOctreePointers<<<blocks,threads>>>(octreeGPU, sizes, memoryGPU);
-	if (cudaSuccess != cudaDeviceSynchronize())
+	cuda_insertOctreePointers<<<blocks,threads,0, 0>>>(octreeGPU, sizes, memoryGPU);
+
+	if (cudaSuccess != cudaStreamSynchronize(0))
 	{
 		std::cerr<<"Error init octree: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		throw;
