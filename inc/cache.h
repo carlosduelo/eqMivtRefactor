@@ -10,9 +10,9 @@ Notes:
 #define EQ_MIVT_CACHE_H
 
 #include <controlCubeCache.h>
-#include <visibleCubes.h>
 
 #include <boost/unordered_map.hpp>
+#include <lunchbox/lock.h>
 
 namespace eqMivt
 {
@@ -21,26 +21,16 @@ class Cache
 {
 	struct cube_cached
 	{
-		statusCube state;
+		int refs;
 		float * cube;
 	};
 
 	private:
+		lunchbox::Lock	_lock;
 		ControlCubeCache * _cubeCache;
 		boost::unordered_map<index_node_t, cube_cached> _cubes;
 
 		int	_rayCastingLevel;
-		#ifdef TIMING
-		double _cOPushN;
-		double _searchOPushN;
-		double _getCubePushN;
-		double _PopN;
-		double _cOPush;
-		double _searchOPush;
-		double _getCubePush;
-		double _Pop;
-		#endif
-
 
 	public:
 		Cache();
@@ -53,9 +43,9 @@ class Cache
 
 		void finishFrame();
 
-		void pushCubes(VisibleCubes * vc);
+		void pushCubes(visibleCube_t * cube);
 
-		void popCubes();
+		void popCubes(index_node_t id);
 
 		bool isInit() { return _cubeCache != 0; }
 };

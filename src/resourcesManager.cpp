@@ -205,7 +205,6 @@ bool ResourcesManager::_addNewDevice(Render * render)
 	render->setOctree(o);
 	render->setColors(co);
 	render->setCache(c);
-	render->setRayCastingLevel(_oM.getRayCastingLevel());
 	return true;
 }
 	
@@ -223,7 +222,6 @@ bool ResourcesManager::updateRender(Render * render)
 
 	if (render->cacheIsInit() && render->octreeIsInit() && render->colorsIsInit())
 	{
-		render->setRayCastingLevel(_oM.getRayCastingLevel());
 		_lock.unset();
 		return true;
 	}

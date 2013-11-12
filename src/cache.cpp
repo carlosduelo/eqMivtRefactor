@@ -8,10 +8,6 @@ Notes:
 
 #include <cache.h>
 
-#ifdef TIMING
-#include <lunchbox/clock.h>
-#endif
-
 namespace eqMivt
 {
 
@@ -22,39 +18,22 @@ Cache::Cache()
 
 void Cache::startFrame()
 {
-	#ifdef TIMING
-	_cOPushN = 0.0;
-	_searchOPushN = 0.0;
-	_getCubePushN = 0.0;
-	_PopN = 0.0;
-	_cOPush = 0.0;
-	_searchOPush = 0.0;
-	_getCubePush = 0.0;
-	_Pop = 0.0;
-	#endif
-
+	_lock.set();
 	_cubes.clear();
+	_lock.unset();
 }
 
 void Cache::finishFrame()
 {
+	_lock.set();
+
 	if (_cubes.size() != 0)
 	{
 		std::cerr<<"Error cache not working"<<std::endl;
 		throw;
 	}
-	#ifdef TIMING
-	std::cout<<"===== Cache Statistics ====="<<std::endl;
-	std::cout<<"Complete time push operation "<<_cOPush<<" seconds"<<std::endl;
-	std::cout<<"Complete time search operation "<<_searchOPush<<" seconds"<<std::endl;
-	std::cout<<"Complete time geting operation "<<_getCubePush<<" seconds"<<std::endl;
-	std::cout<<"Complete time pop operation "<<_Pop<<" seconds"<<std::endl;
-	std::cout<<"Average time push operation "<<_cOPush/_cOPushN<<" seconds, operations "<<_cOPushN<<std::endl;
-	std::cout<<"Average time search operation "<<_searchOPush/_searchOPushN<<" seconds, operations "<<_searchOPushN<<std::endl;
-	std::cout<<"Average time geting operation "<<_getCubePush/_getCubePushN<<" seconds, operations "<<_getCubePushN<<std::endl;
-	std::cout<<"Average time pop operation "<<_Pop/_PopN<<" seconds, operations "<<_PopN<<std::endl;
-	std::cout<<"=============================="<<std::endl;
-	#endif
+
+	_lock.unset();
 }
 
 bool Cache::init(ControlCubeCache * cubeCache)
@@ -69,7 +48,7 @@ bool Cache::init(ControlCubeCache * cubeCache)
 	return true;
 }
 
-void Cache::pushCubes(VisibleCubes * vc)
+void Cache::pushCubes(visibleCube_t * cube)
 {
 	#ifndef NDEBUG
 	if (_cubeCache->getCubeLevel() > _rayCastingLevel)
@@ -79,88 +58,61 @@ void Cache::pushCubes(VisibleCubes * vc)
 	}
 	#endif
 
-	std::vector<int> cubes = vc->getListCubes(CUBE);
-	#ifdef TIMING
-	lunchbox::Clock clockC;
-	lunchbox::Clock clockO;
-	#endif
-
-	for(std::vector<int>::iterator it = cubes.begin(); it != cubes.end(); ++it)
+	if (cube->state == CUBE)
 	{
-	#ifdef TIMING
-	clockC.reset();
-	#endif
-		visibleCube_t * cube = vc->getCube(*it);
-
 		index_node_t idCube = cube->id >> (3*(_rayCastingLevel - _cubeCache->getCubeLevel()));
 
-	#ifdef TIMING
-	clockO.reset();
-	#endif
+		_lock.set();
 		boost::unordered_map<index_node_t, cube_cached>::iterator itC = _cubes.find(idCube);
-	#ifdef TIMING
-	_searchOPush += clockO.getTimed()/1000.0;
-	_searchOPushN += 1.0;
-	#endif
 
 		if (itC != _cubes.end())
 		{
-			cube->state = itC->second.state;
+			cube->state = CACHED;
 			cube->data = itC->second.cube;
+			itC->second.refs++;
 		}
 		else
 		{
-	#ifdef TIMING
-	clockO.reset();
-	#endif
 			float * d = _cubeCache->getAndBlockElement(idCube);
-	#ifdef TIMING
-	_getCubePush += clockO.getTimed()/1000.0;
-	_getCubePushN += 1.0;
-	#endif
+			if (d != 0)
+			{
+				cube->state = CACHED;
+				cube->data = d;
 
-			cube->state = d == 0 ? CUBE : CACHED;
-			cube->data = d;
-
-			cube_cached c;
-			c.state = cube->state; 
-			c.cube = d;
-			
-			_cubes.insert(std::make_pair<index_node_t, cube_cached>(idCube, c));
+				cube_cached c;
+				c.cube = d;
+				c.refs = 1;
+				
+				_cubes.insert(std::make_pair<index_node_t, cube_cached>(idCube, c));
+			}
 		}
-	#ifdef TIMING
-	_cOPush += clockC.getTimed()/1000.0;
-	_cOPushN+=1.0;
-	#endif
+		
+		_lock.unset();
 	}
-
 }
 
-void Cache::popCubes()
+void Cache::popCubes(index_node_t id)
 {
-	boost::unordered_map<index_node_t, cube_cached>::iterator it=_cubes.begin();
-	#ifdef TIMING
-	lunchbox::Clock clock;
+	index_node_t idCube = id >> (3*(_rayCastingLevel - _cubeCache->getCubeLevel()));
+
+	_lock.set();
+	boost::unordered_map<index_node_t, cube_cached>::iterator it= _cubes.find(idCube);
+
+	#ifndef NDEBUG
+	if (it == _cubes.end())
+	{
+		std::cerr<<"Cache unistable"<<std::endl;
+		throw;
+	}
 	#endif
 
-	while(it!=_cubes.end())
+	it->second.refs--;
+	if (it->second.refs == 0)
 	{
-		if (it->second.state == CACHED)
-		{
-			#ifdef TIMING
-			_PopN += 1.0;
-			clock.reset();
-			#endif
-			_cubeCache->unlockElement(it->first);
-			#ifdef TIMING
-			_Pop += clock.getTimed()/1000.0; 
-			#endif
-		}
-
-		it++;
+		_cubeCache->unlockElement(it->first);
+		_cubes.erase(it);
 	}
-
-	_cubes.clear();
+	_lock.unset();
 }
 
 }

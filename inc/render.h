@@ -9,9 +9,9 @@ Notes:
 #ifndef EQ_MIVT_RENDER_H
 #define EQ_MIVT_RENDER_H
 
-#include <visibleCubes.h>
-#include <octree.h>
-#include <cache.h>
+#include <renderWorkers.h>
+
+#define MAX_WORKERS 1
 
 namespace eqMivt
 {
@@ -23,10 +23,26 @@ class Render
 
 		int _pvpW;
 		int _pvpH;
+		sharedParameters_t 	_parameters;
+
+		/* VISIBLE CUBES */
+		int						_size;
+		visibleCube_t *			_visibleCubes;
+		visibleCubeGPU_t		_visibleCubesGPU;
+
+		/* WORKERS */
+		queue_t		_octreeQueue[MAX_WORKERS];
+		queue_t		_cacheQueue[MAX_WORKERS];
+		queue_t		_rayCasterQueue[MAX_WORKERS];
+		queue_t		_masterQueue;
+		queuePOP_t	_popQueue[MAX_WORKERS];
+		workerOctree	_octreeWorkers[MAX_WORKERS];
+		workerCache		_cacheWorkers[MAX_WORKERS];
+		workerRayCaster _rayCasterWorkers[MAX_WORKERS];
+		workerPoper		_poperWorkers[MAX_WORKERS];
 
 	private:
-		VisibleCubes	_vC;
-		Cache			_cache;
+		ControlCubeCache * _ccc;
 		Octree *		_octree;
 		color_t			_colors;
 
@@ -41,6 +57,8 @@ class Render
 						vmml::vector<4, float> up, vmml::vector<4, float> right,
 						float w, float h);
 
+		void _destroyVisibleCubes();
+
 	public:
 		virtual ~Render(){};
 
@@ -52,7 +70,7 @@ class Render
 
 		virtual bool setViewPort(int pvpW, int pvpH);
 
-		bool cacheIsInit() { return _cache.isInit(); }
+		bool cacheIsInit() { return _ccc != 0;}
 
 		bool octreeIsInit() { return _octree != 0; }
 
@@ -60,11 +78,9 @@ class Render
 
 		bool setCache(ControlCubeCache * ccc);
 
-		void setRayCastingLevel(int rLevel){ _cache.setRayCastingLevel(rLevel); }
+		void setOctree(Octree * octree);
 
-		void setOctree(Octree * octree){ _octree = octree; }
-
-		void setColors(color_t colors){ _colors = colors; }
+		void setColors(color_t colors);
 
 		void setDrawCubes(bool drawCubes){ _drawCube = drawCubes; }
 

@@ -7,7 +7,7 @@
 	add_definitions(-DTIMING)
 
 # SETTING CUDA PARAMETERS
-list(APPEND CUDA_NVCC_FLAGS -arch=sm_21)
+list(APPEND CUDA_NVCC_FLAGS -arch=sm_13)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 #	list(APPEND CUDA_NVCC_FLAGS -G)
@@ -24,6 +24,7 @@ endif()
 #MIVT
 set(MIVT_SOURCE 
 	renderOGL.cpp
+	renderWorkers.cpp
 	render.cpp
 	resourcesManager.cpp
 	colorManager.cpp
@@ -31,7 +32,6 @@ set(MIVT_SOURCE
 	octreeManager.cpp
 	cacheManager.cpp
 	controlCache.cpp
-	visibleCubes.cpp
 	linkedList.cpp
 	cache.cpp
 	controlPlaneCache.cpp
@@ -57,7 +57,6 @@ set(MIVT_SOURCE
 
 set(MIVT_CUDA_SOURCE
 	deviceCode.cu
-	visibleCubes_cuda.cu
 )
 
 set(LIBS_NEEDED_MIVT ${EQUALIZER_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES} ${Boost_LIBRARIES} ) 
@@ -71,7 +70,6 @@ set(CREATE_OCTREE_SOURCE
 		cuda_help.cpp
 		controlCache.cpp
 		octreeConstructor.cpp
-		visibleCubes.cpp
 		linkedList.cpp
 		cache.cpp
 		controlPlaneCache.cpp
@@ -83,7 +81,6 @@ set(CREATE_OCTREE_SOURCE
 
 set(CREATE_OCTREE_CUDA_SOURCE
 	createOctree_cuda.cu
-	visibleCubes_cuda.cu
 )
 
 set(LIBS_NEEDED_CREATE_OCTREE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES} ${Boost_LIBRARIES} ) 
@@ -99,22 +96,6 @@ target_link_libraries(transferFunctionCreator GL glut)
 # PRINT OCTREE
 add_executable(printOctree printOctree.cpp) 
 
-
-# TEST VISIBLE CUBES
-set(TEST_VISIBLE_CUBES_SOURCE
-		visibleCubes.cpp
-   )
-
-set(TEST_VISIBLE_CUBES_CUDA_SOURCE 
-		testVisibleCubes_cuda.cu
-		visibleCubes_cuda.cu
-	)
-
-set(LIBS_NEEDED_TEST_VISIBLE_CUBES ${CUDA_LIBRARIES}) 
-
-cuda_compile(TEST_VISIBLE_CUBES_CUDA_OBJECTS ${TEST_VISIBLE_CUBES_CUDA_SOURCE})
-add_executable(testVisibleCubes ${TEST_VISIBLE_CUBES_SOURCE} ${TEST_VISIBLE_CUBES_CUDA_OBJECTS} testVisibleCubes.cpp) 
-target_link_libraries(testVisibleCubes ${LIBS_NEEDED_TEST_VISIBLE_CUBES} )
 
 # TEST CONTROL PLANE CACHE 
 set(TEST_CONTROL_PLANE_CACHE_SOURCE
@@ -163,52 +144,9 @@ set(LIBS_NEEDED_TEST_CONTROL_CUBE_CACHE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} 
 add_executable(testControlCubeCache ${TEST_CONTROL_CUBE_CACHE_SOURCE} testControlCubeCache.cpp) 
 target_link_libraries(testControlCubeCache ${LIBS_NEEDED_TEST_CONTROL_CUBE_CACHE} )
 
-# TEST CACHE 
-set(TEST_CACHE_SOURCE
-		cuda_help.cpp
-		controlCache.cpp
-		visibleCubes.cpp
-		linkedList.cpp
-		cache.cpp
-		controlPlaneCache.cpp
-		controlCubeCPUCache.cpp
-		controlCubeCache.cpp
-		hdf5File.cpp
-		memoryCheck.cpp
-   )
-
-set(TEST_CACHE_CUDA_SOURCE
-	testVisibleCubes_cuda.cu
-	visibleCubes_cuda.cu
-)
-
-set(LIBS_NEEDED_TEST_CACHE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES}) 
-
-cuda_compile(TEST_CACHE_CUDA_OBJECTS ${TEST_CACHE_CUDA_SOURCE})
-add_executable(testCache ${TEST_CACHE_SOURCE} ${TEST_CACHE_CUDA_OBJECTS} testCache.cpp) 
-target_link_libraries(testCache ${LIBS_NEEDED_TEST_CACHE} )
-
-# TEST OCTREE 
-set(TEST_OCTREE_SOURCE
-	visibleCubes.cpp
-	cuda_help.cpp
-	octree.cpp
-	octreeContainer.cpp
-   )
-
-set(TEST_OCTREE_CUDA_SOURCE
-	octree_cuda.cu
-	visibleCubes_cuda.cu
-)
-
-set(LIBS_NEEDED_TEST_OCTREE ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES} freeimage) 
-
-cuda_compile(TEST_OCTREE_CUDA_OBJECTS ${TEST_OCTREE_CUDA_SOURCE})
-add_executable(testOctree ${TEST_OCTREE_SOURCE} ${TEST_OCTREE_CUDA_OBJECTS} testOctree.cpp) 
-target_link_libraries(testOctree ${LIBS_NEEDED_TEST_OCTREE} )
-
 # TEST RAYCASTING 
 set(TEST_RAYCASTING_SOURCE
+	renderWorkers.cpp
 	render.cpp
 	renderPNG.cpp
 	resourcesManager.cpp
@@ -217,7 +155,6 @@ set(TEST_RAYCASTING_SOURCE
 	octreeManager.cpp
 	cacheManager.cpp
 	controlCache.cpp
-	visibleCubes.cpp
 	linkedList.cpp
 	cache.cpp
 	controlPlaneCache.cpp
@@ -231,7 +168,6 @@ set(TEST_RAYCASTING_SOURCE
 
 set(TEST_RAYCASTING_CUDA_SOURCE
 	deviceCode.cu
-	visibleCubes_cuda.cu
 )
 
 set(LIBS_NEEDED_TEST_RAYCASTING ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES} freeimage) 
@@ -242,6 +178,7 @@ target_link_libraries(testRayCasting ${LIBS_NEEDED_TEST_RAYCASTING} )
 
 # TEST MULTITHREADING 
 set(TEST_MULTITHREADING_SOURCE
+	renderWorkers.cpp
 	render.cpp
 	renderPNG.cpp
 	resourcesManager.cpp
@@ -250,7 +187,6 @@ set(TEST_MULTITHREADING_SOURCE
 	octreeManager.cpp
 	cacheManager.cpp
 	controlCache.cpp
-	visibleCubes.cpp
 	linkedList.cpp
 	cache.cpp
 	controlPlaneCache.cpp
@@ -264,7 +200,6 @@ set(TEST_MULTITHREADING_SOURCE
 set(TEST_MULTITHREADING_CUDA_SOURCE
 	rayCaster_cuda.cu
 	octree_cuda.cu
-	visibleCubes_cuda.cu
 )
 
 set(LIBS_NEEDED_TEST_MULTITHREADING ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES} freeimage) 
