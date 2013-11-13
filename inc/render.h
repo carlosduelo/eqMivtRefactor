@@ -11,7 +11,7 @@ Notes:
 
 #include <renderWorkers.h>
 
-#define MAX_WORKERS 4
+#define MAX_WORKERS 2
 
 namespace eqMivt
 {
@@ -21,6 +21,7 @@ class Render
 	protected:
 		float	*		_pixelBuffer;
 
+		int _chunk;
 		int _pvpW;
 		int _pvpH;
 		sharedParameters_t 	_parameters;

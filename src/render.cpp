@@ -29,6 +29,9 @@ bool Render::init(device_t device)
 	_visibleCubes = 0;
 	_visibleCubesGPU = 0;
 	_ccc = 0;
+	_pvpH = 0;
+	_pvpW = 0;
+	_chunk = 0;
 
 	if (cudaSuccess != cudaSetDevice(_device))
 	{
@@ -170,6 +173,10 @@ bool Render::setViewPort(int pvpW, int pvpH)
 				return false;
 			}
 		}
+		if (_pvpH < 100)
+			_chunk = _pvpH;
+		else
+			_chunk = 100;
 	}
 
 	return true;
@@ -228,12 +235,14 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 	/* SEND FRAME */
 	workP.work[0] = FRAME;
 	workP.work[1] = 0; 
-	workP.work[2] = _pvpW;
+	workP.work[2] = _chunk * _pvpW;
 
 	int p = 0;
-	while(p < _pvpH)
+	bool notMulti = _pvpH % _chunk != 0;
+	int works = _pvpH / _chunk;
+	while(p < works)
 	{
-		for(int i=0; i<MAX_WORKERS && p < _pvpH; i++)
+		for(int i=0; i<MAX_WORKERS && p < works; i++)
 		{
 			_octreeQueue[i].cond.lock();
 			_octreeQueue[i].queue.push(workP);
@@ -241,13 +250,24 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 				_octreeQueue[i].cond.signal();
 			_octreeQueue[i].cond.unlock();
 		
-			workP.work[1] += _pvpW;
+			workP.work[1] += _chunk * _pvpW;
 			p++;
 		}
 	}
+	if (notMulti)
+	{
+		workP.work[1] =  works * _chunk * _pvpW; 
+		workP.work[2] = (_pvpH % _chunk) * _pvpW;
+		works++;
+		_octreeQueue[0].cond.lock();
+		_octreeQueue[0].queue.push(workP);
+		if (_octreeQueue[0].queue.size() == 1)
+			_octreeQueue[0].cond.signal();
+		_octreeQueue[0].cond.unlock();
+	}
 
 	// WAIT FOR FRAMES
-	for(int i=0; i<_pvpH; i++)
+	for(int i=0; i<works; i++)
 	{
 		if (_masterQueue.queue.empty())
 			_masterQueue.cond.wait();
