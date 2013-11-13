@@ -132,8 +132,8 @@ bool workerOctree::_frame(workpackage_t work)
 	getBoxIntersectedOctree(_octree->getOctree(), _octree->getSizes(), _octree->getnLevels(),
 							_parameters->origin, _parameters->LB, _parameters->up, _parameters->right,
 							_parameters->w, _parameters->h, _parameters->pvpW, _parameters->pvpH,
-							_octree->getRayCastingLevel(), work.work[2], (_parameters->visibleCubesGPU + work.work[1]),
-							(VectorToInt3(_octree->getRealDim())), _stream);
+							_octree->getRayCastingLevel(), work.work[2], _parameters->visibleCubesGPU,
+							work.work[1], (VectorToInt3(_octree->getRealDim())), _stream);
 
 	_updateCPU(work.work[1], work.work[2]);
 	_sync();
@@ -142,13 +142,11 @@ bool workerOctree::_frame(workpackage_t work)
 
 bool  workerOctree::_startFrame()
 {
-std::cout<<"Octree start frame"<<std::endl;
 	return true;
 }
 
 bool workerOctree::_finishFrame()
 {
-std::cout<<"Octree end frame"<<std::endl;
 	return true;
 }
 
@@ -178,14 +176,12 @@ bool workerCache::_startFrame()
 {
 	_cache.setRayCastingLevel(_octree->getRayCastingLevel());
 	_cache.startFrame();
-std::cout<<"Cache start frame"<<std::endl;
 	return true;
 }
 
 bool workerCache::_finishFrame()
 {
 	_cache.finishFrame();
-std::cout<<"Cacheend frame"<<std::endl;
 	return true;
 }
 bool workerCache::_stopWorking()
@@ -203,13 +199,12 @@ bool workerRayCaster::init(Octree * octree, color_t * colors, device_t device, q
 
 bool workerRayCaster::_frame(workpackage_t work)
 {
-std::cout<<"RAYCASTER "<< _octree->getRayCastingLevel()<<std::endl;
 	rayCaster(	_parameters->origin, _parameters->LB, _parameters->up, _parameters->right,
 				_parameters->w, _parameters->h, _parameters->pvpW, _parameters->pvpH, 
 				work.work[2], _octree->getRayCastingLevel(), 
 				_octree->getCubeLevel(), _octree->getnLevels(), _octree->getIsosurface(),
-				(_parameters->visibleCubesGPU + work.work[1]), _octree->getGridMaxHeight(),
-				(_parameters->pixelBuffer + (3*work.work[1])), VectorToInt3(_octree->getRealDim()),
+				_parameters->visibleCubesGPU, _octree->getGridMaxHeight(),
+				_parameters->pixelBuffer, work.work[1], VectorToInt3(_octree->getRealDim()),
 				_colors->r, _colors->g, _colors->b, _stream);
 
 	_updateCPU(work.work[1], work.work[2]);
@@ -224,13 +219,22 @@ std::cout<<"RAYCASTER "<< _octree->getRayCastingLevel()<<std::endl;
 		{
 			sendO = false;	
 		}
-		else if(cubes[i].state == DONE)
+
+		if(cubes[i].state == DONE)
 		{
 			cF++;
 		}
+		else if (cubes[i].state == NOCUBE)
+		{
+			_POP->cond.lock();
+			_POP->queue.push(cubes[i].id);
+			if (_POP->queue.size() == 1)
+				_POP->cond.signal();
+			_POP->cond.unlock();
+			cubes[i].state = DONE;
+		}
 		else if (cubes[i].state == PAINTED)
 		{
-		std::cout<<"PAINTED"<<std::endl;
 			cF++;
 			_POP->cond.lock();
 			_POP->queue.push(cubes[i].id);
@@ -239,13 +243,6 @@ std::cout<<"RAYCASTER "<< _octree->getRayCastingLevel()<<std::endl;
 			_POP->cond.unlock();
 			cubes[i].state = DONE;
 		}
-		#ifndef NDEBUG
-		else
-		{
-			std::cerr<<"Error operation not allowed"<<std::endl;
-			throw;
-		}
-		#endif
 	}
 
 	if (cF == work.work[2])
@@ -265,26 +262,15 @@ std::cout<<"RAYCASTER "<< _octree->getRayCastingLevel()<<std::endl;
 
 	}
 	return !sendO; 
-	#if 0
-std::cout<<"RAYCASTER"<<std::endl;
-		_END->cond.lock();
-		_END->queue.push(work);
-		if (_END->queue.size() == 1)
-			_END->cond.signal();
-		_END->cond.unlock();
-	return false;
-	#endif
 }
 
 bool workerRayCaster::_startFrame()
 {
-std::cout<<"ray caster start frame"<<std::endl;
 	return false;
 }
 
 bool workerRayCaster::_finishFrame()
 {
-std::cout<<"ray caster end frame"<<std::endl;
 	return false;
 }
 

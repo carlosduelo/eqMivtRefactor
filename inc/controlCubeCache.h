@@ -11,6 +11,8 @@ Notes:
 
 #include <controlCubeCPUCache.h>
 
+#include <cuda_runtime.h>
+
 namespace eqMivt
 {
 
@@ -31,6 +33,7 @@ class  ControlCubeCache : public ControlElementCache<index_node_t>
 		vmml::vector<3, int> _maxC;
 
 		device_t _device;
+		cudaStream_t _stream;
 
 		ControlCubeCPUCache * _cpuCache;
 

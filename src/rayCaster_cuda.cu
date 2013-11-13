@@ -158,12 +158,13 @@ inline __device__ float3 getNormal(float3 pos, float * data, int3 minBox, int3 m
 				(getElementInterpolateGrid(make_float3(pos.x,pos.y,pos.z-1),data,minBox,maxBox) - getElementInterpolateGrid(make_float3(pos.x,pos.y,pos.z+1.0f),data,minBox,maxBox))        /2.0f));
 }
 
-__global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, float iso, visibleCube_t * cube, int levelO, int levelC, int nLevel, float maxHeight, int3 realDim, float * r, float * g, float * b, float * screen)
+__global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, float iso, visibleCube_t * cube, int levelO, int levelC, int nLevel, float maxHeight, int3 realDim, float * r, float * g, float * b, float * screen, int offset)
 {
 	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
 
 	if (tid < numRays)
 	{
+		tid += offset;
 		if (cube[tid].state == CUDA_NOCUBE)
 		{
 			screen[tid*3] = r[NUM_COLORS];
@@ -320,12 +321,12 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 	}
 }
 
-	void rayCaster(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, int levelO, int levelC, int nLevel, float iso, visibleCube_t * cube, float maxHeight, float * pixelBuffer, int3 realDim, float * r, float * g, float * b, cudaStream_t stream)
+	void rayCaster(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, int levelO, int levelC, int nLevel, float iso, visibleCube_t * cube, float maxHeight, float * pixelBuffer, int offset, int3 realDim, float * r, float * g, float * b, cudaStream_t stream)
 {
 	dim3 threads = getThreads(numRays);
 	dim3 blocks = getBlocks(numRays);
 
-	cuda_rayCaster<<<blocks, threads, 0, stream>>>(origin, LB, up, right, w, h, pvpW, pvpH, numRays, iso, cube, levelO, levelC, nLevel, maxHeight, realDim, r, g, b, pixelBuffer);
+	cuda_rayCaster<<<blocks, threads, 0, stream>>>(origin, LB, up, right, w, h, pvpW, pvpH, numRays, iso, cube, levelO, levelC, nLevel, maxHeight, realDim, r, g, b, pixelBuffer,offset);
 	#ifndef NDEBUG
 	if (cudaSuccess != cudaStreamSynchronize(stream))
 	{

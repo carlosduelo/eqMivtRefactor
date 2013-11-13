@@ -29,8 +29,13 @@ void Cache::finishFrame()
 
 	if (_cubes.size() != 0)
 	{
-		std::cerr<<"Error cache not working"<<std::endl;
-		throw;
+		boost::unordered_map<index_node_t, cube_cached>::iterator it= _cubes.begin();
+		while(it != _cubes.end())
+		{
+			_cubeCache->unlockElement(it->first);
+			it++;
+		}
+		_cubes.clear();
 	}
 
 	_lock.unset();

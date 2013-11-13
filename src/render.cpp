@@ -191,6 +191,11 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 				vmml::vector<4, float> up, vmml::vector<4, float> right,
 				float w, float h)
 {
+	#ifdef TIMING
+	lunchbox::Clock clock;
+	clock.reset();
+	#endif
+
 	/* SET SHARED PARAMETERS */
 	_parameters.size = _pvpW*_pvpH;
 	_parameters.visibleCubes = _visibleCubes;
@@ -222,8 +227,37 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 
 	/* SEND FRAME */
 	workP.work[0] = FRAME;
-	workP.work[1] = 300*_pvpW;
-	workP.work[2] = 1*_pvpW;//_pvpW*_pvpH;
+	workP.work[1] = 0; 
+	workP.work[2] = _pvpW;
+
+	int p = 0;
+	while(p < _pvpH)
+	{
+		for(int i=0; i<MAX_WORKERS && p < _pvpH; i++)
+		{
+			_octreeQueue[i].cond.lock();
+			_octreeQueue[i].queue.push(workP);
+			if (_octreeQueue[i].queue.size() == 1)
+				_octreeQueue[i].cond.signal();
+			_octreeQueue[i].cond.unlock();
+		
+			workP.work[1] += _pvpW;
+			p++;
+		}
+	}
+
+	// WAIT FOR FRAMES
+	for(int i=0; i<_pvpH; i++)
+	{
+		if (_masterQueue.queue.empty())
+			_masterQueue.cond.wait();
+		//workpackage_t p = _masterQueue.queue.front();
+		_masterQueue.queue.pop();
+	}
+	_masterQueue.cond.unlock();
+
+	/* SEND FINIDH FRAME */
+	workP.work[0] = FINISH_FRAME;
 	for(int i=0; i<MAX_WORKERS; i++)
 	{
 		_octreeQueue[i].cond.lock();
@@ -233,17 +267,9 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 		_octreeQueue[i].cond.unlock();
 	}
 
-	// WAIT FOR FRAMES
-	for(int i=0; i<MAX_WORKERS; i++)
-	{
-		if (_masterQueue.queue.empty())
-			_masterQueue.cond.wait();
-		workpackage_t p = _masterQueue.queue.front();
-		std::cout<<p.work[0]<<" "<<p.work[1]<<" "<<p.work[2]<<std::endl;
-		_masterQueue.queue.pop();
-	}
-	_masterQueue.cond.unlock();
-
+	#ifdef TIMING
+	std::cout<<"Time render a frame "<<clock.getTimed()/1000.0f<<" seconds"<<std::endl;
+	#endif
 
 	return true;
 }

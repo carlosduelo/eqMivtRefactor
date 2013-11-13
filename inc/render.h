@@ -11,7 +11,7 @@ Notes:
 
 #include <renderWorkers.h>
 
-#define MAX_WORKERS 1
+#define MAX_WORKERS 4
 
 namespace eqMivt
 {

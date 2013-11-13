@@ -10,8 +10,6 @@ Notes:
 
 #include <mortonCodeUtil_CPU.h>
 
-#include <cuda_runtime.h>
-
 namespace eqMivt
 {
 
@@ -39,12 +37,23 @@ bool ControlCubeCache::_threadInit()
 		std::cerr<<"Control Cube Cache, error setting device: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 		return false;
 	}
+	if (cudaSuccess != cudaStreamCreate(&_stream))
+	{
+		std::cerr<<"Control Cube Cache, cuda create stream error: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		return false;
+	}
 
 	return ControlElementCache::_threadInit();
 }
 
 bool ControlCubeCache::stopCache()
 {
+	if (cudaSuccess != cudaStreamDestroy(_stream))
+	{
+		std::cerr<<"Control Cube Cache, cuda create stream error: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+		return false;
+	}
+
 	return stopWork();
 }
 
@@ -196,7 +205,7 @@ bool ControlCubeCache::_readElement(NodeLinkedList<index_node_t> * element)
 		myParms.srcPos = make_cudaPos(coord.z()*sizeof(float), coord.y(), coord.x());
 		myParms.kind = cudaMemcpyHostToDevice;
 
-		if (cudaSuccess != cudaMemcpy3D(&myParms))
+		if (cudaSuccess != cudaMemcpy3DAsync(&myParms, _stream) || cudaSuccess != cudaStreamSynchronize(_stream))
 		{
 			std::cout<<"---> "<<idCube<<" "<<_minValue<<" "<<_maxValue<<std::endl;
 			LBERROR<<"Control Cube Cache: error copying to a device: "<<cudaGetErrorString(cudaGetLastError()) <<" "<<cube<<" "<<pCube<<" "<<_sizeElement<<std::endl;
