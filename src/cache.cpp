@@ -103,19 +103,14 @@ void Cache::popCubes(index_node_t id)
 	_lock.set();
 	boost::unordered_map<index_node_t, cube_cached>::iterator it= _cubes.find(idCube);
 
-	#ifndef NDEBUG
-	if (it == _cubes.end())
+	if (it != _cubes.end())
 	{
-		std::cerr<<"Cache unistable"<<std::endl;
-		throw;
-	}
-	#endif
-
-	it->second.refs--;
-	if (it->second.refs == 0)
-	{
-		_cubeCache->unlockElement(it->first);
-		_cubes.erase(it);
+		it->second.refs--;
+		if (it->second.refs == 0)
+		{
+			_cubeCache->unlockElement(it->first);
+			_cubes.erase(it);
+		}
 	}
 	_lock.unset();
 }
