@@ -186,11 +186,18 @@ bool Render::_drawCubes(	vmml::vector<4, float> origin, vmml::vector<4, float> L
 				vmml::vector<4, float> up, vmml::vector<4, float> right,
 				float w, float h)
 {
+	#ifdef TIMING
+	lunchbox::Clock clock;
+	clock.reset();
+	#endif
 		drawCubes(	_octree->getOctree(), _octree->getSizes(), _octree->getnLevels(),
 					VectorToFloat3(origin), VectorToFloat3(LB), VectorToFloat3(up), VectorToFloat3(right),
 					w, h, _pvpW, _pvpH, _octree->getmaxLevel(), _size,
 					VectorToInt3(_octree->getRealDim()), _octree->getGridMaxHeight(), 
 					_colors.r, _colors.g, _colors.b, _pixelBuffer, 0);
+	#ifdef TIMING
+	std::cout<<"Time render a frame "<<clock.getTimed()/1000.0f<<" seconds"<<std::endl;
+	#endif
 		return true;
 }
 

@@ -483,10 +483,10 @@ __device__ int3 _cuda_updateCoordinatesGrid(int maxLevel, int cLevel, index_node
 	}
 	else if (cLevel < nLevel)
 	{
-		index_node_t mask = (index_node_t) 1;
-		minBox.z +=  (nIndex & mask) << (maxLevel-nLevel); nIndex>>=1;
-		minBox.y +=  (nIndex & mask) << (maxLevel-nLevel); nIndex>>=1;
-		minBox.x +=  (nIndex & mask) << (maxLevel-nLevel); nIndex>>=1;
+		int dim = 1 << (maxLevel-nLevel);
+		minBox.z +=  (nIndex & 0x1) * dim; nIndex>>=1;
+		minBox.y +=  (nIndex & 0x1) * dim; nIndex>>=1;
+		minBox.x +=  (nIndex & 0x1) * dim;
 		return minBox;
 
 	}
@@ -496,13 +496,13 @@ __device__ int3 _cuda_updateCoordinatesGrid(int maxLevel, int cLevel, index_node
 	}
 	else
 	{
-		index_node_t mask = (index_node_t)1;
-		minBox.z +=  (nIndex & mask) << (maxLevel-nLevel); nIndex>>=1;
-		minBox.y +=  (nIndex & mask) << (maxLevel-nLevel); nIndex>>=1;
-		minBox.x +=  (nIndex & mask) << (maxLevel-nLevel); nIndex>>=1;
-		minBox.z -=  (cIndex & mask) << (maxLevel-cLevel); cIndex>>=1;
-		minBox.y -=  (cIndex & mask) << (maxLevel-cLevel); cIndex>>=1;
-		minBox.x -=  (cIndex & mask) << (maxLevel-cLevel); cIndex>>=1;
+		int dim = 1 << (maxLevel-nLevel);
+		minBox.z +=  (nIndex & 0x1) * dim; nIndex>>=1;
+		minBox.y +=  (nIndex & 0x1) * dim; nIndex>>=1;
+		minBox.x +=  (nIndex & 0x1) * dim;
+		minBox.z -=  (cIndex & 0x1) * dim; cIndex>>=1;
+		minBox.y -=  (cIndex & 0x1) * dim; cIndex>>=1;
+		minBox.x -=  (cIndex & 0x1) * dim;
 		return minBox;
 	}
 }
