@@ -157,25 +157,21 @@ void OctreeContainer::_setBestCubeLevel()
 
 		if (it->nLevels - 8 > 0)
 			nL = it->nLevels - 8;
-		if (nL <= 0)
+		else
 			nL = 0;
 
 		it->cubeLevelCPU = nL;
 
 		if (it->nLevels - 6 > 0)
 			nL = it->nLevels - 6;
-		if (nL <= 0)
+		else
 			nL = 0;
-		if (it->maxLevel < nL)
-			nL = it->maxLevel;
 
 		it->cubeLevel = nL;
 
 		int oL = it->nLevels - 5;
 		if (oL <= 0)
 			oL = 0;
-		if (it->maxLevel < oL)
-			oL = it->maxLevel;
 		it->rayCastingLevel = oL; 
 
 		octreePosition_t  o=*it;
