@@ -41,75 +41,34 @@ inline __device__ float3 _cuda_BoxToCoordinates(int3 pos, int3 realDim)
 
 __device__ inline bool _cuda_checkRangeGrid(index_node_t * elements, index_node_t index, int min, int max)
 {
-	return  index == elements[min] 	|| 
-		index == elements[max]	||
-		(elements[min] < index && elements[max] > index);
+		return elements[max] >= index && elements[min] <= index;
 }
 
 __device__ int _cuda_binary_search_closer_Grid(index_node_t * elements, index_node_t index, int min, int max)
 {
-#if 1
-	bool end = false;
-	bool found = false;
 	int middle = 0;
-
-	while(!end && !found)
+	while(1)
 	{
 		int diff 	= max-min;
 		middle	= min + (diff / 2);
 		if (middle % 2 == 1) middle--;
 
-		end 		= diff <= 1;
-		found 		=  _cuda_checkRangeGrid(elements, index, middle, middle+1);
+		if (diff <= 1) return middle;
+		if (elements[middle+1] >= index && elements[middle] <= index) return middle;
 		if (index < elements[middle])
 			max = middle-1;
 		else //(index > elements[middle+1])
 			min = middle + 2;
 	}
-	return middle;
-#endif
-#if 0
-	while(1)
-	{
-		int diff = max-min;
-		unsigned int middle = min + (diff / 2);
-		if (diff <= 1)
-		{
-			if (middle % 2 == 1) middle--;
-			return middle;
-		}
-		else
-		{
-			if (middle % 2 == 1) middle--;
-
-			if (_cuda_checkRangeGrid(elements, index, middle, middle+1))
-				return middle;
-			else if (index < elements[middle])
-			{
-				max = middle-1;
-			}
-			else if (index > elements[middle+1])
-			{
-				min = middle + 2;
-			}
-			#if 0
-			// XXX en cuda me arriesgo... malo...
-			else
-				std::cout<<"Errro"<<std::endl;
-			#endif
-		}
-	}
-#endif
 }
 
 __device__  bool _cuda_searchSecuentialGrid(index_node_t * elements, index_node_t index, int min, int max)
 {
-	bool find = false;
 	for(int i=min; i<max; i+=2)
-		if (_cuda_checkRangeGrid(elements, index, i, i+1))
-			find = true;
+		if (elements[i+1] >= index && elements[i] <= index)
+			return true;
 
-	return find;
+	return false;
 }
 
 __device__ bool _cuda_RayAABB(index_node_t index, float3 origin, float3 dir,  float * tnear, float * tfar, int nLevels, int3 realDim)
@@ -266,17 +225,83 @@ __device__ bool _cuda_RayAABB2(float3 origin, float3 dir,  float * tnear, float 
 
 }
 
-__device__ bool _cuda_searchNextChildrenValidAndHit(index_node_t * elements, int size, int3 realDim, float3 origin, float3 ray, index_node_t father, float cTnear, float cTfar, int nLevels, int level, int3 minB, index_node_t * child, float * childTnear, float * childTfar)
+__device__ int3 _cuda_brother(int3 minBox, index_node_t a, int dim)
+{
+	int3 r;
+	r.z = minBox.z + (a & 0x1) * dim; a>>=1;
+	r.y = minBox.y + (a & 0x1) * dim; a>>=1; 
+	r.x = minBox.x + (a & 0x1) * dim;
+
+	return r;
+}
+
+#if 0
+__device__ bool _cuda_searchNextChildrenValidAndHit(index_node_t * elements, int size, int3 realDim, float3 origin, float3 ray, index_node_t father, float cTnear, float cTfar, int nLevels, int level, int3 minBox, index_node_t * child, float * childTnear, float * childTfar)
 {
 	index_node_t childrenID = father << 3;
 	int dim = (1<<(nLevels-level));
-	int3 minBox = make_int3(minB.x, minB.y, minB.z);
 
 	float closer = 0x7ff0000000000000;	//infinity
 	bool find = false;
 	float childTnearT = 0xfff0000000000000; // -infinity
 	float childTfarT  = 0xfff0000000000000; // -infinity
 
+	int closer1 = 0;
+
+	if (size != 2)
+	{
+		closer1 = _cuda_binary_search_closer_Grid(elements, childrenID,   0, size-1);
+	}
+
+	index_node_t lastChildren = childrenID + 7;
+	index_node_t min = elements[closer1];
+	index_node_t max = elements[closer1+1];
+
+	if (min > lastChildren)
+		return false;
+	if (min < childrenID)
+		min = childrenID;
+	if (max > lastChildren)
+		max = lastChildren;
+	
+	while(childrenID <= lastChildren)
+	{
+		while(childrenID <= max)
+		{
+			if (_cuda_RayAABB2(origin, ray,  &childTnearT, &childTfarT, nLevels, _cuda_brother(minBox, childrenID & 0x7,dim), level, realDim) && childTnearT >= cTnear && childTnearT <= closer)
+			{
+				*child = childrenID;
+				*childTnear = childTnearT;
+				*childTfar = childTfarT;
+				closer = childTnearT;
+				find = true;
+			}
+			childrenID++;
+		}
+		closer1+=2;
+		if (closer1 >= size)
+			return find;
+		min = elements[closer1];
+		max = elements[closer1+1];
+		if (max > lastChildren)
+			max = lastChildren; 
+		if (min < childrenID)
+			min = childrenID;
+		childrenID = min;
+	}
+
+	return find;
+#else
+__device__ bool _cuda_searchNextChildrenValidAndHit(index_node_t * elements, int size, int3 realDim, float3 origin, float3 ray, index_node_t father, float cTnear, float cTfar, int nLevels, int level, int3 minB, index_node_t * child, float * childTnear, float * childTfar)
+{
+	index_node_t childrenID = father << 3;
+	int dim = (1<<(nLevels-level));
+	int3 minBox = minB;
+
+	float closer = 0x7ff0000000000000;	//infinity
+	bool find = false;
+	float childTnearT = 0xfff0000000000000; // -infinity
+	float childTfarT  = 0xfff0000000000000; // -infinity
 	if (size==2)
 	{
 		if (_cuda_RayAABB2(origin, ray,  &childTnearT, &childTfarT, nLevels, minBox, level, realDim) && childTnearT >= cTnear && childTnearT <= closer &&
@@ -473,6 +498,7 @@ __device__ bool _cuda_searchNextChildrenValidAndHit(index_node_t * elements, int
 	}
 
 	return find;
+#endif
 }
 
 __device__ int3 _cuda_updateCoordinatesGrid(int maxLevel, int cLevel, index_node_t cIndex, int nLevel, index_node_t nIndex, int3 minBox)
