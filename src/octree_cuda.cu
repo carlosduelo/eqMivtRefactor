@@ -533,12 +533,314 @@ __device__ int3 _cuda_updateCoordinatesGrid(int maxLevel, int cLevel, index_node
 	}
 }
 
-__global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int finalLevel, visibleCube_t * p_indexNode, int numElements, int offset, int3 realDim)
+__device__ bool _cuda_octreeIteration(index_node_t ** octree, int * sizes, float3 origin, float3 ray, int nLevels, int finalLevel, visibleCube_t * indexNode, int3 realDim, float * currentTnear, float * currentTfar)
+{
+	*currentTnear	= 0.0f;
+	*currentTfar	= 0.0f;
+	index_node_t 	current			= indexNode->id == 0 ? 1 : indexNode->id;
+	int				currentLevel	= 0;
+
+	// Update tnear and tfar
+	if (!_cuda_RayAABB(current, origin, ray,  currentTnear, currentTfar, nLevels, realDim) || (*currentTfar) < 0.0f)
+	{
+		// NO CUBE FOUND
+		indexNode->state = CUDA_NOCUBE;
+		return false;
+	}
+	if (current != 1)
+	{
+		current  >>= 3;
+		currentLevel = finalLevel - 1;
+		*currentTnear = *currentTfar;
+	}
+
+	int3		minBox 		= getMinBoxIndex2(current, currentLevel, nLevels);
+
+	while(1)
+	{
+		if (currentLevel == finalLevel)
+		{
+			indexNode->id = current;
+			indexNode->state = CUDA_CUBE;
+			return true;
+		}
+
+		// Get fitst child >= currentTnear away
+		index_node_t	child;
+		float			childTnear;
+		float			childTfar;
+		if (_cuda_searchNextChildrenValidAndHit(octree[currentLevel+1], sizes[currentLevel+1], realDim, origin, ray, current, *currentTnear, *currentTfar, nLevels, currentLevel+1, minBox, &child, &childTnear, &childTfar))
+		{
+			minBox = _cuda_updateCoordinatesGrid(nLevels, currentLevel, current, currentLevel + 1, child, minBox);
+			current = child;
+			currentLevel++;
+			*currentTnear = childTnear;
+			*currentTfar = childTfar;
+		//if (currentTnear == currentTfar)
+		//	printf("--> %d %lld %d %f %f\n", i, current, currentLevel, currentTnear, currentTfar);
+		}
+		else if (current == 1) 
+		{
+			indexNode->state = CUDA_NOCUBE;
+			return false;
+		}
+		else
+		{
+			minBox = _cuda_updateCoordinatesGrid(nLevels, currentLevel, current, currentLevel - 1, current >> 3, minBox);
+			current >>= 3;
+			currentLevel--;
+			*currentTnear = *currentTfar;
+		}
+
+	}
+}
+
+
+#if 0
+__device__ bool _cuda_rayCaster(float3 origin, float3 ray, visibleCube_t * cube, float * r, float * g, float * b, float * pixelBuffer, float tnear, float tfar, int level, int levelCube, int nLevels, float iso, int i, float maxHeight)
+{
+	float3 Xnear = origin + tnear * ray;
+	float3 Xmid = origin + (tnear + ((tfar-tnear)/2.0f)) * ray;
+	float3 Xfar = origin + tfar * ray;
+	float3 Xnew;
+	
+	int3 minBox = getMinBoxIndex2(cube->id, level, nLevels);
+	int3 maxBox = minBox + make_int3(1<<(nLevels-level),1<<(nLevels-level),1<<(nLevels-level));
+	int3 minBoxD = getMinBoxIndex2(cube->id >> (3*(level - levelCube)), levelCube, nLevels) - make_int3(CUBE_INC, CUBE_INC, CUBE_INC);
+	int3 dimD;
+	dimD.x = (1 << (nLevels-levelCube)) + 2*CUBE_INC;
+	dimD.y = (1 << (nLevels-levelCube)) + 2*CUBE_INC;
+	dimD.z = (1 << (nLevels-levelCube)) + 2*CUBE_INC;
+	float ant		= 0.0f;
+	float sig		= 0.0f;
+
+	int3 Pnear = make_int3(	_cuda_searchCoordinateX(Xnear.x, minBox.x - 1, minBox.x + 1),
+							_cuda_searchCoordinateX(Xnear.y, minBox.y - 1, minBox.y + 1),
+							_cuda_searchCoordinateX(Xnear.z, minBox.z - 1, minBox.z + 1));
+
+	float3 xyz = make_float3(	Pnear.x + ((Xnear.x - tex1Dfetch(xgrid, Pnear.x + CUBE_INC)) / (tex1Dfetch(xgrid, Pnear.x+1 + CUBE_INC) - tex1Dfetch(xgrid, Pnear.x + CUBE_INC))),
+								Pnear.y + ((Xnear.y - tex1Dfetch(ygrid, Pnear.y + CUBE_INC)) / (tex1Dfetch(ygrid, Pnear.y+1 + CUBE_INC) - tex1Dfetch(ygrid, Pnear.y + CUBE_INC))),
+								Pnear.z + ((Xnear.z - tex1Dfetch(zgrid, Pnear.z + CUBE_INC)) / (tex1Dfetch(zgrid, Pnear.z+1 + CUBE_INC) - tex1Dfetch(zgrid, Pnear.z + CUBE_INC))));
+
+	ant = getElementInterpolateGrid(xyz, cube->data, minBoxD, dimD);
+	Xfar = Xnear;
+
+	float t = tnear;
+	while(t <= tfar)
+	{
+		t += 0.3;
+		Xnear = origin + t * ray;
+		Pnear = make_int3(	_cuda_searchCoordinateX(Xnear.x, minBox.x - 1, minBox.x + 1),
+							_cuda_searchCoordinateX(Xnear.y, minBox.y - 1, minBox.y + 1),
+							_cuda_searchCoordinateX(Xnear.z, minBox.z - 1, minBox.z + 1));
+		xyz = make_float3(	Pnear.x + ((Xnear.x - tex1Dfetch(xgrid, Pnear.x + CUBE_INC)) / (tex1Dfetch(xgrid, Pnear.x+1 + CUBE_INC) - tex1Dfetch(xgrid, Pnear.x + CUBE_INC))),
+							Pnear.y + ((Xnear.y - tex1Dfetch(ygrid, Pnear.y + CUBE_INC)) / (tex1Dfetch(ygrid, Pnear.y+1 + CUBE_INC) - tex1Dfetch(ygrid, Pnear.y + CUBE_INC))),
+							Pnear.z + ((Xnear.z - tex1Dfetch(zgrid, Pnear.z + CUBE_INC)) / (tex1Dfetch(zgrid, Pnear.z+1 + CUBE_INC) - tex1Dfetch(zgrid, Pnear.z + CUBE_INC))));
+		
+		sig = getElementInterpolateGrid(xyz, cube->data, minBoxD, dimD);
+
+
+		if (( ((iso-ant)<0.0f) && ((iso-sig)<0.0f)) || ( ((iso-ant)>0.0f) && ((iso-sig)>0.0)))
+		{
+			ant = sig;
+		}
+		else
+		{
+			float a = (iso-ant)/(sig-ant);
+			Xnew = Xnear*(1.0f-a)+ Xmid*a;
+
+			float3 n = getNormal(Xmid, cube->data, minBoxD,  dimD);
+			float3 l = Xmid - origin;// ligth; light on the camera
+			l = normalize(l);	
+			nfloat dif = fabsf(n.x*l.x + n.y*l.y + n.z*l.z);
+			a = Xmid.y/maxHeight;
+			int pa = floorf(a*NUM_COLORS);
+			if (pa < 0)
+			{
+				pixelBuffer[i*3]   =r[0]*dif;
+				pixelBuffer[i*3+1] =g[0]*dif;
+				pixelBuffer[i*3+2] =b[0]*dif;
+			}
+			else if (pa >= NUM_COLORS-1) 
+			{
+				pixelBuffer[i*3]   = r[NUM_COLORS-1]*dif;
+				pixelBuffer[i*3+1] = g[NUM_COLORS-1]*dif;
+				pixelBuffer[i*3+2] = b[NUM_COLORS-1]*dif;
+			}
+			else
+			{
+				float dx = (a*(float)NUM_COLORS - (float)pa);
+				pixelBuffer[i*3]   = (r[pa] + (r[pa+1]-r[pa])*dx)*dif;
+				pixelBuffer[i*3+1] = (g[pa] + (g[pa+1]-g[pa])*dx)*dif;
+				pixelBuffer[i*3+2] = (b[pa] + (b[pa+1]-b[pa])*dx)*dif;
+			}
+			cube->state= CUDA_PAINTED;
+			return true;
+		}
+	}
+
+	return false;
+}
+#endif
+__device__ bool _cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, float iso, visibleCube_t * cube, int levelO, int levelC, int nLevel, float maxHeight, int3 realDim, float * r, float * g, float * b, float * screen, int offset)
+{
+	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
+
+	if (tid < numRays)
+	{
+		tid += offset;
+		float tnear;
+		float tfar;
+		// To do test intersection real cube position
+		int3 minBox = getMinBoxIndex2(cube->id, levelO, nLevel);
+		int dim = 1 << (nLevel-levelO);
+		//int dim = powf(2,nLevel-levelO);
+		int3 maxBox = minBox + make_int3(dim,dim,dim);
+		float3 minBoxC = _cuda_BoxToCoordinates(minBox, realDim);
+		float3 maxBoxC = _cuda_BoxToCoordinates(maxBox, realDim);
+
+		int i = tid % pvpW;
+		int j = tid / pvpW;
+
+		float3 ray = LB - origin;
+		ray += (j*h)*up + (i*w)*right;
+		ray = normalize(ray);
+
+		if  (_cuda_RayAABB(origin, ray,  &tnear, &tfar, minBoxC, maxBoxC))
+		{
+			// To ray caster is needed bigger cube, so add cube inc
+			int3 minBoxD = getMinBoxIndex2(cube->id >> (3*(levelO - levelC)), levelC, nLevel) - make_int3(CUBE_INC, CUBE_INC, CUBE_INC);
+			int3 dimD;
+			dimD.x = (1 << (nLevel-levelC)) + 2*CUBE_INC;
+			dimD.y = (1 << (nLevel-levelC)) + 2*CUBE_INC;
+			dimD.z = (1 << (nLevel-levelC)) + 2*CUBE_INC;
+
+			float3 Xnear = origin + tnear * ray;
+
+			int3 pos = make_int3(	_cuda_searchCoordinateX(Xnear.x, minBox.x - 1, maxBox.x+1),
+									_cuda_searchCoordinateY(Xnear.y, minBox.y - 1, maxBox.y+1),
+									_cuda_searchCoordinateZ(Xnear.z, minBox.z - 1, maxBox.z+1));
+
+			bool hit = false;
+			float3 Xfar = Xnear;
+			float3 Xnew = Xnear;
+			bool primera 	= true;
+			float ant		= 0.0f;
+			float sig		= 0.0f;
+
+			while (!hit &&
+				(minBox.x-1 <= pos.x && pos.x <= maxBox.x) &&
+				(minBox.y-1 <= pos.y && pos.y <= maxBox.y) &&
+				(minBox.z-1 <= pos.z && pos.z <= maxBox.z))
+			{
+				if (pos.x >= 0 && pos.y >= 0 && pos.z >= 0 && pos.x < realDim.x-1 && pos.y < realDim.y-1 && pos.z < realDim.z-1)
+				{
+					float3 xyz = make_float3(	pos.x + ((Xnear.x - tex1Dfetch(xgrid, pos.x + CUBE_INC)) / (tex1Dfetch(xgrid, pos.x+1 + CUBE_INC) - tex1Dfetch(xgrid, pos.x + CUBE_INC))),
+												pos.y + ((Xnear.y - tex1Dfetch(ygrid, pos.y + CUBE_INC)) / (tex1Dfetch(ygrid, pos.y+1 + CUBE_INC) - tex1Dfetch(ygrid, pos.y + CUBE_INC))),
+												pos.z + ((Xnear.z - tex1Dfetch(zgrid, pos.z + CUBE_INC)) / (tex1Dfetch(zgrid, pos.z+1 + CUBE_INC) - tex1Dfetch(zgrid, pos.z + CUBE_INC))));
+					
+					if (primera)
+					{
+						ant = getElementInterpolateGrid(xyz, cube->data, minBoxD, dimD);
+						Xfar = Xnear;
+						primera = false;
+					}
+					else
+					{
+						sig = getElementInterpolateGrid(xyz, cube->data, minBoxD, dimD);
+
+						if (( ((iso-ant)<0.0f) && ((iso-sig)<0.0f)) || ( ((iso-ant)>0.0f) && ((iso-sig)>0.0)))
+						{
+							ant = sig;
+							Xfar=Xnear;
+						}
+						else
+						{
+							float a = (iso-ant)/(sig-ant);
+							Xnew = Xfar*(1.0f-a)+ Xnear*a;
+							hit = true;
+						}
+					}
+				}
+
+				// Update Xnear
+				Xnear += ((fminf(fabs(tex1Dfetch(xgrid, pos.x+1 + CUBE_INC) - tex1Dfetch(xgrid, pos.x + CUBE_INC)), fminf(fabs(tex1Dfetch(ygrid, pos.y+1 + CUBE_INC) - tex1Dfetch(ygrid, pos.y + CUBE_INC)),fabs( tex1Dfetch(zgrid, pos.z+1 + CUBE_INC) - tex1Dfetch(zgrid, pos.z + CUBE_INC))))) / 3.0f) * ray;
+
+				// Get new pos
+				while((minBox.x-2 <= pos.x && pos.x <= maxBox.x + 1) &&  !(tex1Dfetch(xgrid, pos.x + CUBE_INC) <= Xnear.x && Xnear.x < tex1Dfetch(xgrid, pos.x+1 + CUBE_INC)))
+					pos.x = ray.x < 0 ? pos.x - 1 : pos.x +1;
+				while((minBox.y-2 <= pos.y && pos.y <= maxBox.y + 1) &&!(tex1Dfetch(ygrid, pos.y + CUBE_INC) <= Xnear.y && Xnear.y < tex1Dfetch(ygrid, pos.y+1 + CUBE_INC)))
+					pos.y = ray.y < 0 ? pos.y - 1 : pos.y +1;
+				while((minBox.z-2 <= pos.z && pos.z <= maxBox.z + 1) &&!(tex1Dfetch(zgrid, pos.z + CUBE_INC) <= Xnear.z && Xnear.z < tex1Dfetch(zgrid, pos.z+1 + CUBE_INC)))
+					pos.z = ray.z < 0 ? pos.z - 1 : pos.z +1;
+			}
+
+			if (hit)
+			{
+				pos = make_int3(	_cuda_searchCoordinateX(Xnew.x, minBox.x - 1, maxBox.x+1),
+									_cuda_searchCoordinateY(Xnew.y, minBox.y - 1, maxBox.y+1),
+									_cuda_searchCoordinateZ(Xnew.z, minBox.z - 1, maxBox.z+1));
+
+				float3 xyz = make_float3(	pos.x + ((Xnew.x - tex1Dfetch(xgrid, pos.x + CUBE_INC)) / (tex1Dfetch(xgrid, pos.x+1 + CUBE_INC) - tex1Dfetch(xgrid, pos.x + CUBE_INC))),
+											pos.y + ((Xnew.y - tex1Dfetch(ygrid, pos.y + CUBE_INC)) / (tex1Dfetch(ygrid, pos.y+1 + CUBE_INC) - tex1Dfetch(ygrid, pos.y + CUBE_INC))),
+											pos.z + ((Xnew.z - tex1Dfetch(zgrid, pos.z + CUBE_INC)) / (tex1Dfetch(zgrid, pos.z+1 + CUBE_INC) - tex1Dfetch(zgrid, pos.z + CUBE_INC))));
+
+				float3 n = getNormal(xyz, cube->data, minBoxD,  dimD);
+				float3 l = Xnew - origin;// ligth; light on the camera
+				l = normalize(l);	
+				float dif = fabsf(n.x*l.x + n.y*l.y + n.z*l.z);
+				float a = Xnew.y/maxHeight;
+				int pa = floorf(a*NUM_COLORS);
+				if (pa < 0)
+				{
+					screen[tid*3]   =r[0]*dif;
+					screen[tid*3+1] =g[0]*dif;
+					screen[tid*3+2] =b[0]*dif;
+				}
+				else if (pa >= NUM_COLORS-1) 
+				{
+					screen[tid*3]   = r[NUM_COLORS-1]*dif;
+					screen[tid*3+1] = g[NUM_COLORS-1]*dif;
+					screen[tid*3+2] = b[NUM_COLORS-1]*dif;
+				}
+				else
+				{
+					float dx = (a*(float)NUM_COLORS - (float)pa);
+					screen[tid*3]   = (r[pa] + (r[pa+1]-r[pa])*dx)*dif;
+					screen[tid*3+1] = (g[pa] + (g[pa+1]-g[pa])*dx)*dif;
+					screen[tid*3+2] = (b[pa] + (b[pa+1]-b[pa])*dx)*dif;
+				}
+				cube->state= CUDA_PAINTED;
+				return true;
+			}
+			else
+			{
+				cube->state = CUDA_NOCUBE;
+				return false;
+			}
+		}
+		else
+		{
+			screen[tid*3] = 1.0f;
+			screen[tid*3+1] = 0.0f;
+			screen[tid*3+2] = 0.0f;
+			cube->state = CUDA_PAINTED;
+			return false;
+		}
+	}
+	return false;
+}
+
+
+__global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int finalLevel, int levelCube, visibleCube_t * p_indexNode, int numElements, int offset, int3 realDim, float * r, float * g, float * b, float * pixelBuffer, float iso, float maxHeight)
 {
 	int i = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
 
 	if (i < numElements)
 	{
+		float			currentTnear	= 0.0f;
+		float			currentTfar		= 0.0f;
+
 		i += offset;
     	int is = i % pvpW;
 		int js = i / pvpW;
@@ -552,72 +854,56 @@ __global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLev
 		if (indexNode->state ==  CUDA_PAINTED)
 		{
 			indexNode->state = CUDA_DONE;
-			return;
 		}
-		else if (indexNode->state ==  CUDA_NOCUBE)
+		else if (indexNode->state == CUDA_CACHED)
 		{
-			float			currentTnear	= 0.0f;
-			float			currentTfar		= 0.0f;
-			index_node_t 	current			= indexNode->id == 0 ? 1 : indexNode->id;
-			int				currentLevel	= 0;
-
-			// Update tnear and tfar
-			if (!_cuda_RayAABB(current, origin, ray,  &currentTnear, &currentTfar, nLevels, realDim) || currentTfar < 0.0f)
+			_cuda_RayAABB(indexNode->id, origin, ray,  &currentTnear, &currentTfar, nLevels, realDim);
+			if (!_cuda_rayCaster(origin, LB, up, right, w, h, pvpW, pvpH, numElements, iso, indexNode, finalLevel, levelCube, nLevels, maxHeight, realDim, r, g, b, pixelBuffer, offset))
 			{
-				// NO CUBE FOUND
-				indexNode->id 	= 0;
-				return;
+				indexNode->state = CUDA_NOCUBE;
 			}
-			if (current != 1)
-			{
-				current  >>= 3;
-				currentLevel = finalLevel - 1;
-				currentTnear = currentTfar;
-				//printf("--> %d %lld %d %f %f\n", i, current, currentLevel, currentTnear, currentTfar);
-			}
+		}
+		
+		index_node_t lastIndex = indexNode->id;
+		index_node_t idCube = lastIndex >> (3*(finalLevel - levelCube)); 
 
-			int3		minBox 		= getMinBoxIndex2(current, currentLevel, nLevels);
-
+		if (indexNode->state ==  CUDA_NOCUBE)
+		{
 			while(1)
 			{
-				if (currentLevel == finalLevel)
+				if (_cuda_octreeIteration(octree, sizes, origin, ray, nLevels, finalLevel, indexNode, realDim, &currentTnear, &currentTfar))
 				{
-					indexNode->id = current;
-					indexNode->state = CUDA_CUBE;
-					return;
-				}
+					index_node_t idCubeN = indexNode->id>> (3*(finalLevel - levelCube));
 
-				// Get fitst child >= currentTnear away
-				index_node_t	child;
-				float			childTnear;
-				float			childTfar;
-				if (_cuda_searchNextChildrenValidAndHit(octree[currentLevel+1], sizes[currentLevel+1], realDim, origin, ray, current, currentTnear, currentTfar, nLevels, currentLevel+1, minBox, &child, &childTnear, &childTfar))
-				{
-					minBox = _cuda_updateCoordinatesGrid(nLevels, currentLevel, current, currentLevel + 1, child, minBox);
-					current = child;
-					currentLevel++;
-					currentTnear = childTnear;
-					currentTfar = childTfar;
-				//if (currentTnear == currentTfar)
-				//	printf("--> %d %lld %d %f %f\n", i, current, currentLevel, currentTnear, currentTfar);
-				}
-				else if (current == 1) 
-				{
-					indexNode->id 	= 0;
-					return;
+					if (idCubeN == idCube)
+					{
+						if (_cuda_rayCaster(origin, LB, up, right, w, h, pvpW, pvpH, numElements, iso, indexNode, finalLevel, levelCube, nLevels, maxHeight, realDim, r, g, b, pixelBuffer, offset))
+						{
+							return;
+						}
+						else
+						{
+							indexNode->state = CUDA_NOCUBE;
+						}
+					}
+					else
+					{
+						indexNode->state = CUDA_CUBE;
+						return;
+					}
 				}
 				else
 				{
-					minBox = _cuda_updateCoordinatesGrid(nLevels, currentLevel, current, currentLevel - 1, current >> 3, minBox);
-					current >>= 3;
-					currentLevel--;
-					currentTnear = currentTfar;
+					// NO CUBE FOUND
+					pixelBuffer[i*3] = r[NUM_COLORS];
+					pixelBuffer[i*3+1] = g[NUM_COLORS];
+					pixelBuffer[i*3+2] = b[NUM_COLORS];
+					indexNode->state = CUDA_PAINTED;
+					return;
 				}
-
 			}
 		}
 	}
-	return;
 }
 
 __global__ void cuda_drawCubes(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int finalLevel, int numElements, int3 realDim, float maxHeight, float * r, float * g, float * b, float * screen)
@@ -635,121 +921,85 @@ __global__ void cuda_drawCubes(index_node_t ** octree, int * sizes, int nLevels,
 
 		float			currentTnear	= 0.0f;
 		float			currentTfar		= 0.0f;
-		index_node_t 	current			= 1;
-		int				currentLevel	= 0;
+		visibleCube_t indexNode = {0};
 
 		// Update tnear and tfar
-		if (!_cuda_RayAABB(current, origin, ray,  &currentTnear, &currentTfar, nLevels, realDim) || currentTfar < 0.0f)
+		if (_cuda_octreeIteration(octree, sizes, origin, ray, nLevels, finalLevel, &indexNode, realDim, &currentTnear, &currentTfar))
+		{
+			int3 minBox = getMinBoxIndex2(indexNode.id, finalLevel, nLevels);
+			int dim = 1 << (3*(nLevels - finalLevel));
+			float3 minBoxC = _cuda_BoxToCoordinates(minBox , realDim);
+			float3 maxBoxC = _cuda_BoxToCoordinates(minBox + make_int3(dim,dim,dim), realDim);
+			float3 n = make_float3(0.0f,0.0f,0.0f);
+			float3 hit = origin + ray*currentTnear;
+			float aux = 0.0f;
+
+			if (fabsf(maxBoxC.x - origin.x) < fabsf(minBoxC.x - origin.x))
+			{
+				aux = minBoxC.x;
+				minBoxC.x = maxBoxC.x; 
+				maxBoxC.x = aux;
+			}
+			if (fabsf(maxBoxC.y - origin.y) < fabsf(minBoxC.y - origin.y))
+			{
+				aux = minBoxC.y;
+				minBoxC.y = maxBoxC.y; 
+				maxBoxC.y = aux;
+			}
+			if (fabsf(maxBoxC.z - origin.z) < fabsf(minBoxC.z - origin.z))
+			{
+				aux = minBoxC.z;
+				minBoxC.z = maxBoxC.z; 
+				maxBoxC.z = aux;
+			}
+
+			if(fabsf(hit.x - minBoxC.x) < EPS) 
+				n.x = -1.0f;
+			else if(fabsf(hit.x - maxBoxC.x) < EPS) 
+				n.x = 1.0f;
+			else if(fabsf(hit.y - minBoxC.y) < EPS) 
+				n.y = -1.0f;
+			else if(fabsf(hit.y - maxBoxC.y) < EPS) 
+				n.y = 1.0f;
+			else if(fabsf(hit.z - minBoxC.z) < EPS) 
+				n.z = -1.0f;
+			else if(fabsf(hit.z - maxBoxC.z) < EPS) 
+				n.z = 1.0f;
+
+
+			float3 l = hit - origin;// ligth; light on the camera
+			l = normalize(l);	
+			float dif = fabsf(n.x*l.x + n.y*l.y + n.z*l.z);
+
+			float a = hit.y/maxHeight;
+			int pa = floorf(a*NUM_COLORS);
+			if (pa < 0)
+			{
+				screen[i*3]   =r[0]*dif;
+				screen[i*3+1] =g[0]*dif;
+				screen[i*3+2] =b[0]*dif;
+			}
+			else if (pa >= NUM_COLORS-1) 
+			{
+				screen[i*3]   = r[NUM_COLORS-1]*dif;
+				screen[i*3+1] = g[NUM_COLORS-1]*dif;
+				screen[i*3+2] = b[NUM_COLORS-1]*dif;
+			}
+			else
+			{
+				float dx = (a*(float)NUM_COLORS - (float)pa);
+				screen[i*3]   = (r[pa] + (r[pa+1]-r[pa])*dx)*dif;
+				screen[i*3+1] = (g[pa] + (g[pa+1]-g[pa])*dx)*dif;
+				screen[i*3+2] = (b[pa] + (b[pa+1]-b[pa])*dx)*dif;
+			}
+		}
+		else
 		{
 			// NO CUBE FOUND
 			screen[i*3] = r[NUM_COLORS];
 			screen[i*3+1] = g[NUM_COLORS];
 			screen[i*3+2] = b[NUM_COLORS];
 			return;
-		}
-		if (current != 1)
-		{
-			current  >>= 3;
-			currentLevel = finalLevel - 1;
-			currentTnear = currentTfar;
-		}
-
-		int3		minBox 		= getMinBoxIndex2(current, currentLevel, nLevels);
-
-		while(currentLevel != finalLevel)
-		{
-			// Get fitst child >= currentTnear away
-			index_node_t	child;
-			float			childTnear;
-			float			childTfar;
-			if (_cuda_searchNextChildrenValidAndHit(octree[currentLevel+1], sizes[currentLevel+1], realDim, origin, ray, current, currentTnear, currentTfar, nLevels, currentLevel+1, minBox, &child, &childTnear, &childTfar))
-			{
-				minBox = _cuda_updateCoordinatesGrid(nLevels, currentLevel, current, currentLevel + 1, child, minBox);
-				current = child;
-				currentLevel++;
-				currentTnear = childTnear;
-				currentTfar = childTfar;
-			}
-			else if (current == 1) 
-			{
-				screen[i*3] = r[NUM_COLORS];
-				screen[i*3+1] = g[NUM_COLORS];
-				screen[i*3+2] = b[NUM_COLORS];
-				return;
-			}
-			else
-			{
-				minBox = _cuda_updateCoordinatesGrid(nLevels, currentLevel, current, currentLevel - 1, current >> 3, minBox);
-				current >>= 3;
-				currentLevel--;
-				currentTnear = currentTfar;
-			}
-
-		}
-		int dim = 1 << (3*(nLevels - currentLevel));
-		float3 minBoxC = _cuda_BoxToCoordinates(minBox , realDim);
-		float3 maxBoxC = _cuda_BoxToCoordinates(minBox + make_int3(dim,dim,dim), realDim);
-		float3 n = make_float3(0.0f,0.0f,0.0f);
-		float3 hit = origin + ray*currentTnear;
-		float aux = 0.0f;
-
-		if (fabsf(maxBoxC.x - origin.x) < fabsf(minBoxC.x - origin.x))
-		{
-			aux = minBoxC.x;
-			minBoxC.x = maxBoxC.x; 
-			maxBoxC.x = aux;
-		}
-		if (fabsf(maxBoxC.y - origin.y) < fabsf(minBoxC.y - origin.y))
-		{
-			aux = minBoxC.y;
-			minBoxC.y = maxBoxC.y; 
-			maxBoxC.y = aux;
-		}
-		if (fabsf(maxBoxC.z - origin.z) < fabsf(minBoxC.z - origin.z))
-		{
-			aux = minBoxC.z;
-			minBoxC.z = maxBoxC.z; 
-			maxBoxC.z = aux;
-		}
-
-		if(fabsf(hit.x - minBoxC.x) < EPS) 
-			n.x = -1.0f;
-		else if(fabsf(hit.x - maxBoxC.x) < EPS) 
-			n.x = 1.0f;
-		else if(fabsf(hit.y - minBoxC.y) < EPS) 
-			n.y = -1.0f;
-		else if(fabsf(hit.y - maxBoxC.y) < EPS) 
-			n.y = 1.0f;
-		else if(fabsf(hit.z - minBoxC.z) < EPS) 
-			n.z = -1.0f;
-		else if(fabsf(hit.z - maxBoxC.z) < EPS) 
-			n.z = 1.0f;
-
-
-		float3 l = hit - origin;// ligth; light on the camera
-		l = normalize(l);	
-		float dif = fabsf(n.x*l.x + n.y*l.y + n.z*l.z);
-
-		float a = hit.y/maxHeight;
-		int pa = floorf(a*NUM_COLORS);
-		if (pa < 0)
-		{
-			screen[i*3]   =r[0]*dif;
-			screen[i*3+1] =g[0]*dif;
-			screen[i*3+2] =b[0]*dif;
-		}
-		else if (pa >= NUM_COLORS-1) 
-		{
-			screen[i*3]   = r[NUM_COLORS-1]*dif;
-			screen[i*3+1] = g[NUM_COLORS-1]*dif;
-			screen[i*3+2] = b[NUM_COLORS-1]*dif;
-		}
-		else
-		{
-			float dx = (a*(float)NUM_COLORS - (float)pa);
-			screen[i*3]   = (r[pa] + (r[pa+1]-r[pa])*dx)*dif;
-			screen[i*3+1] = (g[pa] + (g[pa+1]-g[pa])*dx)*dif;
-			screen[i*3+2] = (b[pa] + (b[pa+1]-b[pa])*dx)*dif;
 		}
 	}
 }
@@ -760,13 +1010,13 @@ __global__ void cuda_drawCubes(index_node_t ** octree, int * sizes, int nLevels,
  ******************************************************************************************************
  */
 
-	void getBoxIntersectedOctree(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int finalLevel, int numElements, visibleCubeGPU_t visibleGPU, int offset, int3 realDim, cudaStream_t stream)
+void getBoxIntersectedOctree(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int finalLevel, int levelCube, int numElements, visibleCubeGPU_t visibleGPU, int offset, int3 realDim, float * r, float * g, float * b, float * pixelBuffer, float iso, float maxHeight, cudaStream_t stream)
 {
 
 	dim3 threads = getThreads(numElements);
 	dim3 blocks = getBlocks(numElements);
 
-	cuda_getFirtsVoxel<<<blocks,threads, 0, stream>>>(octree, sizes, nLevels, origin, LB, up, right, w, h, pvpW, pvpH, finalLevel, visibleGPU, numElements, offset, realDim);
+	cuda_getFirtsVoxel<<<blocks,threads, 0, stream>>>(octree, sizes, nLevels, origin, LB, up, right, w, h, pvpW, pvpH, finalLevel, levelCube, visibleGPU, numElements, offset, realDim, r, g, b, pixelBuffer, iso, maxHeight);
 
 	#ifndef NDEBUG
 	if (cudaSuccess != cudaStreamSynchronize(stream))

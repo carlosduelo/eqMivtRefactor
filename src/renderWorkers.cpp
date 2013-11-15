@@ -122,8 +122,11 @@ void worker::run()
 }
 
 
-bool workerOctree::init(Octree * octree, device_t device, queue_t * IN, queue_t * OUT, sharedParameters_t *	parameters)
+bool workerOctree::init(Octree * octree, color_t * colors, device_t device, queue_t * IN, queue_t * OUT, sharedParameters_t *	parameters, queue_t * END, queuePOP_t * POP)
 {
+	_POP = POP;
+	_END = END;
+	_colors = colors;
 	return _init(octree, device, IN, OUT, parameters);
 }
 
@@ -132,80 +135,10 @@ bool workerOctree::_frame(workpackage_t work)
 	getBoxIntersectedOctree(_octree->getOctree(), _octree->getSizes(), _octree->getnLevels(),
 							_parameters->origin, _parameters->LB, _parameters->up, _parameters->right,
 							_parameters->w, _parameters->h, _parameters->pvpW, _parameters->pvpH,
-							_octree->getRayCastingLevel(), work.work[2], _parameters->visibleCubesGPU,
-							work.work[1], (VectorToInt3(_octree->getRealDim())), _stream);
-
-	_updateCPU(work.work[1], work.work[2]);
-	_sync();
-	return true;
-}
-
-bool  workerOctree::_startFrame()
-{
-	return true;
-}
-
-bool workerOctree::_finishFrame()
-{
-	return true;
-}
-
-bool workerOctree::_stopWorking()
-{
-	return true;
-}
-
-bool workerCache::init(Octree * octree, ControlCubeCache * ccc, device_t device, queue_t * IN, queue_t * OUT, sharedParameters_t *	parameters)
-{
-	return _cache.init(ccc) && _init(octree, device, IN, OUT, parameters);
-}
-
-bool workerCache::_frame(workpackage_t work)
-{
-	visibleCube_t * cubes = _parameters->visibleCubes + work.work[1];
-	for(int i=0; i<work.work[2]; i++)
-	{
-		_cache.pushCubes(cubes + i);
-	}
-	_updateGPU(work.work[1], work.work[2]);
-	_sync();
-	return true;
-}
-
-bool workerCache::_startFrame()
-{
-	_cache.setRayCastingLevel(_octree->getRayCastingLevel());
-	_cache.startFrame();
-	return true;
-}
-
-bool workerCache::_finishFrame()
-{
-	_cache.finishFrame();
-	return true;
-}
-bool workerCache::_stopWorking()
-{
-	return true;
-}
-
-bool workerRayCaster::init(Octree * octree, color_t * colors, device_t device, queue_t * IN, queue_t * OUT, sharedParameters_t * parameters, queue_t * END, queuePOP_t * POP)
-{
-	_POP = POP;
-	_END = END;
-	_colors = colors;
-	return _init(octree, device, IN, OUT, parameters);
-}
-
-bool workerRayCaster::_frame(workpackage_t work)
-{
-	rayCaster(	_parameters->origin, _parameters->LB, _parameters->up, _parameters->right,
-				_parameters->w, _parameters->h, _parameters->pvpW, _parameters->pvpH, 
-				work.work[2], _octree->getRayCastingLevel(), 
-				_octree->getCubeLevel(), _octree->getnLevels(), _octree->getIsosurface(),
-				_parameters->visibleCubesGPU, _octree->getGridMaxHeight(),
-				_parameters->pixelBuffer, work.work[1], VectorToInt3(_octree->getRealDim()),
-				_colors->r, _colors->g, _colors->b, _stream);
+							_octree->getRayCastingLevel(), _octree->getCubeLevel(),work.work[2], 
+							_parameters->visibleCubesGPU, work.work[1], (VectorToInt3(_octree->getRealDim())), 
+							_colors->r, _colors->g, _colors->b, _parameters->pixelBuffer, 
+							_octree->getIsosurface(), _octree->getMaxHeight(), _stream);
 
 	_updateCPU(work.work[1], work.work[2]);
 	_sync();
@@ -219,7 +152,6 @@ bool workerRayCaster::_frame(workpackage_t work)
 		{
 			sendO = false;	
 		}
-
 		if(cubes[i].state == DONE)
 		{
 			cF++;
@@ -264,17 +196,17 @@ bool workerRayCaster::_frame(workpackage_t work)
 	return !sendO; 
 }
 
-bool workerRayCaster::_startFrame()
+bool  workerOctree::_startFrame()
 {
-	return false;
+	return true;
 }
 
-bool workerRayCaster::_finishFrame()
+bool workerOctree::_finishFrame()
 {
-	return false;
+	return true;
 }
 
-bool workerRayCaster::_stopWorking()
+bool workerOctree::_stopWorking()
 {
 	_POP->cond.lock();
 	_POP->queue.push(0);
@@ -289,6 +221,40 @@ bool workerRayCaster::_stopWorking()
 		_END->cond.signal();
 	_END->cond.unlock();
 
+	return true;
+}
+
+bool workerCache::init(Octree * octree, ControlCubeCache * ccc, device_t device, queue_t * IN, queue_t * OUT, sharedParameters_t *	parameters)
+{
+	return _cache.init(ccc) && _init(octree, device, IN, OUT, parameters);
+}
+
+bool workerCache::_frame(workpackage_t work)
+{
+	visibleCube_t * cubes = _parameters->visibleCubes + work.work[1];
+	for(int i=0; i<work.work[2]; i++)
+	{
+		_cache.pushCubes(cubes + i);
+	}
+	_updateGPU(work.work[1], work.work[2]);
+	_sync();
+	return true;
+}
+
+bool workerCache::_startFrame()
+{
+	_cache.setRayCastingLevel(_octree->getRayCastingLevel());
+	_cache.startFrame();
+	return false;
+}
+
+bool workerCache::_finishFrame()
+{
+	_cache.finishFrame();
+	return false;
+}
+bool workerCache::_stopWorking()
+{
 	return false;
 }
 

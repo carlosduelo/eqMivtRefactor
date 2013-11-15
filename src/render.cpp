@@ -68,7 +68,6 @@ void Render::destroy()
 	{
 		_octreeWorkers[i].join();
 		_cacheWorkers[i].join();
-		_rayCasterWorkers[i].join();
 		_poperWorkers[i].join();
 	}
 	_destroyVisibleCubes();
@@ -94,16 +93,14 @@ bool Render::setCache(ControlCubeCache * ccc)
 	{
 		for(int i=0; i<MAX_WORKERS; i++)
 		{
-			_octreeWorkers[i].init(_octree, _device, &_octreeQueue[i], &_cacheQueue[i], &_parameters);
-			_cacheWorkers[i].init(_octree, _ccc, _device, &_cacheQueue[i], &_rayCasterQueue[i], &_parameters);
-			_rayCasterWorkers[i].init(_octree, &_colors, _device, &_rayCasterQueue[i], &_octreeQueue[i], &_parameters, &_masterQueue, &_popQueue[i]);
+			_octreeWorkers[i].init(_octree, &_colors, _device, &_octreeQueue[i], &_cacheQueue[i], &_parameters, &_masterQueue, &_popQueue[i]);
+			_cacheWorkers[i].init(_octree, _ccc, _device, &_cacheQueue[i], &_octreeQueue[i], &_parameters);
 			_poperWorkers[i].init(&_popQueue[i], _cacheWorkers[i].getCache());
 		}
 		for(int i=0; i<MAX_WORKERS; i++)
 		{
 			_octreeWorkers[i].start();
 			_cacheWorkers[i].start();
-			_rayCasterWorkers[i].start();
 			_poperWorkers[i].start();
 		}
 	}
@@ -118,16 +115,14 @@ void Render::setOctree(Octree * octree)
 	{
 		for(int i=0; i<MAX_WORKERS; i++)
 		{
-			_octreeWorkers[i].init(_octree, _device, &_octreeQueue[i], &_cacheQueue[i], &_parameters);
-			_cacheWorkers[i].init(_octree, _ccc, _device, &_cacheQueue[i], &_rayCasterQueue[i], &_parameters);
-			_rayCasterWorkers[i].init(_octree, &_colors, _device, &_rayCasterQueue[i], &_octreeQueue[i], &_parameters, &_masterQueue, &_popQueue[i]);
+			_octreeWorkers[i].init(_octree, &_colors, _device, &_octreeQueue[i], &_cacheQueue[i], &_parameters, &_masterQueue, &_popQueue[i]);
+			_cacheWorkers[i].init(_octree, _ccc, _device, &_cacheQueue[i], &_octreeQueue[i], &_parameters);
 			_poperWorkers[i].init(&_popQueue[i], _cacheWorkers[i].getCache());
 		}
 		for(int i=0; i<MAX_WORKERS; i++)
 		{
 			_octreeWorkers[i].start();
 			_cacheWorkers[i].start();
-			_rayCasterWorkers[i].start();
 			_poperWorkers[i].start();
 		}
 	}
@@ -140,16 +135,14 @@ void Render::setColors(color_t colors)
 	{
 		for(int i=0; i<MAX_WORKERS; i++)
 		{
-			_octreeWorkers[i].init(_octree, _device, &_octreeQueue[i], &_cacheQueue[i], &_parameters);
-			_cacheWorkers[i].init(_octree, _ccc, _device, &_cacheQueue[i], &_rayCasterQueue[i], &_parameters);
-			_rayCasterWorkers[i].init(_octree, &_colors, _device, &_rayCasterQueue[i], &_octreeQueue[i], &_parameters, &_masterQueue, &_popQueue[i]);
+			_octreeWorkers[i].init(_octree, &_colors, _device, &_octreeQueue[i], &_cacheQueue[i], &_parameters, &_masterQueue, &_popQueue[i]);
+			_cacheWorkers[i].init(_octree, _ccc, _device, &_cacheQueue[i], &_octreeQueue[i], &_parameters);
 			_poperWorkers[i].init(&_popQueue[i], _cacheWorkers[i].getCache());
 		}
 		for(int i=0; i<MAX_WORKERS; i++)
 		{
 			_octreeWorkers[i].start();
 			_cacheWorkers[i].start();
-			_rayCasterWorkers[i].start();
 			_poperWorkers[i].start();
 		}
 	}

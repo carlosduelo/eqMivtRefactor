@@ -34,12 +34,10 @@ class Render
 		/* WORKERS */
 		queue_t		_octreeQueue[MAX_WORKERS];
 		queue_t		_cacheQueue[MAX_WORKERS];
-		queue_t		_rayCasterQueue[MAX_WORKERS];
 		queue_t		_masterQueue;
 		queuePOP_t	_popQueue[MAX_WORKERS];
 		workerOctree	_octreeWorkers[MAX_WORKERS];
 		workerCache		_cacheWorkers[MAX_WORKERS];
-		workerRayCaster _rayCasterWorkers[MAX_WORKERS];
 		workerPoper		_poperWorkers[MAX_WORKERS];
 
 	private:

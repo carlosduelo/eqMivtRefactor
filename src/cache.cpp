@@ -79,6 +79,9 @@ void Cache::pushCubes(visibleCube_t * cube)
 		else
 		{
 			float * d = _cubeCache->getAndBlockElement(idCube);
+
+			cube->data = d;
+
 			if (d != 0)
 			{
 				cube->state = CACHED;

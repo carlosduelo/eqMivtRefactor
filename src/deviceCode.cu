@@ -26,7 +26,7 @@ inline __device__ float3 _cuda_BoxToCoordinates(int3 pos, int3 realDim)
 
 }
 
-#include <../src/octree_cuda.cu>
 #include <../src/rayCaster_cuda.cu>
+#include <../src/octree_cuda.cu>
 
 

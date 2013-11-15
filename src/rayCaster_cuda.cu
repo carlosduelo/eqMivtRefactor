@@ -268,9 +268,9 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 										_cuda_searchCoordinateZ(Xnew.z, minBox.z - 1, maxBox.z+1));
 
 					#if 1
-					float3 xyz = make_float3(	pos.x + ((Xnear.x - tex1Dfetch(xgrid, pos.x + CUBE_INC)) / (tex1Dfetch(xgrid, pos.x+1 + CUBE_INC) - tex1Dfetch(xgrid, pos.x + CUBE_INC))),
-												pos.y + ((Xnear.y - tex1Dfetch(ygrid, pos.y + CUBE_INC)) / (tex1Dfetch(ygrid, pos.y+1 + CUBE_INC) - tex1Dfetch(ygrid, pos.y + CUBE_INC))),
-												pos.z + ((Xnear.z - tex1Dfetch(zgrid, pos.z + CUBE_INC)) / (tex1Dfetch(zgrid, pos.z+1 + CUBE_INC) - tex1Dfetch(zgrid, pos.z + CUBE_INC))));
+					float3 xyz = make_float3(	pos.x + ((Xnew.x - tex1Dfetch(xgrid, pos.x + CUBE_INC)) / (tex1Dfetch(xgrid, pos.x+1 + CUBE_INC) - tex1Dfetch(xgrid, pos.x + CUBE_INC))),
+												pos.y + ((Xnew.y - tex1Dfetch(ygrid, pos.y + CUBE_INC)) / (tex1Dfetch(ygrid, pos.y+1 + CUBE_INC) - tex1Dfetch(ygrid, pos.y + CUBE_INC))),
+												pos.z + ((Xnew.z - tex1Dfetch(zgrid, pos.z + CUBE_INC)) / (tex1Dfetch(zgrid, pos.z+1 + CUBE_INC) - tex1Dfetch(zgrid, pos.z + CUBE_INC))));
 					#else
 					float3 xyz = make_float3(	pos.x + ((Xnew.x-xGrid[pos.x])/(xGrid[pos.x+1]-xGrid[pos.x])),
 												pos.y + ((Xnew.y-yGrid[pos.y])/(yGrid[pos.y+1]-yGrid[pos.y])),

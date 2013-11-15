@@ -84,13 +84,17 @@ class worker : public lunchbox::Thread
 class workerOctree : public worker
 {
 	private:
+		queuePOP_t	*	_POP;
+		queue_t	*	_END;
+		color_t *	_colors;
+
 		virtual bool _frame(workpackage_t work);
 		virtual bool _startFrame();
 		virtual bool _finishFrame();
 		virtual bool _stopWorking();
 	
 	public:
-		bool init(Octree * octree, device_t device, queue_t * IN, queue_t * OUT, sharedParameters_t *	parameters);
+		bool init(Octree * octree, color_t * colors, device_t device, queue_t * IN, queue_t * OUT, sharedParameters_t *	parameters, queue_t * END, queuePOP_t * POP);
 };
 
 class workerCache : public worker
@@ -106,21 +110,6 @@ class workerCache : public worker
 	public:
 		bool init(Octree * octree, ControlCubeCache * ccc, device_t device, queue_t * IN, queue_t * OUT, sharedParameters_t *	parameters);
 		Cache * getCache(){ return &_cache; }
-};
-
-class workerRayCaster : public worker
-{
-	private:
-		queuePOP_t	*	_POP;
-		queue_t	*	_END;
-		color_t *	_colors;
-
-		virtual bool _frame(workpackage_t work);
-		virtual bool _startFrame();
-		virtual bool _finishFrame();
-		virtual bool _stopWorking();
-	public:
-		bool init(Octree * octree, color_t * colors, device_t device, queue_t * IN, queue_t * OUT, sharedParameters_t *	parameters, queue_t * END, queuePOP_t * POP);
 };
 
 class workerPoper : public lunchbox::Thread
