@@ -72,6 +72,7 @@ void Cache::pushCubes(visibleCube_t * cube)
 
 		if (itC != _cubes.end())
 		{
+			cube->idCube = idCube;
 			cube->state = CACHED;
 			cube->data = itC->second.cube;
 			itC->second.refs++;
@@ -84,6 +85,7 @@ void Cache::pushCubes(visibleCube_t * cube)
 
 			if (d != 0)
 			{
+				cube->idCube = idCube;
 				cube->state = CACHED;
 				cube->data = d;
 
@@ -93,18 +95,24 @@ void Cache::pushCubes(visibleCube_t * cube)
 				
 				_cubes.insert(std::make_pair<index_node_t, cube_cached>(idCube, c));
 			}
+			else
+			{
+				cube->idCube = 0;
+			}
 		}
 		
 		_lock.unset();
+	}
+	else
+	{
+		cube->idCube = 0;
 	}
 }
 
 void Cache::popCubes(index_node_t id)
 {
-	index_node_t idCube = id >> (3*(_rayCastingLevel - _cubeCache->getCubeLevel()));
-
 	_lock.set();
-	boost::unordered_map<index_node_t, cube_cached>::iterator it= _cubes.find(idCube);
+	boost::unordered_map<index_node_t, cube_cached>::iterator it= _cubes.find(id);
 
 	if (it != _cubes.end())
 	{

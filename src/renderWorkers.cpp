@@ -152,28 +152,18 @@ bool workerOctree::_frame(workpackage_t work)
 		{
 			sendO = false;	
 		}
-		if(cubes[i].state == DONE)
+		else if(cubes[i].state == DONE || cubes[i].state == PAINTED)
 		{
 			cF++;
 		}
-		else if (cubes[i].state == NOCUBE)
+
+		if (cubes[i].idCube != 0)
 		{
 			_POP->cond.lock();
-			_POP->queue.push(cubes[i].id);
+			_POP->queue.push(cubes[i].idCube);
 			if (_POP->queue.size() == 1)
 				_POP->cond.signal();
 			_POP->cond.unlock();
-			cubes[i].state = DONE;
-		}
-		else if (cubes[i].state == PAINTED)
-		{
-			cF++;
-			_POP->cond.lock();
-			_POP->queue.push(cubes[i].id);
-			if (_POP->queue.size() == 1)
-				_POP->cond.signal();
-			_POP->cond.unlock();
-			cubes[i].state = DONE;
 		}
 	}
 
