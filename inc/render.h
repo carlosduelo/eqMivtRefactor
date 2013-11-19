@@ -9,9 +9,13 @@ Notes:
 #ifndef EQ_MIVT_RENDER_H
 #define EQ_MIVT_RENDER_H
 
-#include <renderWorkers.h>
+#include <octree.h>
+#include <cache.h>
+#include <queue>
+#include <lunchbox/condition.h>
+#include <lunchbox/thread.h>
 
-#define MAX_WORKERS 2
+#include <cuda_help.h>
 
 namespace eqMivt
 {
@@ -21,24 +25,16 @@ class Render
 	protected:
 		float	*		_pixelBuffer;
 
-		int _chunk;
 		int _pvpW;
 		int _pvpH;
-		sharedParameters_t 	_parameters;
 
 		/* VISIBLE CUBES */
 		int						_size;
 		visibleCube_t *			_visibleCubes;
 		visibleCubeGPU_t		_visibleCubesGPU;
 
-		/* WORKERS */
-		queue_t		_octreeQueue[MAX_WORKERS];
-		queue_t		_cacheQueue[MAX_WORKERS];
-		queue_t		_masterQueue;
-		queuePOP_t	_popQueue[MAX_WORKERS];
-		workerOctree	_octreeWorkers[MAX_WORKERS];
-		workerCache		_cacheWorkers[MAX_WORKERS];
-		workerPoper		_poperWorkers[MAX_WORKERS];
+		cudaStream_t			_stream;
+		Cache			_cache;
 
 	private:
 		ControlCubeCache * _ccc;
@@ -69,7 +65,7 @@ class Render
 
 		virtual bool setViewPort(int pvpW, int pvpH);
 
-		bool cacheIsInit() { return _ccc != 0;}
+		bool cacheIsInit() { return _cache.isInit();}
 
 		bool octreeIsInit() { return _octree != 0; }
 

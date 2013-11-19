@@ -63,6 +63,9 @@ class  ControlCubeCache : public ControlElementCache<index_node_t>
 		int		getCubeLevel() { return _levelCube; }
 
 		int		getDimCube() { return _dimCube; }
+
+		int		getNumCubes(){ return _maxValue - _minValue + 1; }
+		index_node_t getMinValue(){ return _minValue; }
 };
 
 }

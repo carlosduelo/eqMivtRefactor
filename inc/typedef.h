@@ -25,7 +25,6 @@ typedef struct
 {
 	index_node_t	id;
 	index_node_t	idCube;
-	float *			data;
 	statusCube		state;
 } visibleCube_t;
 

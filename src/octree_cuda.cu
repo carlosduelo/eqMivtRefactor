@@ -595,7 +595,7 @@ __device__ bool _cuda_octreeIteration(index_node_t ** octree, int * sizes, float
 	}
 }
 
-__device__ bool _cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, float iso, visibleCube_t * cube, int levelO, int levelC, int nLevel, float maxHeight, int3 realDim, float * r, float * g, float * b, float * screen, int offset)
+__device__ bool _cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int numRays, float iso, visibleCube_t * cube, int levelO, int levelC, int nLevel, float maxHeight, int3 realDim, float * r, float * g, float * b, float * screen, int offset, float * data)
 {
 	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -622,7 +622,7 @@ __device__ bool _cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 rig
 		if  (_cuda_RayAABB(origin, ray,  &tnear, &tfar, minBoxC, maxBoxC))
 		{
 			// To ray caster is needed bigger cube, so add cube inc
-			int3 minBoxD = getMinBoxIndex2(cube->idCube, levelC, nLevel) - make_int3(CUBE_INC, CUBE_INC, CUBE_INC);
+			int3 minBoxD = getMinBoxIndex2(cube->id >> (3*(levelO - levelC)), levelC, nLevel) - make_int3(CUBE_INC, CUBE_INC, CUBE_INC);
 			int3 dimD;
 			dimD.x = (1 << (nLevel-levelC)) + 2*CUBE_INC;
 			dimD.y = (1 << (nLevel-levelC)) + 2*CUBE_INC;
@@ -654,13 +654,13 @@ __device__ bool _cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 rig
 					
 					if (primera)
 					{
-						ant = getElementInterpolateGrid(xyz, cube->data, minBoxD, dimD);
+						ant = getElementInterpolateGrid(xyz, data, minBoxD, dimD);
 						Xfar = Xnear;
 						primera = false;
 					}
 					else
 					{
-						sig = getElementInterpolateGrid(xyz, cube->data, minBoxD, dimD);
+						sig = getElementInterpolateGrid(xyz, data, minBoxD, dimD);
 
 						if (( ((iso-ant)<0.0f) && ((iso-sig)<0.0f)) || ( ((iso-ant)>0.0f) && ((iso-sig)>0.0)))
 						{
@@ -698,7 +698,7 @@ __device__ bool _cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 rig
 											pos.y + ((Xnew.y - tex1Dfetch(ygrid, pos.y + CUBE_INC)) / (tex1Dfetch(ygrid, pos.y+1 + CUBE_INC) - tex1Dfetch(ygrid, pos.y + CUBE_INC))),
 											pos.z + ((Xnew.z - tex1Dfetch(zgrid, pos.z + CUBE_INC)) / (tex1Dfetch(zgrid, pos.z+1 + CUBE_INC) - tex1Dfetch(zgrid, pos.z + CUBE_INC))));
 
-				float3 n = getNormal(xyz, cube->data, minBoxD,  dimD);
+				float3 n = getNormal(xyz, data, minBoxD,  dimD);
 				float3 l = Xnew - origin;// ligth; light on the camera
 				l = normalize(l);	
 				float dif = fabsf(n.x*l.x + n.y*l.y + n.z*l.z);
@@ -745,7 +745,7 @@ __device__ bool _cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 rig
 }
 
 
-__global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int finalLevel, int levelCube, visibleCube_t * p_indexNode, int numElements, int offset, int3 realDim, float * r, float * g, float * b, float * pixelBuffer, float iso, float maxHeight)
+__global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int finalLevel, int levelCube, visibleCube_t * p_indexNode, int numElements, int offset, int3 realDim, float * r, float * g, float * b, float * pixelBuffer, float iso, float maxHeight, float ** tableCubes)
 {
 	int i = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
 
@@ -763,6 +763,7 @@ __global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLev
 		ray = normalize(ray);
 
 		visibleCube_t * indexNode	= &p_indexNode[i];
+		index_node_t minV = coordinateToIndex(make_int3(0,0,0), levelCube, nLevels); 
 
 		if (indexNode->state ==  CUDA_PAINTED)
 		{
@@ -770,11 +771,7 @@ __global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLev
 		}
 		else if (indexNode->state == CUDA_CACHED)
 		{
-			_cuda_RayAABB(indexNode->id, origin, ray,  &currentTnear, &currentTfar, nLevels, realDim);
-			if (!_cuda_rayCaster(origin, LB, up, right, w, h, pvpW, pvpH, numElements, iso, indexNode, finalLevel, levelCube, nLevels, maxHeight, realDim, r, g, b, pixelBuffer, offset))
-			{
-				indexNode->state = CUDA_NOCUBE;
-			}
+			_cuda_rayCaster(origin, LB, up, right, w, h, pvpW, pvpH, numElements, iso, indexNode, finalLevel, levelCube, nLevels, maxHeight, realDim, r, g, b, pixelBuffer, offset, tableCubes[indexNode->idCube - minV]);
 		}
 
 		if (indexNode->state ==  CUDA_NOCUBE)
@@ -784,10 +781,11 @@ __global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLev
 				if (_cuda_octreeIteration(octree, sizes, origin, ray, nLevels, finalLevel, indexNode, realDim, &currentTnear, &currentTfar))
 				{
 					index_node_t idCubeN = indexNode->id >> (3*(finalLevel - levelCube));
+					float * d = tableCubes[idCubeN - minV];
 
-					if (idCubeN == indexNode->idCube)
+					if ( d != 0)
 					{
-						if (_cuda_rayCaster(origin, LB, up, right, w, h, pvpW, pvpH, numElements, iso, indexNode, finalLevel, levelCube, nLevels, maxHeight, realDim, r, g, b, pixelBuffer, offset))
+						if (_cuda_rayCaster(origin, LB, up, right, w, h, pvpW, pvpH, numElements, iso, indexNode, finalLevel, levelCube, nLevels, maxHeight, realDim, r, g, b, pixelBuffer, offset, d))
 						{
 							return;
 						}
@@ -920,13 +918,13 @@ __global__ void cuda_drawCubes(index_node_t ** octree, int * sizes, int nLevels,
  ******************************************************************************************************
  */
 
-void getBoxIntersectedOctree(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int finalLevel, int levelCube, int numElements, visibleCubeGPU_t visibleGPU, int offset, int3 realDim, float * r, float * g, float * b, float * pixelBuffer, float iso, float maxHeight, cudaStream_t stream)
+void getBoxIntersectedOctree(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 LB, float3 up, float3 right, float w, float h, int pvpW, int pvpH, int finalLevel, int levelCube, int numElements, visibleCubeGPU_t visibleGPU, int offset, int3 realDim, float * r, float * g, float * b, float * pixelBuffer, float iso, float maxHeight, float ** tableCubes, cudaStream_t stream)
 {
 
 	dim3 threads = getThreads(numElements);
 	dim3 blocks = getBlocks(numElements);
 
-	cuda_getFirtsVoxel<<<blocks,threads, 0, stream>>>(octree, sizes, nLevels, origin, LB, up, right, w, h, pvpW, pvpH, finalLevel, levelCube, visibleGPU, numElements, offset, realDim, r, g, b, pixelBuffer, iso, maxHeight);
+	cuda_getFirtsVoxel<<<blocks,threads, 0, stream>>>(octree, sizes, nLevels, origin, LB, up, right, w, h, pvpW, pvpH, finalLevel, levelCube, visibleGPU, numElements, offset, realDim, r, g, b, pixelBuffer, iso, maxHeight, tableCubes);
 
 	#ifndef NDEBUG
 	if (cudaSuccess != cudaStreamSynchronize(stream))

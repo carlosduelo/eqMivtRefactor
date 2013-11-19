@@ -24,7 +24,6 @@ endif()
 #MIVT
 set(MIVT_SOURCE 
 	renderOGL.cpp
-	renderWorkers.cpp
 	render.cpp
 	resourcesManager.cpp
 	colorManager.cpp
@@ -146,7 +145,6 @@ target_link_libraries(testControlCubeCache ${LIBS_NEEDED_TEST_CONTROL_CUBE_CACHE
 
 # TEST RAYCASTING 
 set(TEST_RAYCASTING_SOURCE
-	renderWorkers.cpp
 	render.cpp
 	renderPNG.cpp
 	resourcesManager.cpp
@@ -178,7 +176,6 @@ target_link_libraries(testRayCasting ${LIBS_NEEDED_TEST_RAYCASTING} )
 
 # TEST MULTITHREADING 
 set(TEST_MULTITHREADING_SOURCE
-	renderWorkers.cpp
 	render.cpp
 	renderPNG.cpp
 	resourcesManager.cpp

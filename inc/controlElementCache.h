@@ -77,7 +77,7 @@ class  ControlElementCache : public ControlCache
 				if (readElement(element))
 				{
 					_fullSlots.lock();
-					element->refs = 0;
+					element->refs = PROCESSED;
 					_fullSlots.unlock();
 
 					_readingElement.pop();
@@ -145,7 +145,7 @@ class  ControlElementCache : public ControlCache
 					else
 					{
 						_fullSlots.lock();
-						c->refs = 0;//PROCESSED;
+						c->refs = PROCESSED;
 					}
 
 					_currentElement.insert(std::make_pair<index_node_t, NodeLinkedList<TYPE> *>(c->id, c));
@@ -155,7 +155,7 @@ class  ControlElementCache : public ControlCache
 
 					_emptyPending.lock();
 
-					_pendingElement.erase(_pendingElement.begin());
+					_pendingElement.erase(element);
 
 					_emptyPending.unlock();
 
@@ -167,7 +167,7 @@ class  ControlElementCache : public ControlCache
 
 					_emptyPending.lock();
 
-					_pendingElement.erase(_pendingElement.begin());
+					_pendingElement.erase(element);
 
 					_emptyPending.unlock();
 				}
@@ -352,13 +352,11 @@ class  ControlElementCache : public ControlCache
 					_fullSlots.signal();
 				}
 
-				#ifndef NDEBUG
 				if (it->second->refs < 0)
 				{
 					std::cerr<<"Control Element Cache, error unlocking cube"<<std::endl;
 					throw;
 				}
-				#endif
 			}
 			#ifndef NDEBUG
 			else

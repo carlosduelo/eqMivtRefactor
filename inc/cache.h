@@ -31,11 +31,17 @@ class Cache
 		boost::unordered_map<index_node_t, cube_cached> _cubes;
 
 		int	_rayCastingLevel;
+		float **	_tableCubes;
+		float **	_tableCubesGPU;
+		int			_sizeTable;
+		index_node_t _minValue;
 
 	public:
 		Cache();
 
 		bool init(ControlCubeCache * cubeCache);
+
+		void destroy();
 
 		void setRayCastingLevel(int rayCastingLevel) { _rayCastingLevel = rayCastingLevel; }
 
@@ -48,6 +54,8 @@ class Cache
 		void popCubes(index_node_t id);
 
 		bool isInit() { return _cubeCache != 0; }
+
+		float ** syncAndGetTableCubes(cudaStream_t stream);
 };
 
 }
