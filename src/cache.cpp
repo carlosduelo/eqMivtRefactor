@@ -22,37 +22,31 @@ Cache::Cache()
 
 void Cache::startFrame()
 {
-	_lock.set();
 	_cubes.clear();
 	if (_sizeTable != _cubeCache->getNumCubes())
 	{
 		_minValue = _cubeCache->getMinValue();
 		_sizeTable = _cubeCache->getNumCubes();
 		if (_tableCubes != 0)
-			delete[] _tableCubes;
+			if (cudaSuccess != cudaFreeHost((void*)_tableCubes) || 
+				cudaSuccess != cudaFree((void*)_tableCubesGPU))
+			{
+				std::cerr<<"Cache, error table cubes gpu free"<<std::endl;
+				throw;
+			}
 
-		if (cudaSuccess != cudaFree(_tableCubesGPU))
+		if (cudaSuccess != cudaHostAlloc((void**)&_tableCubes, _sizeTable*sizeof(float*), cudaHostAllocDefault) ||
+			cudaSuccess != cudaMalloc((void**)&_tableCubesGPU, _sizeTable*sizeof(float*)))
 		{
-			std::cerr<<"Cache, error table cubes gpu free"<<std::endl;
-			throw;
-		}
-
-		_tableCubes = new float*[_sizeTable];
-
-		if (cudaSuccess != cudaMalloc((void**)&_tableCubesGPU, _sizeTable*sizeof(float*)))
-		{
-			std::cerr<<"Cache, error table cubes gpu free"<<std::endl;
+			std::cerr<<"Cache, error table cubes allocate"<<std::endl;
 			throw;
 		}
 	}
 	memset((void*)_tableCubes, 0, _sizeTable*sizeof(float*)); 
-	_lock.unset();
 }
 
 void Cache::finishFrame()
 {
-	_lock.set();
-
 	if (_cubes.size() != 0)
 	{
 		boost::unordered_map<index_node_t, cube_cached>::iterator it= _cubes.begin();
@@ -63,8 +57,6 @@ void Cache::finishFrame()
 		}
 		_cubes.clear();
 	}
-
-	_lock.unset();
 }
 
 bool Cache::init(ControlCubeCache * cubeCache)
@@ -83,8 +75,8 @@ void Cache::destroy()
 {
 	if (_tableCubes != 0)
 	{
-		delete[] _tableCubes;
-		if (cudaSuccess != cudaFree(_tableCubesGPU))
+		if (cudaSuccess != cudaFreeHost((void*)_tableCubes) || 
+			cudaSuccess != cudaFree((void*)_tableCubesGPU))
 		{
 			std::cerr<<"Cache, error table cubes gpu free"<<std::endl;
 			throw;
@@ -106,7 +98,6 @@ void Cache::pushCubes(visibleCube_t * cube)
 	{
 		index_node_t idCube = cube->id >> (3*(_rayCastingLevel - _cubeCache->getCubeLevel()));
 
-		_lock.set();
 		boost::unordered_map<index_node_t, cube_cached>::iterator itC = _cubes.find(idCube);
 
 		if (itC != _cubes.end())
@@ -137,8 +128,6 @@ void Cache::pushCubes(visibleCube_t * cube)
 				cube->idCube = 0;
 			}
 		}
-		
-		_lock.unset();
 	}
 	else
 	{
@@ -148,7 +137,6 @@ void Cache::pushCubes(visibleCube_t * cube)
 
 void Cache::popCubes(index_node_t id)
 {
-	_lock.set();
 	boost::unordered_map<index_node_t, cube_cached>::iterator it= _cubes.find(id);
 
 	if (it != _cubes.end())
@@ -165,7 +153,6 @@ void Cache::popCubes(index_node_t id)
 	{
 		std::cerr<<"Cube not pushed "<<it->first<<std::endl;
 	}
-	_lock.unset();
 }
 
 float ** Cache::syncAndGetTableCubes(cudaStream_t stream)

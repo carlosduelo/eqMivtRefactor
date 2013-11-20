@@ -15,13 +15,6 @@ Notes:
 #include "view.h"
 #include "configEvent.h"
 
-
-#if 0
-#define BOOL bool
-#include "FreeImage.h"
-#undef	BOOL
-#endif
-
 namespace eqMivt
 {
 

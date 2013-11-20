@@ -70,34 +70,20 @@ inline __host__ __device__ int getIndexLevel(index_node_t index)
 
 inline __host__ __device__ int3 getMinBoxIndex(index_node_t index, int * level, int nLevels)
 {
-	int3 Box;
-	Box.x  = 0;
-	Box.y  = 0;
-	Box.z  = 0;
-	*level = 0;
+	int3 Box = make_int3(0,0,0);
+	*level = getIndexLevel(index);
 
 	if (index == 1)
 		return Box; // minBOX (0,0,0) and level 0
 
-	*level = getIndexLevel(index);
-
-	index_node_t mask = 1;
-
 	for(int l=(*level); l>0; l--)
 	{
-		Box.z +=  (index & mask) << (nLevels-l); index>>=1;
-		Box.y +=  (index & mask) << (nLevels-l); index>>=1;
-		Box.x +=  (index & mask) << (nLevels-l); index>>=1;
+		Box.z +=  (index & 0x1) << (nLevels-l); index>>=1;
+		Box.y +=  (index & 0x1) << (nLevels-l); index>>=1;
+		Box.x +=  (index & 0x1) << (nLevels-l); index>>=1;
 	}
 
-	#if 0
-	// XXX en cuda me arriesgo.... malo...
-	if (index!=1)
-		std::cerr<<"Error getting minBox from index"<<std::endl;
-	#endif
-
 	return Box;
-	
 }
 
 inline __host__ __device__ int3 getMinBoxIndex2(index_node_t index, int level, int nLevels)
@@ -107,23 +93,14 @@ inline __host__ __device__ int3 getMinBoxIndex2(index_node_t index, int level, i
 	if (index == 1)
 		return minBox;// minBOX (0,0,0) and level 0
 
-	index_node_t mask = 1;
-
 	for(int l=level; l>0; l--)
 	{
-		minBox.z +=  (index & mask) << (nLevels-l); index>>=1;
-		minBox.y +=  (index & mask) << (nLevels-l); index>>=1;
-		minBox.x +=  (index & mask) << (nLevels-l); index>>=1;
+		minBox.z +=  (index & 0x1) << (nLevels-l); index>>=1;
+		minBox.y +=  (index & 0x1) << (nLevels-l); index>>=1;
+		minBox.x +=  (index & 0x1) << (nLevels-l); index>>=1;
 	}
 
-	#if 0
-	// XXX en cuda me arriesgo.... malo...
-	if (index!=1)
-		std::cerr<<"Error getting minBox from index"<<std::endl;
-	#endif
-
 	return minBox;
-	
 }
 
 inline __host__ __device__ index_node_t coordinateToIndex(int3 pos, int level, int nLevels)
@@ -132,22 +109,12 @@ inline __host__ __device__ index_node_t coordinateToIndex(int3 pos, int level, i
 		return 1;
 
 	index_node_t code 	= (index_node_t)1 << (nLevels*3);
-	index_node_t xcode 	= dilateInteger((index_node_t) pos.x) << 2;
-	index_node_t ycode 	= dilateInteger((index_node_t) pos.y) << 1;
-	index_node_t zcode 	= dilateInteger((index_node_t) pos.z);
-
-	code = code | xcode | ycode | zcode;
+	code 	|= dilateInteger((index_node_t) pos.x) << 2;
+	code 	|= dilateInteger((index_node_t) pos.y) << 1;
+	code 	|= dilateInteger((index_node_t) pos.z);
 
 	code>>=(nLevels-level)*3;
 
-	/* XXX CUDA not supported
-	if (code==0)
-	{
-		std::cout<<"Error, index cannot be zero "<<x<<","<<y<<","<<z<<" level "<<level<<std::endl;
-		std::exception();
-		exit(1);
-	}
-	*/
 	return code;
 }
 

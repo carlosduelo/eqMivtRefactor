@@ -225,79 +225,11 @@ __device__ bool _cuda_RayAABB2(float3 origin, float3 dir,  float * tnear, float 
 
 }
 
-__device__ int3 _cuda_brother(int3 minBox, index_node_t a, int dim)
-{
-	int3 r;
-	r.z = minBox.z + (a & 0x1) * dim; a>>=1;
-	r.y = minBox.y + (a & 0x1) * dim; a>>=1; 
-	r.x = minBox.x + (a & 0x1) * dim;
-
-	return r;
-}
-
-#if 0
-__device__ bool _cuda_searchNextChildrenValidAndHit(index_node_t * elements, int size, int3 realDim, float3 origin, float3 ray, index_node_t father, float cTnear, float cTfar, int nLevels, int level, int3 minBox, index_node_t * child, float * childTnear, float * childTfar)
-{
-	index_node_t childrenID = father << 3;
-	int dim = (1<<(nLevels-level));
-
-	float closer = 0x7ff0000000000000;	//infinity
-	bool find = false;
-	float childTnearT = 0xfff0000000000000; // -infinity
-	float childTfarT  = 0xfff0000000000000; // -infinity
-
-	int closer1 = 0;
-
-	if (size != 2)
-	{
-		closer1 = _cuda_binary_search_closer_Grid(elements, childrenID,   0, size-1);
-	}
-
-	index_node_t lastChildren = childrenID + 7;
-	index_node_t min = elements[closer1];
-	index_node_t max = elements[closer1+1];
-
-	if (min > lastChildren)
-		return false;
-	if (min < childrenID)
-		min = childrenID;
-	if (max > lastChildren)
-		max = lastChildren;
-	
-	while(childrenID <= lastChildren)
-	{
-		while(childrenID <= max)
-		{
-			if (_cuda_RayAABB2(origin, ray,  &childTnearT, &childTfarT, nLevels, _cuda_brother(minBox, childrenID & 0x7,dim), level, realDim) && childTnearT >= cTnear && childTnearT <= closer)
-			{
-				*child = childrenID;
-				*childTnear = childTnearT;
-				*childTfar = childTfarT;
-				closer = childTnearT;
-				find = true;
-			}
-			childrenID++;
-		}
-		closer1+=2;
-		if (closer1 >= size)
-			return find;
-		min = elements[closer1];
-		max = elements[closer1+1];
-		if (max > lastChildren)
-			max = lastChildren; 
-		if (min < childrenID)
-			min = childrenID;
-		childrenID = min;
-	}
-
-	return find;
-#else
 __device__ bool _cuda_searchNextChildrenValidAndHit(index_node_t * elements, int size, int3 realDim, float3 origin, float3 ray, index_node_t father, float cTnear, float cTfar, int nLevels, int level, int3 minB, index_node_t * child, float * childTnear, float * childTfar)
 {
 	index_node_t childrenID = father << 3;
 	int dim = (1<<(nLevels-level));
 	int3 minBox = minB;
-
 	float closer = 0x7ff0000000000000;	//infinity
 	bool find = false;
 	float childTnearT = 0xfff0000000000000; // -infinity
@@ -498,7 +430,6 @@ __device__ bool _cuda_searchNextChildrenValidAndHit(index_node_t * elements, int
 	}
 
 	return find;
-#endif
 }
 
 __device__ int3 _cuda_updateCoordinatesGrid(int maxLevel, int cLevel, index_node_t cIndex, int nLevel, index_node_t nIndex, int3 minBox)
@@ -765,11 +696,7 @@ __global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLev
 		visibleCube_t * indexNode	= &p_indexNode[i];
 		index_node_t minV = coordinateToIndex(make_int3(0,0,0), levelCube, nLevels); 
 
-		if (indexNode->state ==  CUDA_PAINTED)
-		{
-			indexNode->state = CUDA_DONE;
-		}
-		else if (indexNode->state == CUDA_CACHED)
+		if (indexNode->state == CUDA_CACHED)
 		{
 			_cuda_rayCaster(origin, LB, up, right, w, h, pvpW, pvpH, numElements, iso, indexNode, finalLevel, levelCube, nLevels, maxHeight, realDim, r, g, b, pixelBuffer, offset, tableCubes[indexNode->idCube - minV]);
 		}
@@ -840,26 +767,6 @@ __global__ void cuda_drawCubes(index_node_t ** octree, int * sizes, int nLevels,
 			float3 maxBoxC = _cuda_BoxToCoordinates(minBox + make_int3(dim,dim,dim), realDim);
 			float3 n = make_float3(0.0f,0.0f,0.0f);
 			float3 hit = origin + ray*currentTnear;
-			float aux = 0.0f;
-
-			if (fabsf(maxBoxC.x - origin.x) < fabsf(minBoxC.x - origin.x))
-			{
-				aux = minBoxC.x;
-				minBoxC.x = maxBoxC.x; 
-				maxBoxC.x = aux;
-			}
-			if (fabsf(maxBoxC.y - origin.y) < fabsf(minBoxC.y - origin.y))
-			{
-				aux = minBoxC.y;
-				minBoxC.y = maxBoxC.y; 
-				maxBoxC.y = aux;
-			}
-			if (fabsf(maxBoxC.z - origin.z) < fabsf(minBoxC.z - origin.z))
-			{
-				aux = minBoxC.z;
-				minBoxC.z = maxBoxC.z; 
-				maxBoxC.z = aux;
-			}
 
 			if(fabsf(hit.x - minBoxC.x) < EPS) 
 				n.x = -1.0f;
@@ -873,7 +780,6 @@ __global__ void cuda_drawCubes(index_node_t ** octree, int * sizes, int nLevels,
 				n.z = -1.0f;
 			else if(fabsf(hit.z - maxBoxC.z) < EPS) 
 				n.z = 1.0f;
-
 
 			float3 l = hit - origin;// ligth; light on the camera
 			l = normalize(l);	
@@ -907,7 +813,6 @@ __global__ void cuda_drawCubes(index_node_t ** octree, int * sizes, int nLevels,
 			screen[i*3] = r[NUM_COLORS];
 			screen[i*3+1] = g[NUM_COLORS];
 			screen[i*3+2] = b[NUM_COLORS];
-			return;
 		}
 	}
 }

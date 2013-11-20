@@ -74,60 +74,37 @@ inline  int getIndexLevel(index_node_t index)
 
 inline  vmml::vector<3, int> getMinBoxIndex(index_node_t index, int * level, int nLevels)
 {
-	vmml::vector<3, int> Box;
-	Box.set(0,0,0);
-
-	*level = 0;
+	vmml::vector<3, int> Box(0,0,0);
+	*level = getIndexLevel(index);
 
 	if (index == 1)
 		return Box; // minBOX (0,0,0) and level 0
 
-	*level = getIndexLevel(index);
-
-	index_node_t mask = 1;
-
 	for(int l=(*level); l>0; l--)
 	{
-		Box[2] +=  (index & mask) << (nLevels-l); index>>=1;
-		Box[1] +=  (index & mask) << (nLevels-l); index>>=1;
-		Box[0] +=  (index & mask) << (nLevels-l); index>>=1;
+		Box[2] +=  (index & 0x1) << (nLevels-l); index>>=1;
+		Box[1] +=  (index & 0x1) << (nLevels-l); index>>=1;
+		Box[0] +=  (index & 0x1) << (nLevels-l); index>>=1;
 	}
 
-	#if 0
-	// XXX en cuda me arriesgo.... malo...
-	if (index!=1)
-		std::cerr<<"Error getting minBox from index"<<std::endl;
-	#endif
-
 	return Box;
-	
 }
 
 inline  vmml::vector<3, int> getMinBoxIndex2(index_node_t index, int level, int nLevels)
 {
-	vmml::vector<3, int> minBox;
-	minBox.set(0,0,0);
+	vmml::vector<3, int> minBox(0,0,0);
 
 	if (index == 1)
 		return minBox;// minBOX (0,0,0) and level 0
 
-	index_node_t mask = 1;
-
 	for(int l=level; l>0; l--)
 	{
-		minBox[2] +=  (index & mask) << (nLevels-l); index>>=1;
-		minBox[1] +=  (index & mask) << (nLevels-l); index>>=1;
-		minBox[0] +=  (index & mask) << (nLevels-l); index>>=1;
+		minBox[2] +=  (index & 0x1) << (nLevels-l); index>>=1;
+		minBox[1] +=  (index & 0x1) << (nLevels-l); index>>=1;
+		minBox[0] +=  (index & 0x1) << (nLevels-l); index>>=1;
 	}
 
-	#if 0
-	// XXX en cuda me arriesgo.... malo...
-	if (index!=1)
-		std::cerr<<"Error getting minBox from index"<<std::endl;
-	#endif
-
 	return minBox;
-	
 }
 
 inline  index_node_t coordinateToIndex(vmml::vector<3, int> pos, int level, int nLevels)
@@ -136,22 +113,12 @@ inline  index_node_t coordinateToIndex(vmml::vector<3, int> pos, int level, int 
 		return 1;
 
 	index_node_t code 	= (index_node_t)1 << (nLevels*3);
-	index_node_t xcode 	= dilateInteger((index_node_t) pos.x()) << 2;
-	index_node_t ycode 	= dilateInteger((index_node_t) pos.y()) << 1;
-	index_node_t zcode 	= dilateInteger((index_node_t) pos.z());
-
-	code = code | xcode | ycode | zcode;
+	code 	|= dilateInteger((index_node_t) pos.x()) << 2;
+	code 	|= dilateInteger((index_node_t) pos.y()) << 1;
+	code 	|= dilateInteger((index_node_t) pos.z());
 
 	code>>=(nLevels-level)*3;
 
-	/* XXX CUDA not supported
-	if (code==0)
-	{
-		std::cout<<"Error, index cannot be zero "<<x<<","<<y<<","<<z<<" level "<<level<<std::endl;
-		std::exception();
-		exit(1);
-	}
-	*/
 	return code;
 }
 

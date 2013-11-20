@@ -171,7 +171,7 @@ __global__ void cuda_rayCaster(float3 origin, float3  LB, float3 up, float3 righ
 			screen[tid*3] = r[NUM_COLORS];
 			screen[tid*3+1] = g[NUM_COLORS];
 			screen[tid*3+2] = b[NUM_COLORS];
-			cube[tid].state = CUDA_DONE;
+			cube[tid].state = CUDA_PAINTED;
 			return;
 		}
 		else if (cube[tid].state == CUDA_CACHED)

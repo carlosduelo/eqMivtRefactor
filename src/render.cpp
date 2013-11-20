@@ -60,7 +60,11 @@ void Render::destroy()
 void Render::_destroyVisibleCubes()
 {
 	if (_visibleCubes != 0)
-		delete[] _visibleCubes;
+		if (cudaSuccess != cudaFreeHost(_visibleCubes))
+		{
+			std::cerr<<"Render, error free memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
+			return;
+		}
 	if (_visibleCubesGPU != 0)
 		if (cudaSuccess != cudaFree(_visibleCubesGPU))
 		{
@@ -96,9 +100,8 @@ bool Render::setViewPort(int pvpW, int pvpH)
 		{
 			_size = _pvpW*_pvpH;
 			_destroyVisibleCubes();
-			_visibleCubes = new visibleCube_t[_size];
-
-			if (cudaSuccess != cudaMalloc((void**)&_visibleCubesGPU, _size*sizeof(visibleCube_t)))
+			if (cudaSuccess != cudaHostAlloc((void**)&_visibleCubes, _size*sizeof(visibleCube_t), cudaHostAllocDefault) ||
+				cudaSuccess != cudaMalloc((void**)&_visibleCubesGPU, _size*sizeof(visibleCube_t)))
 			{
 				std::cerr<<"Render, error allocating memory: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 				return false;
@@ -138,6 +141,11 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 	#endif
 
 	bool newIteration = true;
+	float3 originC = VectorToFloat3(origin);
+	float3 LBC = VectorToFloat3(LB);
+	float3 upC = VectorToFloat3(up);
+	float3 rightC = VectorToFloat3(right);
+	int3 realDimC = VectorToInt3(_octree->getRealDim());
 
 	int iterations = 0;
 	while(newIteration)
@@ -145,14 +153,14 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 		float ** tCubes = _cache.syncAndGetTableCubes(_stream);
 
 		getBoxIntersectedOctree(_octree->getOctree(), _octree->getSizes(), _octree->getnLevels(),
-								VectorToFloat3(origin), VectorToFloat3(LB), VectorToFloat3(up), VectorToFloat3(right),
-								w, h, _pvpW, _pvpH, _octree->getRayCastingLevel(), _octree->getCubeLevel(), _pvpW*_pvpH, 
-								_visibleCubesGPU, 0, (VectorToInt3(_octree->getRealDim())), 
+								originC, LBC, upC, rightC,
+								w, h, _pvpW, _pvpH, _octree->getRayCastingLevel(), _octree->getCubeLevel(), _size, 
+								_visibleCubesGPU, 0, realDimC, 
 								_colors.r, _colors.g, _colors.b, _pixelBuffer, 
 								_octree->getIsosurface(), _octree->getMaxHeight(), 
 								tCubes, _stream);
 
-		if (cudaSuccess != cudaMemcpyAsync((void*)(_visibleCubes), (void*)(_visibleCubesGPU), _pvpH*_pvpW*sizeof(visibleCube_t), cudaMemcpyDeviceToHost, _stream))
+		if (cudaSuccess != cudaMemcpyAsync((void*)(_visibleCubes), (void*)(_visibleCubesGPU), _size*sizeof(visibleCube_t), cudaMemcpyDeviceToHost, _stream))
 		{
 			std::cerr<<"Visible cubes, error updating cpu copy: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 			return false;
@@ -164,26 +172,26 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 		}
 
 		int cF = 0;
-		for(int i=0; i<_pvpH*_pvpW; i++)
+		for(int i=0; i<_size; i++)
 		{
 			if (_visibleCubes[i].idCube != 0)
 				_cache.popCubes(_visibleCubes[i].idCube);
 
 			_cache.pushCubes(&_visibleCubes[i]);
 
-			if(_visibleCubes[i].state == DONE || _visibleCubes[i].state == PAINTED)
+			if(_visibleCubes[i].state == PAINTED)
 			{
 				cF++;
 			}
 		}
 
-		if (cF == _pvpH*_pvpW)
+		if (cF == _size)
 		{
 			newIteration = false;
 		}
 		else
 		{
-			if (cudaSuccess != cudaMemcpyAsync((void*)(_visibleCubesGPU), (void*)(_visibleCubes), _pvpH*_pvpW*sizeof(visibleCube_t), cudaMemcpyHostToDevice, _stream))
+			if (cudaSuccess != cudaMemcpyAsync((void*)(_visibleCubesGPU), (void*)(_visibleCubes), _size*sizeof(visibleCube_t), cudaMemcpyHostToDevice, _stream))
 			{
 				std::cerr<<"Visible cubes, error updating gpu copy: "<<cudaGetErrorString(cudaGetLastError())<<std::endl;
 				return false;

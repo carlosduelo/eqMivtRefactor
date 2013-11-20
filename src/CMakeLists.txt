@@ -7,7 +7,7 @@
 	add_definitions(-DTIMING)
 
 # SETTING CUDA PARAMETERS
-list(APPEND CUDA_NVCC_FLAGS -arch=sm_21)
+list(APPEND CUDA_NVCC_FLAGS -arch=sm_13)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 #	list(APPEND CUDA_NVCC_FLAGS -G)

@@ -26,7 +26,6 @@ class Cache
 	};
 
 	private:
-		lunchbox::Lock	_lock;
 		ControlCubeCache * _cubeCache;
 		boost::unordered_map<index_node_t, cube_cached> _cubes;
 

@@ -68,13 +68,11 @@ struct octreePosition_t
 	}
 };
 
-#define DONE		(eqMivt::statusCube)0b00001000
 #define CUBE		(eqMivt::statusCube)0b00000100
 #define PAINTED		(eqMivt::statusCube)0b00000010
 #define CACHED		(eqMivt::statusCube)0b00000001
 #define NOCUBE		(eqMivt::statusCube)0b00000000
 
-#define CUDA_DONE		(eqMivt::statusCube)0x008
 #define CUDA_CUBE		(eqMivt::statusCube)0x004
 #define CUDA_PAINTED	(eqMivt::statusCube)0x002
 #define CUDA_CACHED		(eqMivt::statusCube)0x001
