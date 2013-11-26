@@ -157,7 +157,7 @@ bool Render::_draw(	vmml::vector<4, float> origin, vmml::vector<4, float> LB,
 								w, h, _pvpW, _pvpH, _octree->getRayCastingLevel(), _octree->getCubeLevel(), _size, 
 								_visibleCubesGPU, 0, realDimC, 
 								_colors.r, _colors.g, _colors.b, _pixelBuffer, 
-								_octree->getIsosurface(), _octree->getMaxHeight(), 
+								_octree->getIsosurface(), _octree->getGridMaxHeight(), 
 								tCubes, _stream);
 
 		if (cudaSuccess != cudaMemcpyAsync((void*)(_visibleCubes), (void*)(_visibleCubesGPU), _size*sizeof(visibleCube_t), cudaMemcpyDeviceToHost, _stream))

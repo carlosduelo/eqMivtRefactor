@@ -26,9 +26,9 @@ namespace eqMivt
 inline __device__ float3 _cuda_BoxToCoordinates(int3 pos, int3 realDim)
 {
 	float3 r;
-	r.x = pos.x >= realDim.x ? tex1Dfetch(xgrid, CUBE_INC + realDim.x-1) : tex1Dfetch(xgrid, CUBE_INC + pos.x);
-	r.y = pos.y >= realDim.y ? tex1Dfetch(ygrid, CUBE_INC + realDim.y-1) : tex1Dfetch(ygrid, CUBE_INC + pos.y);
-	r.z = pos.z >= realDim.z ? tex1Dfetch(zgrid, CUBE_INC + realDim.z-1) : tex1Dfetch(zgrid, CUBE_INC + pos.z);
+	r.x = pos.x >= realDim.x ? tex1Dfetch(xgrid, CUBE_INC + realDim.x-1) + pos-x - realDim.x : tex1Dfetch(xgrid, CUBE_INC + pos.x);
+	r.y = pos.y >= realDim.y ? tex1Dfetch(ygrid, CUBE_INC + realDim.y-1) + pos-x - realDim.x : tex1Dfetch(ygrid, CUBE_INC + pos.y);
+	r.z = pos.z >= realDim.z ? tex1Dfetch(zgrid, CUBE_INC + realDim.z-1) + pos-x - realDim.x : tex1Dfetch(zgrid, CUBE_INC + pos.z);
 
 	return r;
 }
@@ -65,8 +65,12 @@ __device__ int _cuda_binary_search_closer_Grid(index_node_t * elements, index_no
 __device__  bool _cuda_searchSecuentialGrid(index_node_t * elements, index_node_t index, int min, int max)
 {
 	for(int i=min; i<max; i+=2)
+	{
+		if (elements[i] > index)
+			return false;
 		if (elements[i+1] >= index && elements[i] <= index)
 			return true;
+	}
 
 	return false;
 }
@@ -227,13 +231,256 @@ __device__ bool _cuda_RayAABB2(float3 origin, float3 dir,  float * tnear, float 
 
 __device__ bool _cuda_searchNextChildrenValidAndHit(index_node_t * elements, int size, int3 realDim, float3 origin, float3 ray, index_node_t father, float cTnear, float cTfar, int nLevels, int level, int3 minB, index_node_t * child, float * childTnear, float * childTfar)
 {
+#if 1
+	int dimC = 1 << (nLevels - level);
+	int dimF = dimC << 1;
+	float3 minBoxC = _cuda_BoxToCoordinates(minB, realDim);	
+	float3 midBoxC = _cuda_BoxToCoordinates(minB + make_int3(dimC, dimC, dimC), realDim);	
+	float3 maxBoxC = _cuda_BoxToCoordinates(minB + make_int3(dimF, dimF, dimF), realDim);	
+	float3 tmin, tmid, tmax;
+	float3 div = make_float3(1.0f / ray.x, 1.0f / ray.y, 1.0f / ray.z); 
+	index_node_t mask = 0;
+
+	if (div.x >= 0)
+	{
+		tmin.x = minBoxC.x - origin.x;
+		tmid.x = midBoxC.x - origin.x;
+		tmax.x = maxBoxC.x - origin.x;
+	}
+	else
+	{
+		tmin.x = maxBoxC.x - origin.x;
+		tmid.x = midBoxC.x - origin.x;
+		tmax.x = minBoxC.x - origin.x;
+		mask |= 4;
+	}
+	if (div.y >= 0)
+	{
+		tmin.y = minBoxC.y - origin.y;
+		tmid.y = midBoxC.y - origin.y;
+		tmax.y = maxBoxC.y - origin.y;
+	}                     
+	else                  
+	{                     
+		tmin.y = maxBoxC.y - origin.y;
+		tmid.y = midBoxC.y - origin.y;
+		tmax.y = minBoxC.y - origin.y;
+		mask |= 2;
+	}
+	if (div.z >= 0)
+	{
+		tmin.z = minBoxC.z - origin.x;
+		tmid.z = midBoxC.z - origin.x;
+		tmax.z = maxBoxC.z - origin.x;
+	}                     
+	else                  
+	{                     
+		tmin.z = maxBoxC.z - origin.z;
+		tmid.z = midBoxC.z - origin.z;
+		tmax.z = minBoxC.z - origin.z;
+		mask |= 1;
+	}
+
+	tmin = tmin * div;
+	tmid = tmid * div;
+	tmax = tmax * div;
+
+	index_node_t c = 0;
+	index_node_t childrenID = father << 3;
+	unsigned int closer1 = 0;
+	unsigned int closer8 = size;
+
+	if (size != 2)
+	{
+		closer1 =  _cuda_binary_search_closer_Grid(elements , childrenID , 0, size-1);
+	}
+
+	float text = 0.0f;
+	float tent = 0.0f;
+	float closer = 0x7ff0000000000000;	//infinity
+	bool find = false;
+
+	c |= tent > tmid.x ? 4 : 0;
+	c |= tent > tmid.y ? 2 : 0;
+	c |= tent > tmid.z ? 1 : 0;
+
+	switch(c)
+	{
+		case 0:
+				tent = fmaxf(tmin.x, fmaxf(tmin.y, tmin.z));
+				text = fminf(tmid.x, fminf(tmid.y, tmid.z));
+			break;  
+		case 1:
+				tent = fmaxf(tmin.x, fmaxf(tmin.y, tmid.z));
+				text = fminf(tmid.x, fminf(tmid.y, tmax.z));
+			break;  
+		case 2:
+				tent = fmaxf(tmin.x, fmaxf(tmid.y, tmin.z));
+				text = fminf(tmid.x, fminf(tmax.y, tmid.z));
+			break;  
+		case 3:
+				tent = fmaxf(tmin.x, fmaxf(tmid.y, tmid.z));
+				text = fminf(tmid.x, fminf(tmax.y, tmax.z));
+			break;  
+		case 4:
+				tent = fmaxf(tmid.x, fmaxf(tmin.y, tmin.z));
+				text = fminf(tmax.x, fminf(tmid.y, tmid.z));
+			break;  
+		case 5:
+				tent = fmaxf(tmid.x, fmaxf(tmin.y, tmid.z));
+				text = fminf(tmax.x, fminf(tmid.y, tmax.z));
+			break;  
+		case 6:
+				tent = fmaxf(tmid.x, fmaxf(tmid.y, tmin.z));
+				text = fminf(tmax.x, fminf(tmax.y, tmid.z));
+			break;  
+		case 7:
+				tent = fmaxf(tmid.x, fmaxf(tmid.y, tmid.z));
+				text = fminf(tmax.x, fminf(tmax.y, tmax.z));
+			break;  
+	}
+
+	do
+	{
+
+		if (tent < text && 
+			tent >= cTnear && 
+			tent <= closer && 
+			_cuda_searchSecuentialGrid(elements, childrenID | (c^mask), closer1, closer8))
+		{
+			*child = childrenID | (c ^ mask);
+			*childTnear = tent;
+			*childTfar = text;
+			closer = tent;
+			find = true;
+		}
+
+		float te = 0.0f;
+		switch(c)
+		{
+			case 0:
+				te = fminf(tmid.x, fminf(tmid.y, tmid.z));
+				if (te == tmid.x)
+				{
+					c=4;
+					tent = fmaxf(tmid.x, fmaxf(tmin.y, tmin.z));
+					text = fminf(tmax.x, fminf(tmid.y, tmid.z));
+				}
+				else if (te == tmid.y)
+				{
+					c=2;
+					tent = fmaxf(tmin.x, fmaxf(tmid.y, tmin.z));
+					text = fminf(tmid.x, fminf(tmax.y, tmid.z));
+				}
+				else if (te == tmid.z)
+				{
+					c=1;
+					tent = fmaxf(tmin.x, fmaxf(tmin.y, tmid.z));
+					text = fminf(tmid.x, fminf(tmid.y, tmax.z));
+				}
+				break;  
+			case 1:	
+				te = fminf(tmid.x, fminf(tmid.y, tmax.z));
+				if (te == tmid.x)
+				{
+					c=5;
+					tent = fmaxf(tmid.x, fmaxf(tmin.y, tmid.z));
+					text = fminf(tmax.x, fminf(tmid.y, tmax.z));
+				}
+				else if (te == tmid.y)
+				{
+					c=3;
+					tent = fmaxf(tmin.x, fmaxf(tmid.y, tmid.z));
+					text = fminf(tmid.x, fminf(tmax.y, tmax.z));
+				}
+				else
+					c=8;
+				break;  
+			case 2:	
+				te = fminf(tmid.x, fminf(tmax.y, tmid.z));
+				if (te == tmid.x) 
+				{
+					c=6;
+					tent = fmaxf(tmid.x, fmaxf(tmid.y, tmin.z));
+					text = fminf(tmax.x, fminf(tmax.y, tmid.z));
+				}
+				else if (te == tmid.z)
+				{
+					c=3;
+					tent = fmaxf(tmin.x, fmaxf(tmid.y, tmid.z));
+					text = fminf(tmid.x, fminf(tmax.y, tmax.z));
+				}
+				else
+					c=8;
+				break;  
+			case 3:	
+				te = fminf(tmid.x, fminf(tmax.y, tmax.z));
+				if (te == tmid.x) 
+				{
+					c=7;
+					tent = fmaxf(tmid.x, fmaxf(tmid.y, tmid.z));
+					text = fminf(tmax.x, fminf(tmax.y, tmax.z));
+				}
+				else 
+					c=8;
+				break;  
+			case 4:	
+				te = fminf(tmax.x, fminf(tmid.y, tmid.z));
+				if (te == tmid.y)
+				{
+					c=6;
+					tent = fmaxf(tmid.x, fmaxf(tmid.y, tmin.z));
+					text = fminf(tmax.x, fminf(tmax.y, tmid.z));
+				}
+				else if (te == tmid.z)
+				{
+					c=5;
+					tent = fmaxf(tmid.x, fmaxf(tmin.y, tmid.z));
+					text = fminf(tmax.x, fminf(tmid.y, tmax.z));
+				}
+				else
+					c=8;
+				break;  
+			case 5:	
+				te = fminf(tmax.x, fminf(tmid.y, tmax.z));
+				if (te == tmid.y)
+				{
+					c=7;
+					tent = fmaxf(tmid.x, fmaxf(tmid.y, tmid.z));
+					text = fminf(tmax.x, fminf(tmax.y, tmax.z));
+				}
+				else 
+					c=8;
+				break;  
+			case 6:	
+				te = fminf(tmax.x, fminf(tmax.y, tmid.z));
+				if (te == tmid.z) 
+				{
+					c=7;
+					tent = fmaxf(tmid.x, fmaxf(tmid.y, tmid.z));
+					text = fminf(tmax.x, fminf(tmax.y, tmax.z));
+				}
+				else
+					c=8;
+				break;  
+			case 7:
+				c = 8;
+				break;  
+		}
+	}
+	while(c < 8);
+
+	return find;
+
+#else
 	index_node_t childrenID = father << 3;
 	int dim = (1<<(nLevels-level));
-	int3 minBox = minB;
 	float closer = 0x7ff0000000000000;	//infinity
 	bool find = false;
 	float childTnearT = 0xfff0000000000000; // -infinity
 	float childTfarT  = 0xfff0000000000000; // -infinity
+	int3 minBox = minB;
+
 	if (size==2)
 	{
 		if (_cuda_RayAABB2(origin, ray,  &childTnearT, &childTfarT, nLevels, minBox, level, realDim) && childTnearT >= cTnear && childTnearT <= closer &&
@@ -331,7 +578,7 @@ __device__ bool _cuda_searchNextChildrenValidAndHit(index_node_t * elements, int
 	else
 	{
 		unsigned int closer1 = _cuda_binary_search_closer_Grid(elements, childrenID,   0, size-1);
-		unsigned int closer8 = _cuda_binary_search_closer_Grid(elements, childrenID+7, closer1, size-1) + 1;
+		unsigned int closer8 = size;
 
 		if (closer8 >= size)
 			closer8 = size-1;
@@ -429,7 +676,10 @@ __device__ bool _cuda_searchNextChildrenValidAndHit(index_node_t * elements, int
 		childrenID++;
 	}
 
+	if (find && (*child) < 16)
+	printf("%lld %f %f\n",*child, *childTnear, *childTfar);
 	return find;
+	#endif
 }
 
 __device__ int3 _cuda_updateCoordinatesGrid(int maxLevel, int cLevel, index_node_t cIndex, int nLevel, index_node_t nIndex, int3 minBox)
@@ -507,8 +757,6 @@ __device__ bool _cuda_octreeIteration(index_node_t ** octree, int * sizes, float
 			currentLevel++;
 			*currentTnear = childTnear;
 			*currentTfar = childTfar;
-		//if (currentTnear == currentTfar)
-		//	printf("--> %d %lld %d %f %f\n", i, current, currentLevel, currentTnear, currentTfar);
 		}
 		else if (current == 1) 
 		{
