@@ -231,7 +231,7 @@ __device__ bool _cuda_RayAABB2(float3 origin, float3 dir,  float * tnear, float 
 
 __device__ bool _cuda_searchNextChildrenValidAndHit(index_node_t * elements, int size, int3 realDim, float3 origin, float3 ray, index_node_t father, float cTnear, float cTfar, int nLevels, int level, int3 minB, index_node_t * child, float * childTnear, float * childTfar)
 {
-#if 1
+#if 0
 	int dimC = 1 << (nLevels - level);
 	int dimF = dimC << 1;
 	float3 minBoxC = _cuda_BoxToCoordinates(minB, realDim);	
@@ -300,9 +300,9 @@ __device__ bool _cuda_searchNextChildrenValidAndHit(index_node_t * elements, int
 	float closer = 0x7ff0000000000000;	//infinity
 	bool find = false;
 
-	c |= tent > tmid.x ? 4 : 0;
-	c |= tent > tmid.y ? 2 : 0;
-	c |= tent > tmid.z ? 1 : 0;
+	c |= tent > tmid.x && tent < tmax.x ? 4 : 0;
+	c |= tent > tmid.y && tent < tmax.y ? 2 : 0;
+	c |= tent > tmid.z && tent < tmax.z ? 1 : 0;
 
 	switch(c)
 	{
@@ -676,8 +676,6 @@ __device__ bool _cuda_searchNextChildrenValidAndHit(index_node_t * elements, int
 		childrenID++;
 	}
 
-	if (find && (*child) < 16)
-	printf("%lld %f %f\n",*child, *childTnear, *childTfar);
 	return find;
 	#endif
 }

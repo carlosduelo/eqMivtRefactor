@@ -7,7 +7,7 @@
 	add_definitions(-DTIMING)
 
 # SETTING CUDA PARAMETERS
-list(APPEND CUDA_NVCC_FLAGS -arch=sm_21)
+list(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_13,code=sm_13 -gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 #	list(APPEND CUDA_NVCC_FLAGS -G)
@@ -174,33 +174,10 @@ cuda_compile(TEST_RAYCASTING_CUDA_OBJECTS ${TEST_RAYCASTING_CUDA_SOURCE})
 add_executable(testRayCasting ${TEST_RAYCASTING_SOURCE} ${TEST_RAYCASTING_CUDA_OBJECTS} testRayCasting.cpp) 
 target_link_libraries(testRayCasting ${LIBS_NEEDED_TEST_RAYCASTING} )
 
-# TEST MULTITHREADING 
-set(TEST_MULTITHREADING_SOURCE
-	render.cpp
-	renderPNG.cpp
-	resourcesManager.cpp
-	colorManager.cpp
-	cuda_help.cpp
-	octreeManager.cpp
-	cacheManager.cpp
-	controlCache.cpp
-	linkedList.cpp
-	cache.cpp
-	controlPlaneCache.cpp
-	controlCubeCache.cpp
-	hdf5File.cpp
-	memoryCheck.cpp
-	octree.cpp
-	octreeContainer.cpp
-   )
+INSTALL_TARGETS(/bin mivt createOctree transferFunctionCreator)
 
-set(TEST_MULTITHREADING_CUDA_SOURCE
-	rayCaster_cuda.cu
-	octree_cuda.cu
-)
-
-set(LIBS_NEEDED_TEST_MULTITHREADING ${LUNCHBOX_LIBRARIES} ${CUDA_LIBRARIES} ${HDF5_LIBRARIES} freeimage) 
-
-#cuda_compile(TEST_MULTITHREADING_CUDA_OBJECTS ${TEST_RAYCASTING_CUDA_SOURCE})
-#add_executable(testMultithreading ${TEST_MULTITHREADING_SOURCE} ${TEST_RAYCASTING_CUDA_OBJECTS} testMultithreading.cpp) 
-#target_link_libraries(testMultithreading ${LIBS_NEEDED_TEST_MULTITHREADING} )
+set(CPACK_PACKAGE_VERSION ${VERSION})
+set(CPACK_GENERATOR "RPM")
+set(CPACK_PACKAGE_NAME "eqMivt")
+set(CPACK_PACKAGE_CONTACT "Carlos Duelo")
+include(CPack)
