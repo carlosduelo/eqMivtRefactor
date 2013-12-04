@@ -414,7 +414,6 @@ bool Config::_handleKeyEvent( const eq::KeyEvent& event )
 			if (_surfaceInfo.checkLoadNextIsosurface())
 			{
 				_frameData.setNextIsosurface();
-				_reset();
 			}
 			return true;
 		}
@@ -423,7 +422,6 @@ bool Config::_handleKeyEvent( const eq::KeyEvent& event )
 			if (_surfaceInfo.checkLoadNextIsosurface())
 			{
 				_frameData.setNextIsosurface();
-				_reset();
 			}
 			return true;
 		}
@@ -432,7 +430,6 @@ bool Config::_handleKeyEvent( const eq::KeyEvent& event )
 			if (_surfaceInfo.checkLoadPreviusIsosurface())
 			{
 				_frameData.setPreviusIsosurface();
-				_reset();
 			}
 			return true;
 		}
@@ -441,7 +438,6 @@ bool Config::_handleKeyEvent( const eq::KeyEvent& event )
 			if (_surfaceInfo.checkLoadPreviusIsosurface())
 			{
 				_frameData.setPreviusIsosurface();
-				_reset();
 			}
 			return true;
 		}

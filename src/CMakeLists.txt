@@ -4,7 +4,7 @@
 
 #definitios
 	#add_definitions(-DDISK_TIMING)
-	add_definitions(-DTIMING)
+#	add_definitions(-DTIMING)
 
 # SETTING CUDA PARAMETERS
 list(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_13,code=sm_13 -gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30)
