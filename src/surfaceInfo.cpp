@@ -36,9 +36,25 @@ bool SurfaceInfo::init(std::string file_name)
 
 	file.read((char*)&_numOctrees,sizeof(_numOctrees));
 	file.read((char*)&_realDimVolume.array[0],3*sizeof(int));
-	file.seekg(_realDimVolume.x()*sizeof(float), std::ios_base::cur);
-	file.seekg(_realDimVolume.y()*sizeof(float), std::ios_base::cur);
-	file.seekg(_realDimVolume.z()*sizeof(float), std::ios_base::cur);
+	_xGrid = new float[2*CUBE_INC + _realDimVolume.x()];
+	_yGrid = new float[2*CUBE_INC + _realDimVolume.y()];
+	_zGrid = new float[2*CUBE_INC + _realDimVolume.z()];
+	file.read((char*)(_xGrid+CUBE_INC),_realDimVolume.x()*sizeof(float));
+	file.read((char*)(_yGrid+CUBE_INC),_realDimVolume.y()*sizeof(float));
+	file.read((char*)(_zGrid+CUBE_INC),_realDimVolume.z()*sizeof(float));
+	for(int i=CUBE_INC-1; i>=0 ;i--)
+	{
+		_xGrid[i] = _xGrid[i+1] - 1.0f;
+		_yGrid[i] = _yGrid[i+1] - 1.0f;
+		_zGrid[i] = _zGrid[i+1] - 1.0f;
+	}
+	for(int i=0; i<CUBE_INC; i++)
+	{
+		_xGrid[CUBE_INC + _realDimVolume.x() + i] = _xGrid[CUBE_INC + _realDimVolume.x() + i - 1] + 1.0f;
+		_yGrid[CUBE_INC + _realDimVolume.y() + i] = _yGrid[CUBE_INC + _realDimVolume.y() + i - 1] + 1.0f;
+		_zGrid[CUBE_INC + _realDimVolume.z() + i] = _zGrid[CUBE_INC + _realDimVolume.z() + i - 1] + 1.0f;
+		
+	}
 	_currentPosition = 0;
 	_currentIsosurface = 0;
 
@@ -91,19 +107,28 @@ bool SurfaceInfo::init(std::string file_name)
 	return  true;
 }
 
-vmml::vector<3, int> SurfaceInfo::getRealDimVolume()
+vmml::vector<3, float> SurfaceInfo::getRealDimVolume()
 {
-	return _realDimVolume;
+	return vmml::vector<3, float>(
+				_xGrid[CUBE_INC + _realDimVolume.x()],
+				_yGrid[CUBE_INC + _realDimVolume.y()],
+				_zGrid[CUBE_INC + _realDimVolume.z()]);
 }
 
-vmml::vector<3, int> SurfaceInfo::getStartCoord()
+vmml::vector<3, float> SurfaceInfo::getStartCoord()
 {
-	return _octrees[_currentPosition].start;
+	return vmml::vector<3, float>(
+				_xGrid[CUBE_INC + _octrees[_currentPosition].start.x()],
+				_yGrid[CUBE_INC + _octrees[_currentPosition].start.y()],
+				_zGrid[CUBE_INC + _octrees[_currentPosition].start.z()]);
 }
 
-vmml::vector<3, int> SurfaceInfo::getEndCoord()
+vmml::vector<3, float> SurfaceInfo::getEndCoord()
 {
-	return _octrees[_currentPosition].end;
+	return vmml::vector<3, float>(
+				_xGrid[CUBE_INC + _octrees[_currentPosition].end.x()],
+				_yGrid[CUBE_INC + _octrees[_currentPosition].end.y()],
+				_zGrid[CUBE_INC + _octrees[_currentPosition].end.z()]);
 }
 
 int SurfaceInfo::getnLevels()

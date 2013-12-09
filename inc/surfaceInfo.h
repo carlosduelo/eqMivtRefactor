@@ -23,6 +23,10 @@ class SurfaceInfo
 		int		_currentPosition;
 		int		_currentIsosurface;
 
+		float		*		_xGrid;
+		float		*		_yGrid;
+		float		*		_zGrid;
+
 		std::vector<octreePosition_t> _octrees;
 
 		vmml::vector<3, int> _realDimVolume;
@@ -36,9 +40,9 @@ class SurfaceInfo
 		bool checkLoadPreviusIsosurface();
 
 		int getNumOctrees(){ return _numOctrees; }
-		vmml::vector<3, int> getRealDimVolume();
-		vmml::vector<3, int> getStartCoord();
-		vmml::vector<3, int> getEndCoord();
+		vmml::vector<3, float> getRealDimVolume();
+		vmml::vector<3, float> getStartCoord();
+		vmml::vector<3, float> getEndCoord();
 		int getnLevels();
 		int getmaxLevel();
 		int	getCubeLevel();

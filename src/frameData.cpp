@@ -224,7 +224,8 @@ void FrameData::reset()
 	_center.y() = _startCoord.y() + ((_endCoord.y()-_startCoord.y())/2.0f);
 	_center.z() = _startCoord.z() + ((_endCoord.z()-_startCoord.z())/2.0f);
 
-	_radio = (_endCoord - _center).length();
+std::cout<<_center<<_startCoord<<_endCoord<<std::endl;
+	_radio =  _center.length();
 	_angle = 0;
 	_position.x() = _center.x() + _radio * sin(_angle);
 	_position.y() = _center.y() + _radio * sin(_angle);
