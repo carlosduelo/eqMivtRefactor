@@ -25,7 +25,7 @@ namespace eqMivt
 		Config* config = static_cast< Config* >( getConfig( ));
 		if( !config->loadData( initID ))
 		{
-			setError( ERROR_EQ_MIVT_FAILED );
+			sendError( ERROR_EQ_MIVT_FAILED );
 			return false;
 		}
 

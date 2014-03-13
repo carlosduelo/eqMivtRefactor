@@ -61,15 +61,10 @@ int EqMivt::run()
     config->setInitData( _initData );
     if( !config->init( ))
     {
-        LBWARN << "Error during initialization: " << config->getError()
-               << std::endl;
         server->releaseConfig( config );
         disconnectServer( server );
         return EXIT_FAILURE;
     }
-    if( config->getError( ))
-        LBWARN << "Error during initialization: " << config->getError()
-               << std::endl;
 
     LBLOG( LOG_STATS ) << "Config init took " << clock.getTimef() << " ms" << std::endl;
 
@@ -81,9 +76,6 @@ int EqMivt::run()
     while( config->isRunning( ) && maxFrames-- )
     {
         config->startFrame();
-        if( config->getError( ))
-            LBWARN << "Error during frame start: " << config->getError()
-                   << std::endl;
         config->finishFrame();
 
         while( !config->needRedraw( )) // wait for an event requiring redraw
