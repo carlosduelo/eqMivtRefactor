@@ -11,7 +11,7 @@ SET( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${mivt_SOURCE_DIR}/bin )
 set (CMAKE_BUILD_TYPE "Release")
 
 # CUDA
-find_package(CUDA 5.0 REQUIRED)
+find_package(CUDA)
 if (CUDA_FOUND)
 	include_directories(${CUDA_INCLUDE_DIRS})
 	cuda_include_directories(${mivt_SOURCE_DIR}/inc)
@@ -20,7 +20,7 @@ else()
 endif()
 
 # Equalizer
-find_package(Equalizer 1.5.0 REQUIRED)
+find_package(Equalizer)
 if (EQUALIZER_FOUND)
 	include_directories(${EQUALIZER_INCLUDE_DIRS})
 else()
